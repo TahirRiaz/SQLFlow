@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bar,
@@ -12,20 +12,23 @@ import {
   type BarShapeProps,
   type TooltipContentProps,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BandCursor, chartBehaviour, chartLayers } from "@/lib/charts";
 import { isApiError } from "../../api/client";
 import { summaryApi } from "../../api/endpoints";
+import type { Dashboard } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
+import { HomeSection } from "../../components/HomeSection";
 import { KpiCard } from "../../components/KpiCard";
 import { Page } from "../../components/Page";
-import { PageHeader } from "../../components/PageHeader";
 import { RelativeTime } from "../../components/RelativeTime";
 import { pollingInterval } from "../../hooks/usePolling";
-import { moduleDashboardTiles } from "../../modules/registry";
+import { moduleDashboardTiles, moduleHomeSections } from "../../modules/registry";
 import { useThemeMode } from "../../theme/ThemeModeContext";
+import { HomeHero } from "./HomeHero";
+import { RecentRuns } from "./RecentRuns";
 
 // One even grid for the KPI cards (and their loading skeletons), so the headline numbers read as a designed
 // row instead of a ragged flex wrap.
@@ -57,7 +60,53 @@ function RunStateTooltip({ active, payload, label }: TooltipContentProps) {
   );
 }
 
-/** The operator's landing page: headline counts linking into each area plus the run-state distribution. */
+/** The headline counts, each linking into its area, with the tiles the modules add after SQLFlow's own. */
+function Glance({ dashboard }: { dashboard: Dashboard }) {
+  const allNodesOnline = dashboard.nodesTotal > 0 && dashboard.nodesOnline === dashboard.nodesTotal;
+  return (
+    <div className={kpiGridClass}>
+      <KpiCard label="Repos" value={dashboard.repos} linkTo="/repos" testId="kpi-repos" />
+      <KpiCard
+        label="Pipelines"
+        value={`${dashboard.activePipelines}/${dashboard.pipelines}`}
+        caption="active/total"
+        linkTo="/pipelines"
+        testId="kpi-pipelines"
+      />
+      <KpiCard
+        label="Nodes"
+        value={`${dashboard.nodesOnline}/${dashboard.nodesTotal}`}
+        caption="online/total"
+        linkTo="/nodes"
+        color={allNodesOnline ? "success" : undefined}
+        testId="kpi-nodes"
+      />
+      <KpiCard
+        label="Schedules"
+        value={dashboard.schedulesEnabled}
+        caption={`enabled (${dashboard.schedulesPaused} paused)`}
+        linkTo="/schedules"
+        testId="kpi-schedules"
+      />
+      <KpiCard
+        label="Repo sources"
+        value={dashboard.repoSources}
+        caption={`${dashboard.repoSourcesWithErrors} with errors`}
+        linkTo="/repos"
+        color={dashboard.repoSourcesWithErrors > 0 ? "error" : undefined}
+        testId="kpi-repo-sources"
+      />
+      <KpiCard label="Runs last 24h" value={dashboard.runs.last24h} linkTo="/runs" testId="kpi-runs-24h" />
+      {moduleDashboardTiles().map(({ id, component: Tile }) => <Tile key={id} />)}
+    </div>
+  );
+}
+
+/**
+ * The page a person lands on (DESIGN.md 12): the hero with the assistant's question box, the headline counts linking into
+ * each area, the sections the modules add about their own product, and the newest runs beside the run-state
+ * distribution.
+ */
 export default function DashboardPage() {
   const { mode } = useThemeMode();
   const query = useQuery({
@@ -85,36 +134,10 @@ export default function DashboardPage() {
     // The mode value is the re-read trigger: the tokens themselves come from the stylesheet.
   }, [mode]);
 
-  if (query.isError) {
-    return (
-      <Page data-testid="page-dashboard">
-        <PageHeader title="Dashboard" />
-        {isApiError(query.error)
-          ? <CorrelationError error={query.error} />
-          : <p className="text-[13px] text-destructive">{String(query.error)}</p>}
-      </Page>
-    );
-  }
-
   const dashboard = query.data;
-  if (dashboard === undefined) {
-    return (
-      <Page data-testid="page-dashboard">
-        <PageHeader title="Dashboard" />
-        <div className={kpiGridClass}>
-          {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={`kpi-skeleton-${i}`} className="h-[104px] rounded-lg" />
-          ))}
-        </div>
-        <Skeleton className="h-[372px] rounded-lg" />
-      </Page>
-    );
-  }
-
-  const allNodesOnline = dashboard.nodesTotal > 0 && dashboard.nodesOnline === dashboard.nodesTotal;
   // Each run state wears its reserved status color; the x-axis tick names the state, so color never
   // carries the identity alone.
-  const runStates: RunStateDatum[] = [
+  const runStates: RunStateDatum[] = dashboard === undefined ? [] : [
     { state: "queued", count: dashboard.runs.queued, color: chartColors.queued },
     { state: "running", count: dashboard.runs.running, color: chartColors.running },
     { state: "succeeded", count: dashboard.runs.succeeded, color: chartColors.succeeded },
@@ -125,86 +148,79 @@ export default function DashboardPage() {
 
   return (
     <Page data-testid="page-dashboard">
-      <PageHeader
-        title="Dashboard"
-        subtitle={(
-          <span data-testid="dashboard-as-of">
+      <HomeHero />
+
+      <HomeSection
+        title="At a glance"
+        testId="home-glance"
+        aside={dashboard !== undefined && (
+          <span className="text-xs text-muted-foreground" data-testid="dashboard-as-of">
             As of <RelativeTime value={dashboard.asOfUtc} />
           </span>
         )}
-      />
+      >
+        {query.isError
+          ? (isApiError(query.error)
+            ? <CorrelationError error={query.error} />
+            : <p className="text-[13px] text-destructive">{String(query.error)}</p>)
+          : dashboard === undefined
+            ? (
+              <div className={kpiGridClass}>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <Skeleton key={`kpi-skeleton-${i}`} className="h-[104px] rounded-lg" />
+                ))}
+              </div>
+            )
+            : <Glance dashboard={dashboard} />}
+      </HomeSection>
 
-      <div className={kpiGridClass}>
-        <KpiCard label="Repos" value={dashboard.repos} linkTo="/repos" testId="kpi-repos" />
-        <KpiCard
-          label="Pipelines"
-          value={`${dashboard.activePipelines}/${dashboard.pipelines}`}
-          caption="active/total"
-          linkTo="/pipelines"
-          testId="kpi-pipelines"
-        />
-        <KpiCard
-          label="Nodes"
-          value={`${dashboard.nodesOnline}/${dashboard.nodesTotal}`}
-          caption="online/total"
-          linkTo="/nodes"
-          color={allNodesOnline ? "success" : undefined}
-          testId="kpi-nodes"
-        />
-        <KpiCard
-          label="Schedules"
-          value={dashboard.schedulesEnabled}
-          caption={`enabled (${dashboard.schedulesPaused} paused)`}
-          linkTo="/schedules"
-          testId="kpi-schedules"
-        />
-        <KpiCard
-          label="Repo sources"
-          value={dashboard.repoSources}
-          caption={`${dashboard.repoSourcesWithErrors} with errors`}
-          linkTo="/repos"
-          color={dashboard.repoSourcesWithErrors > 0 ? "error" : undefined}
-          testId="kpi-repo-sources"
-        />
-        <KpiCard label="Runs last 24h" value={dashboard.runs.last24h} linkTo="/runs" testId="kpi-runs-24h" />
-        {moduleDashboardTiles().map(({ id, component: Tile }) => <Tile key={id} />)}
+      {/* Each section loads on its own (a module may load it lazily), holding its place until it does. */}
+      {moduleHomeSections().map(({ id, component: ModuleSection }) => (
+        <Suspense key={id} fallback={<Skeleton className="h-48 rounded-lg" />}>
+          <ModuleSection />
+        </Suspense>
+      ))}
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <RecentRuns />
+        <Card className="gap-0 overflow-hidden rounded-lg py-0" data-testid="runs-by-state-card">
+          <div className="flex h-11 items-center border-b px-4">
+            <h2 className="text-base font-medium">Runs by state</h2>
+          </div>
+          <div className="h-72 px-4 pt-4 pb-2">
+            {dashboard === undefined ? (
+              <Skeleton className="h-full w-full rounded-lg" />
+            ) : noRuns ? (
+              <EmptyState
+                title="No runs recorded yet"
+                description="Trigger a run and its state distribution appears here."
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart {...chartBehaviour} data={runStates} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                  <CartesianGrid vertical={false} stroke={chartColors.grid} />
+                  <XAxis
+                    dataKey="state"
+                    stroke={chartColors.axis}
+                    tick={{ fill: chartColors.axis, fontSize: 12 }}
+                    axisLine={{ stroke: chartColors.grid }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    stroke={chartColors.axis}
+                    tick={{ fill: chartColors.axis, fontSize: 12 }}
+                    axisLine={{ stroke: chartColors.grid }}
+                    tickLine={false}
+                  />
+                  <Tooltip cursor={<BandCursor fill={chartColors.cursor} />} content={RunStateTooltip} />
+                  <Bar dataKey="count" name="Runs" radius={[4, 4, 0, 0]} maxBarSize={48} shape={RunStateBar} zIndex={chartLayers.bar} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
       </div>
-
-      <Card className="gap-0 rounded-lg py-4" data-testid="runs-by-state-card">
-        <CardHeader className="px-4">
-          <CardTitle className="text-base font-medium">Runs by state</CardTitle>
-        </CardHeader>
-        <CardContent className="h-80 px-4 pt-3">
-          {noRuns ? (
-            <EmptyState
-              title="No runs recorded yet"
-              description="Trigger a run and its state distribution appears here."
-            />
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart {...chartBehaviour} data={runStates} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid vertical={false} stroke={chartColors.grid} />
-                <XAxis
-                  dataKey="state"
-                  stroke={chartColors.axis}
-                  tick={{ fill: chartColors.axis, fontSize: 12 }}
-                  axisLine={{ stroke: chartColors.grid }}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  stroke={chartColors.axis}
-                  tick={{ fill: chartColors.axis, fontSize: 12 }}
-                  axisLine={{ stroke: chartColors.grid }}
-                  tickLine={false}
-                />
-                <Tooltip cursor={<BandCursor fill={chartColors.cursor} />} content={RunStateTooltip} />
-                <Bar dataKey="count" name="Runs" radius={[4, 4, 0, 0]} maxBarSize={48} shape={RunStateBar} zIndex={chartLayers.bar} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
     </Page>
   );
 }

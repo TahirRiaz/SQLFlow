@@ -15,17 +15,10 @@ import { useAuth } from "./AuthContext";
 import { branding } from "../modules/branding";
 import { readLoginPrefs } from "./loginPrefs";
 import { LoginStreams } from "./LoginStreams";
-import { LOGIN_ACCENT } from "./loginStreamLanes";
+import { BRAND_FIELD, LOGIN_ACCENT } from "./loginStreamLanes";
 
 /** Which sign-in path is in flight, so only the button that started the work shows the spinner. */
 type BusyAction = "local" | "entra" | "bootstrap" | null;
-
-/**
- * The navy field the whole page is set on, in both modes: lightest where the lockup sits, deepening toward the form, so
- * the brand panel and the form read as one surface with no seam between them.
- */
-const BRAND_FIELD =
-  "linear-gradient(160deg, var(--brand-navy) 0%, var(--brand-navy-deep) 50%, color-mix(in srgb, var(--brand-navy-deep) 72%, black) 100%)";
 
 /** The Microsoft four-square mark, per their sign-in branding guidelines. */
 function MicrosoftMark() {

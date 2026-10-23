@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AssistantRuntimeProvider,
@@ -26,6 +27,7 @@ import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
 import { parseUtc } from "../../lib/time";
 import { AnswerConfirmation } from "./AnswerConfirmation";
+import { handedOver } from "./chatHandoff";
 import {
   canRecordAudio,
   createChatModelAdapter,
@@ -39,10 +41,20 @@ import {
  * the authenticated SSE channel; every agent run carries a short-lived token the control plane
  * delegates from the signed-in user, so the assistant sees at most what this user may see and the
  * model host never holds the user's own session. Conversations persist
- * in the catalog and re-open with their full transcript, including tool activity.
+ * in the catalog and re-open with their full transcript, including tool activity. A question another page hands over
+ * (chatHandoff) opens a fresh conversation and is sent as its first message.
  */
 export default function ChatPage() {
   const capabilities = useQuery({ queryKey: ["chat", "capabilities"], queryFn: () => chatApi.capabilities() });
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Taken once, and then cleared from the history entry: a reload, or Back to this entry, never asks it again.
+  const [ask] = useState(() => handedOver(location.state));
+  useEffect(() => {
+    if (ask !== null) {
+      void navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [ask, location.pathname, navigate]);
 
   if (capabilities.isLoading) {
     return (
@@ -77,10 +89,10 @@ export default function ChatPage() {
     );
   }
 
-  return <ChatWorkbench capabilities={capabilities.data!} />;
+  return <ChatWorkbench capabilities={capabilities.data!} ask={ask} />;
 }
 
-function ChatWorkbench({ capabilities }: { capabilities: ChatCapabilities }) {
+function ChatWorkbench({ capabilities, ask }: { capabilities: ChatCapabilities; ask: string | null }) {
   const queryClient = useQueryClient();
   const conversations = useQuery({ queryKey: ["chat", "conversations"], queryFn: () => chatApi.listConversations() });
 
@@ -147,6 +159,7 @@ function ChatWorkbench({ capabilities }: { capabilities: ChatCapabilities }) {
               key={`${opened.key}`}
               conversationId={opened.id}
               initialMessages={initialMessages}
+              ask={opened.key === 0 ? ask : null}
               capabilities={capabilities}
               onConversationMinted={onConversationMinted}
               onTurnCompleted={onTurnCompleted}
@@ -160,12 +173,15 @@ function ChatWorkbench({ capabilities }: { capabilities: ChatCapabilities }) {
 function ChatThread({
   conversationId,
   initialMessages,
+  ask,
   capabilities,
   onConversationMinted,
   onTurnCompleted,
 }: {
   conversationId: string | null;
   initialMessages: ThreadMessageLike[];
+  /** A question handed over to ask as this fresh thread's first message, or null. */
+  ask: string | null;
   capabilities: ChatCapabilities;
   onConversationMinted: (conversation: ChatStreamConversation) => void;
   onTurnCompleted: () => void;
@@ -200,6 +216,15 @@ function ChatThread({
   }, [capabilities]);
 
   const runtime = useLocalRuntime(adapter, { initialMessages, adapters });
+
+  // The handed-over question is sent once the thread is up, and once only (an effect runs twice in development).
+  const asked = useRef(false);
+  useEffect(() => {
+    if (ask !== null && !asked.current) {
+      asked.current = true;
+      runtime.thread.append(ask);
+    }
+  }, [ask, runtime]);
 
   // The learning loop's confirmation moment hangs under every answer. It is a stable identity per
   // capability flag, so the thread is not handed a new component type on each render.

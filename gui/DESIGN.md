@@ -485,7 +485,27 @@ rules take their place, and only on this page:
   rings) and holds still, one record resting on each lane, when the system asks for reduced motion. The pitch and the
   form fade in once (`motion-safe:` only). Light fades out on its own; nothing is clipped where it would leave an edge.
 
-## 12. Port checklist (apply to every feature page)
+## 12. The home page
+
+The page a person lands on in the workbench (`src/features/dashboard/DashboardPage.tsx`, route `/`). It is a workbench
+page in every way but its opening, which carries the sign-in page's identity into the workbench so the two read as one
+product:
+
+- **The hero.** A card set on the sign-in page's navy field (`BRAND_FIELD`) in both modes, rendered with the dark
+  tokens, `rounded-lg` with a white/10 hairline: a greeting (24px semibold, white), the product's tagline (14px, white/60),
+  and the assistant's question box, its one task. On wide screens the sign-in page's picture (`LoginStreams`) sits beside
+  them, fading in from the left so it never meets the box at an edge, and moving as it does there (still under reduced
+  motion). Nothing else on the page is navy.
+- **The question box.** A 44px input (`h-11`, 14px) with the `Ask` button inside it, and up to three questions offered
+  under it as quiet pills (white/12 hairline on white/4). A question typed, or one picked, opens the chat asking it in a
+  fresh conversation (`chatHandoff`, carried in the navigation's state, so a reload never asks it twice). The modules offer
+  the questions (`HomeContribution.prompts`), SQLFlow's own standing in when none does. When the assistant is not
+  configured, the box says so and asks nothing.
+- **Below it, the workbench.** Sections set in `HomeSection` (16px medium heading, what it is as of or the way into its
+  area on the right): the headline counts (7.7), then each section a module adds (`HomeContribution.sections`, each in a
+  suspense boundary of its own), then the newest runs beside the run-state distribution. Status colors keep to 3.2.
+
+## 13. Port checklist (apply to every feature page)
 
 - [ ] No `@mui/*`, `@emotion/*`, or `notistack` imports remain in the file.
 - [ ] Colors only via semantic utilities; no hex, no `--sf-*` legacy tokens.

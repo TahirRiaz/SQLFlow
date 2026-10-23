@@ -13,9 +13,9 @@ import {
   FolderGit2,
   Gauge,
   HeartPulse,
+  House,
   KeyRound,
   KeySquare,
-  LayoutDashboard,
   MonitorPlay,
   Network,
   Radar,
@@ -73,7 +73,7 @@ export const navGroups: NavGroup[] = [
     label: "Operate",
     icon: Activity,
     items: [
-      { label: "Dashboard", to: "/", icon: LayoutDashboard, testId: "nav-dashboard" },
+      { label: "Home", to: "/", icon: House, testId: "nav-dashboard" },
       { label: "Assistant", to: "/chat", icon: BotMessageSquare, testId: "nav-chat" },
       { label: "Insights", to: "/insights", icon: Gauge, testId: "nav-insights" },
       { label: "Data streams", to: "/datastreams", icon: HeartPulse, testId: "nav-datastreams" },
@@ -212,7 +212,7 @@ export function routeTitle(pathname: string): { title: string; icon: LucideIcon 
 
   const selected = selectedNavPath(pathname);
   const item = allNavItems().find((candidate) => candidate.to === selected);
-  return item ? { title: item.label, icon: item.icon } : { title: branding().productName, icon: LayoutDashboard };
+  return item ? { title: item.label, icon: item.icon } : { title: branding().productName, icon: House };
 }
 
 /**

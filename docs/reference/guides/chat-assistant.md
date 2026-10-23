@@ -80,6 +80,15 @@ The workbench's Assistant page (`/chat`) is a ChatGPT-style chat over the SQLFlo
 
 The Slack bot and the GUI chat share one implementation: `SqlFlow.Assistant` and the provider gateways (Azure AI Foundry / OpenAI over the Responses API, Anthropic over the Messages API's MCP connector). The rules the assistant follows are the MCP server's own instructions, the text every client of the server reads, from this chat to an editor's assistant: the providers' MCP connectors pass the server's tools on but not its instructions, so `McpServerInstructions` reads them from the server's `initialize` answer (kept five minutes) and the run's system prompt is that text with only the surface's rendering added (`AssistantInstructions`). Slack answers are formatted as mrkdwn and posted once; GUI answers are GitHub-flavored Markdown streamed token by token, with live tool-call activity shown in the thread. Switching providers, or changing the server's instructions, changes both surfaces at once.
 
+## Asking from the home page
+
+The home page opens on the assistant's question box. A question typed there, or one of the questions offered under it,
+opens the chat on a fresh conversation and asks it as its first message, exactly as if it had been typed in the chat. It
+travels in the navigation's state rather than the address, so it is asked once: a reload of the chat, or coming back to
+it, finds the conversation it started. The questions offered are a host module's (`HomeContribution.prompts` in the GUI
+module contract), about what the module adds; SQLFlow offers its own when no module does. When the assistant is not
+configured (`enabled` false from `GET /api/v1/chat/capabilities`), the box says so and asks nothing.
+
 ## Per-user authority (the difference from Slack)
 
 The Slack bot holds one shared read-scoped token, because everyone in a channel shares the bot's identity. The GUI chat has a signed-in user on every request, so each agent run gets a token the control plane delegates from that user for that one run: the assistant reads at most what that user may read, the control plane enforces it per tool call, and the model host never holds the user's own session. The delegated token expires with the run (`RunTimeoutSeconds` plus 60 seconds), cannot be renewed, and is refused everywhere outside the read surface the tools need, so it cannot mint a personal access token, approve a device sign-in, read the user's conversations, or start work; see [Assistant run tokens](../concepts/authentication-and-identity.md#assistant-run-tokens). The conversation's mode decides which tools the run's MCP session lists (see [Business questions and modes](#business-questions-and-modes--exit)); a tool that needs more than the token may do, such as starting a run, is refused by the control plane, and the assistant says where a person does it.

@@ -10,6 +10,13 @@ export const VIEW_HEIGHT = 560;
 /** The one blue, lightened to read on the navy: the records' mark and the pitch's second line. */
 export const LOGIN_ACCENT = "color-mix(in srgb, var(--brand-blue) 42%, white)";
 
+/**
+ * The navy field the sign-in page is set on, in both modes, and the home page's hero with it: lightest at the top left,
+ * deepening toward the bottom right, so what sits on it reads as one surface with no seam.
+ */
+export const BRAND_FIELD =
+  "linear-gradient(160deg, var(--brand-navy) 0%, var(--brand-navy-deep) 50%, color-mix(in srgb, var(--brand-navy-deep) 72%, black) 100%)";
+
 export interface Point {
   x: number;
   y: number;

@@ -12,6 +12,7 @@ import type { Column } from "../components/DataTable";
 import { extendNavigation } from "../layout/nav";
 import { registerCensus, type CensusSource } from "../lib/lsp/sqlflowLsp";
 import { installModuleBranding, type BrandingContribution } from "./branding";
+import { checkHomePrompts } from "./homePrompts";
 
 /**
  * Where a module's page renders: inside the workbench like every page, or in a window of its own, with nothing of the
@@ -213,6 +214,28 @@ export interface DashboardTileContribution {
 }
 
 /**
+ * A section a module adds to the home page, under the headline counts: what its product is doing now, set in a
+ * `HomeSection`. It renders inside the router and the signed-in session, so it may read the URL and call the API, and in
+ * a suspense boundary of its own, so it may be a lazily loaded component.
+ */
+export interface HomeSectionContribution {
+  /** Unique across modules; names the section in registration errors. */
+  id: string;
+  component: ComponentType;
+}
+
+/** What a module adds to the home page (DESIGN.md 12): questions to put to the assistant, and sections of its own. */
+export interface HomeContribution {
+  /**
+   * Questions the home page offers to put to the assistant, each one click from the chat, in the order given: questions
+   * about what the module adds, which its own tools answer. The home page shows the first few of every module's, and
+   * SQLFlow's own when no module offers any (homePrompts.ts).
+   */
+  prompts?: readonly string[];
+  sections?: readonly HomeSectionContribution[];
+}
+
+/**
  * A control a module adds to the workbench title bar, between the brand and the command palette: a context every page of
  * the module reads (the environment it works in, say), or a fact the whole workbench should see. It renders on the
  * title bar's dark ground, inside the router and the signed-in session, so it may read the URL and call the API; one that
@@ -289,6 +312,8 @@ export interface GuiModule {
   requestHeaders?: readonly RequestHeaderContribution[];
   /** How the workbench's side bar starts for a person new to it; at most one registered module may say. */
   sideBar?: SideBarContribution;
+  /** What the module adds to the home page. */
+  home?: HomeContribution;
 }
 
 interface Registered {
@@ -299,11 +324,13 @@ interface Registered {
   titleBar: readonly TitleBarContribution[];
   sideBarClosedOnFirstVisit: boolean;
   menuCollapsedOnFirstVisit: boolean;
+  homePrompts: readonly string[];
+  homeSections: readonly HomeSectionContribution[];
 }
 
 const NONE: Registered = {
   routes: [], kinds: new Map(), searchCategories: [], dashboardTiles: [], titleBar: [], sideBarClosedOnFirstVisit: false,
-  menuCollapsedOnFirstVisit: false,
+  menuCollapsedOnFirstVisit: false, homePrompts: [], homeSections: [],
 };
 
 let registered: Registered | null = null;
@@ -340,6 +367,9 @@ export function registerModules(modules: readonly GuiModule[]): void {
   const searchCategories: SearchCategoryContribution[] = [];
   const dashboardTiles: DashboardTileContribution[] = [];
   const titleBar: TitleBarContribution[] = [];
+  const homeSectionOwners = new Map<string, string>();
+  const homePrompts: string[] = [];
+  const homeSections: HomeSectionContribution[] = [];
   let sideBarOwner: string | null = null;
   let sideBarClosedOnFirstVisit = false;
   let menuCollapsedOnFirstVisit = false;
@@ -436,6 +466,17 @@ export function registerModules(modules: readonly GuiModule[]): void {
       menuCollapsedOnFirstVisit = module.sideBar.menuCollapsedOnFirstVisit ?? false;
     }
 
+    homePrompts.push(...checkHomePrompts(module.id, module.home?.prompts ?? []));
+
+    for (const section of module.home?.sections ?? []) {
+      if (section.id.trim() === "") {
+        throw new Error(`GUI module '${module.id}' adds a home page section with a blank id.`);
+      }
+
+      claim(homeSectionOwners, section.id, module.id, "the home page section");
+      homeSections.push(section);
+    }
+
     for (const census of module.census ?? []) {
       const kind = census.flowType?.trim() ? `flowType '${census.flowType.trim()}'` : `documentType '${census.documentType?.trim() ?? ""}'`;
       claim(censusOwners, kind, module.id, "the key census for");
@@ -454,7 +495,10 @@ export function registerModules(modules: readonly GuiModule[]): void {
   )));
 
   setModuleRequestHeaders(requestHeaders);
-  registered = { routes, kinds, searchCategories, dashboardTiles, titleBar, sideBarClosedOnFirstVisit, menuCollapsedOnFirstVisit };
+  registered = {
+    routes, kinds, searchCategories, dashboardTiles, titleBar, sideBarClosedOnFirstVisit, menuCollapsedOnFirstVisit,
+    homePrompts, homeSections,
+  };
 }
 
 /** The pages the registered modules add in one frame: the workbench (the default) or a window of their own. */
@@ -480,6 +524,16 @@ export function moduleSearchCategories(): readonly SearchCategoryContribution[] 
 /** The dashboard tiles the registered modules add, in registration order. */
 export function moduleDashboardTiles(): readonly DashboardTileContribution[] {
   return (registered ?? NONE).dashboardTiles;
+}
+
+/** The questions the registered modules offer the assistant on the home page, in registration order. */
+export function moduleHomePrompts(): readonly string[] {
+  return (registered ?? NONE).homePrompts;
+}
+
+/** The sections the registered modules add to the home page, in registration order. */
+export function moduleHomeSections(): readonly HomeSectionContribution[] {
+  return (registered ?? NONE).homeSections;
 }
 
 /** The title bar controls the registered modules add, in registration order. */
