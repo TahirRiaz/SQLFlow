@@ -47,6 +47,21 @@ public static class SourceLocations
         return ReferenceEquals(source, flow.Source) ? flow : flow with { Source = source };
     }
 
+    /// <summary>
+    /// One location as <paramref name="written"/> under the key <paramref name="field"/>, resolved through
+    /// <paramref name="secrets"/> when it names a reference and returned as written when it does not: how a host module
+    /// resolves a location of its own documents, by the same rule as a file flow's source location. Text that is not a
+    /// reference, such as a <c>{parameter}</c> token, is left for the caller to fill.
+    /// </summary>
+    /// <exception cref="SqlFlowException">A reference does not resolve, or resolves to a relative path; the message names the location as written.</exception>
+    public static async Task<string> ResolveAsync(string written, string field, ISecretResolver secrets, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(written);
+        ArgumentException.ThrowIfNullOrWhiteSpace(field);
+        ArgumentNullException.ThrowIfNull(secrets);
+        return NamesReference(written) ? await ResolveOneAsync(written, field, secrets, ct).ConfigureAwait(false) : written;
+    }
+
     private static async Task<string> ResolveOneAsync(string written, string field, ISecretResolver secrets, CancellationToken ct)
     {
         string resolved;

@@ -57,6 +57,28 @@ public sealed class SourceLocationReferenceTests
     }
 
     [Fact]
+    public async Task AModulesOwnLocation_IsResolvedByTheSameRule_LeavingItsParameterTokens()
+    {
+        using var scope = Supplied(Landing);
+
+        Assert.Equal(
+            Landing + "/.work/{region}",
+            await SourceLocations.ResolveAsync("${env:LANDING_URL}/.work/{region}", "source.work", Node, CancellationToken.None));
+        Assert.Equal("../.work/{region}", await SourceLocations.ResolveAsync("../.work/{region}", "source.work", Node, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AModulesOwnLocation_ResolvingToARelativePath_IsRefused_NamingItsKey()
+    {
+        using var scope = Supplied("drops/relative");
+
+        var ex = await Assert.ThrowsAsync<SqlFlowException>(
+            () => SourceLocations.ResolveAsync("${env:LANDING_URL}/.work", "source.work", Node, CancellationToken.None));
+
+        Assert.StartsWith("The source.work '${env:LANDING_URL}/.work' resolves to a relative or empty location.", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ALocationWithoutAReference_IsUsedAsWritten()
     {
         var flow = Flow("C:/drops/logtype");
