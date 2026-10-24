@@ -109,48 +109,49 @@ public static class SemanticLayerAdminEndpoints
     }
 
     /// <summary>Coverage per (database, schema), over objects that have catalogued columns (the only objects a
-    /// column policy can apply to). Two grouped reads merged in memory, since both are bounded by the schema count.</summary>
+    /// column policy can apply to), every server's objects in one tree by database. Names fold as the catalog browse folds
+    /// them (<see cref="CatalogBrowse"/>): a database or schema spelled two ways that differ only in case is one row, shown
+    /// in the spelling most of its objects carry. Two grouped reads merged in memory, since both are bounded by the schema
+    /// count.</summary>
     private static async Task<Ok<IReadOnlyList<SemanticSchemaCoverageDto>>> ListSchemasAsync(
         CatalogDbContext db, CancellationToken ct)
     {
+        static List<SpelledGroup> BySchema(IEnumerable<SpelledGroup> groups)
+            => CatalogBrowse.FoldSpellings(groups.Select(g => g with { ServerRef = string.Empty, Kind = string.Empty }).ToList());
+
         var columnar = db.Objects.AsNoTracking().Where(o => db.ObjectColumns.Any(c => c.ObjectKey == o.Key));
-        var all = await columnar
-            .GroupBy(o => new { o.Database, o.Schema })
-            .Select(g => new { g.Key.Database, g.Key.Schema, Count = g.Count() })
-            .ToListAsync(ct).ConfigureAwait(false);
+        var all = BySchema(await CatalogBrowse.GroupsAsync(columnar, ct).ConfigureAwait(false));
 
         var layerKeys = SemanticLayer.LayerObjectKeys(db);
-        var inLayer = await columnar
-            .Where(o => layerKeys.Contains(o.Key))
-            .GroupBy(o => new { o.Database, o.Schema })
-            .Select(g => new { g.Key.Database, g.Key.Schema, Count = g.Count() })
-            .ToListAsync(ct).ConfigureAwait(false);
+        var inLayer = BySchema(await CatalogBrowse.GroupsAsync(columnar.Where(o => layerKeys.Contains(o.Key)), ct).ConfigureAwait(false))
+            .ToDictionary(g => (CatalogBrowse.Fold(g.Database), CatalogBrowse.Fold(g.Schema)), g => g.Count);
 
         var rows = all
             .Select(a => new SemanticSchemaCoverageDto(
                 a.Database, a.Schema, a.Count,
-                inLayer.Find(l => l.Database == a.Database && l.Schema == a.Schema)?.Count ?? 0))
+                inLayer.GetValueOrDefault((CatalogBrowse.Fold(a.Database), CatalogBrowse.Fold(a.Schema)))))
             .OrderBy(r => r.Database, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.Schema, StringComparer.OrdinalIgnoreCase)
             .ToList();
         return TypedResults.Ok<IReadOnlyList<SemanticSchemaCoverageDto>>(rows);
     }
 
-    private static async Task<Ok<PagedResult<SemanticObjectCoverageDto>>> ListObjectsAsync(
-        CatalogDbContext db, string? database, string? schema, string? name, bool? inLayer, int? page, int? pageSize,
-        CancellationToken ct)
+    private static async Task<Results<Ok<PagedResult<SemanticObjectCoverageDto>>, ProblemHttpResult>> ListObjectsAsync(
+        CatalogDbContext db, string? database, string? schema, bool? databaseUnknown, bool? schemaUnknown, string? name,
+        bool? inLayer, int? page, int? pageSize, CancellationToken ct)
     {
         var (p, size) = PageRequest.Normalize(page, pageSize);
-        var query = db.Objects.AsNoTracking().Where(o => db.ObjectColumns.Any(c => c.ObjectKey == o.Key));
-        if (!string.IsNullOrWhiteSpace(database))
+
+        // The same filters the coverage counts with, so a schema's objects are exactly the ones it counted.
+        var (browsed, problem) = CatalogBrowse.Filter(
+            db.Objects.AsNoTracking().Where(o => db.ObjectColumns.Any(c => c.ObjectKey == o.Key)),
+            serverRef: null, database, schema, databaseUnknown, schemaUnknown);
+        if (browsed is null)
         {
-            query = query.Where(o => o.Database == database);
+            return problem!;
         }
 
-        if (!string.IsNullOrWhiteSpace(schema))
-        {
-            query = query.Where(o => o.Schema == schema);
-        }
+        var query = browsed;
 
         var term = SearchQuery.Parse(name);
         if (term is not null)

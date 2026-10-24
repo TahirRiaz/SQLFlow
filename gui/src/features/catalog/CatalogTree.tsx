@@ -9,6 +9,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   Boxes,
   CircleAlert,
+  CircleHelp,
   Cloud,
   Database,
   FileText,
@@ -34,58 +35,24 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { NodeLabel, TreeNode, TreeRoot, type TreeState } from "@/components/Tree";
 import { lineageApi, repoApi } from "../../api/endpoints";
 import type {
-  DatasetNode, FileNode, FileOriginKind, LineageObject, PagedResult, PipelineSummary, Repo, SchemaKindCount, Subscriber,
+  DatasetNode, FileNode, FileOriginKind, LineageObject, PagedResult, PipelineSummary, Repo, Subscriber,
 } from "../../api/types";
 import { fetchAllPipelines } from "../pipelines/fetchAllPipelines";
+import { foldDatabases, kindFolderQuery, type DatabaseBranch } from "./databaseTree";
 import { compareKinds, metaForKind } from "./kindMeta";
-import { encodeNodeId, UNRESOLVED_LABEL, decodeNodeId, type CatalogNode } from "./nodeIds";
+import { encodeNodeId, decodeNodeId, UNKNOWN_SCHEMA_LABEL, type CatalogNode } from "./nodeIds";
 
 const LEAF_PAGE_SIZE = 200;
 
 const lower = (value: string) => value.toLowerCase();
 const byNameCi = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
 
-// ---- Databases branch (server/db > schema > kind > object) -----------------------------------------------
+// ---- Databases branch (database > schema > kind > object; folded in databaseTree.ts) ----------------------
 
-interface DatabaseBranch { database: string | null; objectCount: number; schemas: SchemaBranch[] }
-interface SchemaBranch { schema: string | null; objectCount: number; kinds: KindCount[] }
-interface KindCount { kind: string; objectCount: number }
-
-/** Folds the flat per-kind rows into database > schema > kind, merging connection-reference aliases so one
- * database reached via two refs is one node. Files and subscribers are already absent: they belong to no
- * database and the schema endpoint excludes them, so every client sees the database hierarchy alone. */
-function foldDatabases(rows: SchemaKindCount[]): DatabaseBranch[] {
-  const databases = new Map<string | null, DatabaseBranch>();
-  for (const row of rows) {
-    let database = databases.get(row.database);
-    if (database === undefined) {
-      database = { database: row.database, objectCount: 0, schemas: [] };
-      databases.set(row.database, database);
-    }
-    database.objectCount += row.objectCount;
-    let schema = database.schemas.find((s) => s.schema === row.schema);
-    if (schema === undefined) {
-      schema = { schema: row.schema, objectCount: 0, kinds: [] };
-      database.schemas.push(schema);
-    }
-    schema.objectCount += row.objectCount;
-    const kind = schema.kinds.find((k) => k.kind === row.kind);
-    if (kind === undefined) {
-      schema.kinds.push({ kind: row.kind, objectCount: row.objectCount });
-    } else {
-      kind.objectCount += row.objectCount;
-    }
-  }
-
-  const branches = [...databases.values()];
-  for (const database of branches) {
-    database.schemas.sort((a, b) => byNameCi(a.schema ?? "", b.schema ?? ""));
-    for (const schema of database.schemas) {
-      schema.kinds.sort((a, b) => compareKinds(a.kind, b.kind));
-    }
-  }
-  branches.sort((a, b) => byNameCi(a.database ?? "", b.database ?? ""));
-  return branches;
+/** What a database node reads as: its name, or for a database the sync could not work out, the connection reference its
+ * objects were reached through (the node's badge says the database is unknown). */
+function databaseLabel(database: DatabaseBranch): string {
+  return database.label ?? database.connection ?? "";
 }
 
 /** Paged object leaves under a database kind folder, lazy-loaded on expand. */
@@ -593,12 +560,13 @@ export interface CatalogTreeProps {
 }
 
 /**
- * The explorer tree over the catalog, in three perspectives: Databases (the SQL estate: database > schema >
- * kind > object, merged across connection references, files excluded), Sources (the file estate by canonical
- * origin: storage account / SFTP server / filesystem > container > folder > file), and Flows (the pipeline
- * estate: repo > batch > flow). The Databases and Sources skeletons arrive in bounded calls and fold client
- * side; database object leaves and flow leaves load lazily on expand. The filter narrows every branch client
- * side and searches every object leaf server side.
+ * The explorer tree over the catalog, in five perspectives: Databases (the SQL estate: database > schema > kind >
+ * object, one node per database however many connection references reach it and however it is spelled, files
+ * excluded), Sources (the file estate by canonical origin: storage account / SFTP server / filesystem > container >
+ * folder > file), Datasets (external systems: system > namespace > group > dataset), Flows (the active pipeline
+ * estate: repo > folder > batch > flow) and Subscribers (consuming tool > subscriber). The skeletons arrive in bounded
+ * calls and fold client side; database object leaves load lazily on expand, with the filters that list exactly the
+ * objects a folder counts. The filter narrows every branch client side and searches every object leaf server side.
  */
 export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTreeProps) {
   const [expanded, setExpanded] = useState<string[]>(initialExpanded);
@@ -609,17 +577,18 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
   const schemaKinds = useQuery({ queryKey: ["catalog-schema-kinds"], queryFn: () => lineageApi.schemaKinds() });
   const fileTree = useQuery({ queryKey: ["catalog-file-tree"], queryFn: () => lineageApi.fileTree() });
   const repos = useQuery({ queryKey: ["catalog-repos"], queryFn: () => repoApi.list({ pageSize: 200 }) });
-  // Every flow, through the shared sweep: the folder tree needs the whole set to render, and flows are bounded by
-  // the estate's file count, not its data volume.
+  // Every active flow, through the shared sweep: the folder tree needs the whole set to render, and flows are bounded
+  // by the estate's file count, not its data volume. A flow that has left its repository keeps its pipeline row (and its
+  // run history) but is no longer part of the estate the tree shows.
   const pipelines = useQuery({
     queryKey: ["catalog-all-pipelines"],
-    queryFn: async () => (await fetchAllPipelines({})).items,
+    queryFn: async () => (await fetchAllPipelines({ active: true })).items,
   });
 
   const subscribers = useQuery({ queryKey: ["catalog-subscribers"], queryFn: () => lineageApi.subscribers() });
   const datasets = useQuery({ queryKey: ["catalog-datasets"], queryFn: () => lineageApi.datasets() });
 
-  const databases = useMemo(() => foldDatabases(schemaKinds.data ?? []), [schemaKinds.data]);
+  const databases = useMemo(() => foldDatabases(schemaKinds.data ?? [], compareKinds), [schemaKinds.data]);
 
   // Subscribers group by the consuming tool (PowerBI, Tableau, Excel, ...), the one grouping a person browsing
   // "who uses our data" actually reaches for. The filter narrows on the subscriber's name and its owner.
@@ -646,13 +615,13 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
     if (needle === "") {
       return databases;
     }
-    const match = (label: string | null) => lower(label ?? UNRESOLVED_LABEL).includes(needle);
+    const match = (label: string) => lower(label).includes(needle);
     return databases
       .map((database) => {
-        if (match(database.database)) {
+        if (match(databaseLabel(database)) || database.connections.some(match)) {
           return database;
         }
-        const kept = database.schemas.filter((schema) => match(schema.schema));
+        const kept = database.schemas.filter((schema) => match(schema.label ?? UNKNOWN_SCHEMA_LABEL));
         return kept.length > 0 ? { ...database, schemas: kept } : null;
       })
       .filter((database): database is DatabaseBranch => database !== null);
@@ -722,7 +691,7 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
       open.add(encodeNodeId({ type: "flowsRoot" }));
       open.add(encodeNodeId({ type: "subscribersRoot" }));
       for (const database of filteredDatabases) {
-        open.add(encodeNodeId({ type: "database", database: database.database }));
+        open.add(encodeNodeId({ type: "database", database: database.database, connection: database.connection }));
       }
       for (const provider of fileProviders) {
         open.add(encodeNodeId({ type: "provider", provider: provider.kind }));
@@ -815,31 +784,34 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
             <TreeNode id="dbs#empty" disabled label={<NodeLabel text="No database objects in the catalog yet" />} />
           )}
           {filteredDatabases.map((database) => {
-            const databaseId = encodeNodeId({ type: "database", database: database.database });
+            const at = { database: database.database, connection: database.connection };
+            const databaseId = encodeNodeId({ type: "database", ...at });
             return (
               <TreeNode key={databaseId} id={databaseId}
-                label={<NodeLabel icon={<Database className="size-4" />} text={database.database ?? UNRESOLVED_LABEL} count={database.objectCount} />}>
+                label={(
+                  <NodeLabel
+                    icon={database.database === null ? <CircleHelp className="size-4" /> : <Database className="size-4" />}
+                    text={databaseLabel(database)}
+                    count={database.objectCount}
+                    badge={database.database === null ? "unknown" : undefined}
+                  />
+                )}>
                 {database.schemas.map((schema) => {
-                  const schemaId = encodeNodeId({ type: "schema", database: database.database, schema: schema.schema });
+                  const schemaId = encodeNodeId({ type: "schema", ...at, schema: schema.schema });
                   return (
                     <TreeNode key={schemaId} id={schemaId}
-                      label={<NodeLabel icon={<BookOpen className="size-4" />} text={schema.schema ?? UNRESOLVED_LABEL} count={schema.objectCount} />}>
+                      label={<NodeLabel icon={<BookOpen className="size-4" />} text={schema.label ?? UNKNOWN_SCHEMA_LABEL} count={schema.objectCount} />}>
                       {schema.kinds.map((kindRow) => {
-                        const kindNode: CatalogNode = { type: "kind", database: database.database, schema: schema.schema, kind: kindRow.kind };
+                        const kindNode: CatalogNode = { type: "kind", ...at, schema: schema.schema, kind: kindRow.kind };
                         const kindId = encodeNodeId(kindNode);
                         const meta = metaForKind(kindRow.kind);
+                        const query = kindFolderQuery(database, schema, kindRow.kind);
                         return (
                           <TreeNode key={kindId} id={kindId} label={<NodeLabel icon={meta.icon} text={meta.plural} count={kindRow.objectCount} />}>
                             <PagedObjectLeaves
                               parentId={kindId}
-                              queryKey={["catalog-objects", database.database, schema.schema, kindRow.kind]}
-                              fetchPage={(page) => lineageApi.objects({
-                                database: database.database ?? undefined,
-                                schema: schema.schema ?? undefined,
-                                kind: kindRow.kind,
-                                page,
-                                pageSize: LEAF_PAGE_SIZE,
-                              })}
+                              queryKey={["catalog-objects", query]}
+                              fetchPage={(page) => lineageApi.objects({ ...query, page, pageSize: LEAF_PAGE_SIZE })}
                             />
                           </TreeNode>
                         );

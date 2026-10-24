@@ -395,13 +395,16 @@ public sealed record ProjectGraphDto(
 
 /// <summary>One (server, database, schema) grouping in the catalog with how many objects it holds: the schema
 /// hierarchy a caller browses to answer "what schemas exist" and "how big is each" before drilling into
-/// objects. A null database/schema is an object whose identity was only partially resolved (an offline sync).</summary>
+/// objects. Names that differ only in case are one grouping, as they are one node key, shown in the spelling most of its
+/// objects carry. A null database/schema is an object whose identity was only partially resolved (an offline sync);
+/// <c>databaseUnknown</c> and <c>schemaUnknown</c> select exactly those.</summary>
 public sealed record SchemaDto(string ServerRef, string? Database, string? Schema, int ObjectCount);
 
 /// <summary>One (server, database, schema, kind) grouping in the catalog with how many objects it holds: the
 /// per-kind breakdown of a schema (its Tables, Views, Procedures, ...) a caller uses to render kind-grouped
-/// folders under each schema without listing the objects themselves. A null database/schema is an object whose
-/// identity was only partially resolved (an offline sync).</summary>
+/// folders under each schema without listing the objects themselves. Names that differ only in case are one grouping,
+/// shown in the spelling most of its objects carry. A null database/schema is an object whose identity was only
+/// partially resolved (an offline sync); <c>/lineage/objects</c> with the same filters lists exactly the objects counted.</summary>
 public sealed record SchemaKindCountDto(
     string ServerRef, string? Database, string? Schema, string Kind, int ObjectCount);
 
@@ -564,71 +567,36 @@ public static class LineageEndpoints
         return TypedResults.Ok<IReadOnlyList<DatasetNodeDto>>(nodes);
     }
 
-    private static async Task<Ok<IReadOnlyList<SchemaDto>>> ListSchemasAsync(
-        CatalogDbContext db, string? serverRef, string? database, CancellationToken ct)
+    private static async Task<Results<Ok<IReadOnlyList<SchemaDto>>, ProblemHttpResult>> ListSchemasAsync(
+        CatalogDbContext db, string? serverRef, string? database, bool? databaseUnknown, CancellationToken ct)
     {
-        var query = db.Objects.AsNoTracking().Where(o => !NonDatabaseKinds.Contains(o.Kind));
-        if (!string.IsNullOrWhiteSpace(serverRef))
+        var (query, problem) = CatalogBrowse.Filter(db.Objects.AsNoTracking(), serverRef, database, schema: null, databaseUnknown, schemaUnknown: null);
+        if (query is null)
         {
-            query = query.Where(o => o.ServerRef == serverRef);
+            return problem!;
         }
 
-        if (!string.IsNullOrWhiteSpace(database))
-        {
-            query = query.Where(o => o.Database == database);
-        }
-
-        // The whole schema hierarchy in one response (no paging): the distinct (server, database, schema)
-        // groupings are bounded by the estate's real schema count, not the object count, so this cannot grow
-        // without bound. Ordered so the hierarchy reads top-down and deterministically.
-        var groups = await query
-            .GroupBy(o => new { o.ServerRef, o.Database, o.Schema })
-            .Select(g => new SchemaDto(g.Key.ServerRef, g.Key.Database, g.Key.Schema, g.Count()))
-            .ToListAsync(ct).ConfigureAwait(false);
-
-        var ordered = groups
-            .OrderBy(s => s.ServerRef, StringComparer.Ordinal)
-            .ThenBy(s => s.Database, StringComparer.Ordinal)
-            .ThenBy(s => s.Schema, StringComparer.Ordinal)
+        var groups = (await CatalogBrowse.GroupsAsync(query.Where(o => !NonDatabaseKinds.Contains(o.Kind)), ct).ConfigureAwait(false))
+            .GroupBy(g => (g.ServerRef, g.Database, g.Schema))
+            .Select(g => new SchemaDto(g.Key.ServerRef, g.Key.Database, g.Key.Schema, g.Sum(s => s.Count)))
             .ToList();
-        return TypedResults.Ok<IReadOnlyList<SchemaDto>>(ordered);
+        return TypedResults.Ok<IReadOnlyList<SchemaDto>>(groups);
     }
 
-    private static async Task<Ok<IReadOnlyList<SchemaKindCountDto>>> ListSchemaKindsAsync(
-        CatalogDbContext db, string? serverRef, string? database, string? schema, CancellationToken ct)
+    private static async Task<Results<Ok<IReadOnlyList<SchemaKindCountDto>>, ProblemHttpResult>> ListSchemaKindsAsync(
+        CatalogDbContext db, string? serverRef, string? database, string? schema, bool? databaseUnknown, bool? schemaUnknown,
+        CancellationToken ct)
     {
-        var query = db.Objects.AsNoTracking().Where(o => !NonDatabaseKinds.Contains(o.Kind));
-        if (!string.IsNullOrWhiteSpace(serverRef))
+        var (query, problem) = CatalogBrowse.Filter(db.Objects.AsNoTracking(), serverRef, database, schema, databaseUnknown, schemaUnknown);
+        if (query is null)
         {
-            query = query.Where(o => o.ServerRef == serverRef);
+            return problem!;
         }
 
-        if (!string.IsNullOrWhiteSpace(database))
-        {
-            query = query.Where(o => o.Database == database);
-        }
-
-        if (!string.IsNullOrWhiteSpace(schema))
-        {
-            query = query.Where(o => o.Schema == schema);
-        }
-
-        // The whole per-kind breakdown in one response (no paging): the distinct (server, database, schema, kind)
-        // groupings are bounded by the estate's schema count times the handful of object kinds, not the object
-        // count, so this cannot grow without bound. Ordered so the hierarchy reads top-down and deterministically.
-        var groups = await query
-            .GroupBy(o => new { o.ServerRef, o.Database, o.Schema, o.Kind })
-            .Select(g => new SchemaKindCountDto(
-                g.Key.ServerRef, g.Key.Database, g.Key.Schema, g.Key.Kind, g.Count()))
-            .ToListAsync(ct).ConfigureAwait(false);
-
-        var ordered = groups
-            .OrderBy(s => s.ServerRef, StringComparer.Ordinal)
-            .ThenBy(s => s.Database, StringComparer.Ordinal)
-            .ThenBy(s => s.Schema, StringComparer.Ordinal)
-            .ThenBy(s => s.Kind, StringComparer.Ordinal)
+        var groups = (await CatalogBrowse.GroupsAsync(query.Where(o => !NonDatabaseKinds.Contains(o.Kind)), ct).ConfigureAwait(false))
+            .Select(g => new SchemaKindCountDto(g.ServerRef, g.Database, g.Schema, g.Kind, g.Count))
             .ToList();
-        return TypedResults.Ok<IReadOnlyList<SchemaKindCountDto>>(ordered);
+        return TypedResults.Ok<IReadOnlyList<SchemaKindCountDto>>(groups);
     }
 
     /// <summary>
@@ -744,31 +712,23 @@ public static class LineageEndpoints
         return TypedResults.Ok(new FileFlowsDto(producers, consumers));
     }
 
-    private static async Task<Ok<PagedResult<ObjectDto>>> ListObjectsAsync(
+    private static async Task<Results<Ok<PagedResult<ObjectDto>>, ProblemHttpResult>> ListObjectsAsync(
         CatalogDbContext db, string? name, string? serverRef, string? database, string? schema, string? kind,
-        int? page, int? pageSize, CancellationToken ct)
+        bool? databaseUnknown, bool? schemaUnknown, int? page, int? pageSize, CancellationToken ct)
     {
         var (p, size) = PageRequest.Normalize(page, pageSize);
 
-        var query = db.Objects.AsNoTracking().AsQueryable();
+        // The same filters the schema groupings count with, so a group's objects are exactly the ones it counted.
+        var (browsed, problem) = CatalogBrowse.Filter(db.Objects.AsNoTracking(), serverRef, database, schema, databaseUnknown, schemaUnknown);
+        if (browsed is null)
+        {
+            return problem!;
+        }
+
+        var query = browsed;
         if (!string.IsNullOrWhiteSpace(name))
         {
             query = query.Where(o => o.Name.Contains(name));
-        }
-
-        if (!string.IsNullOrWhiteSpace(serverRef))
-        {
-            query = query.Where(o => o.ServerRef == serverRef);
-        }
-
-        if (!string.IsNullOrWhiteSpace(database))
-        {
-            query = query.Where(o => o.Database == database);
-        }
-
-        if (!string.IsNullOrWhiteSpace(schema))
-        {
-            query = query.Where(o => o.Schema == schema);
         }
 
         if (!string.IsNullOrWhiteSpace(kind))

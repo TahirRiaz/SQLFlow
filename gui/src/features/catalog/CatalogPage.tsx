@@ -13,13 +13,20 @@ import { SubscriberDetails } from "../subscribers/SubscriberDetails";
 import { CatalogTree } from "./CatalogTree";
 import { FlowDetailsPanel } from "./FlowDetailsPanel";
 import { ObjectDetailsPanel } from "./ObjectDetailsPanel";
-import { ancestorIds, decodeNodeId, encodeNodeId } from "./nodeIds";
+import { ancestorIds, decodeNodeId, encodeNodeId, type CatalogNode } from "./nodeIds";
 
 const SOURCE_FETCH_CAP = 200;
 const RECOMPUTE_POLL_MS = 2000;
 const RECOMPUTE_TIMEOUT_MS = 120000;
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** The connection a database, schema or kind node of an unknown database groups by; null for any other node. */
+function unknownDatabaseConnection(node: CatalogNode): string | null {
+  return (node.type === "database" || node.type === "schema" || node.type === "kind") && node.database === null
+    ? node.connection
+    : null;
+}
 
 /**
  * The catalog: an explorer-style tree over every object and flow the catalog knows (discovered from the flow
@@ -142,8 +149,23 @@ export default function CatalogPage() {
           {selectedNode !== null && selectedNode.type === "subscriber" && (
             <SubscriberDetails subscriberKey={selectedNode.key} />
           )}
+          {selectedNode !== null && unknownDatabaseConnection(selectedNode) !== null && (
+            <div className="flex flex-col gap-2 text-[13px] text-muted-foreground" data-testid="catalog-details-unknown-database">
+              <p>
+                Objects reached through{" "}
+                <code className="font-mono text-foreground">{unknownDatabaseConnection(selectedNode)}</code>
+                {" "}whose database the sync could not work out. A two-part name (schema and object) is completed with the
+                connection&apos;s own database: its Initial Catalog, or the database it opens when the sync connects.
+              </p>
+              <p>
+                Either the control plane could not resolve this connection when it synced, or the connection names no
+                database. Set the database on the connection, or write these objects&apos; names with their database; the
+                sync&apos;s activity names the connection in a warning.
+              </p>
+            </div>
+          )}
           {selectedNode !== null && selectedNode.type !== "object" && selectedNode.type !== "flow"
-            && selectedNode.type !== "subscriber" && (
+            && selectedNode.type !== "subscriber" && unknownDatabaseConnection(selectedNode) === null && (
             <p className="text-[13px] text-muted-foreground" data-testid="catalog-details-folder">
               This is a grouping level. Expand it in the tree and select an object, a flow, or a subscriber for
               details.

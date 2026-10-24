@@ -20,6 +20,8 @@
     "src/auth/loginStreamLanes.ts",
     "src/modules/branding.ts",
     "src/modules/homePrompts.ts",
+    "src/features/catalog/databaseTree.ts",
+    "src/features/catalog/nodeIds.ts",
     "src/features/chat/answerSql.ts",
     "src/features/chat/chatHandoff.ts",
     "src/features/chat/queryResultPlan.ts",

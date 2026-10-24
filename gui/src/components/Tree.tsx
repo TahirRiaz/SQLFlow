@@ -235,7 +235,7 @@ export function NodeLabel({ icon, text, count, badge }: { icon?: ReactNode; text
   return (
     <>
       {icon !== undefined && <span className="inline-flex shrink-0 text-muted-foreground">{icon}</span>}
-      <span className="min-w-0 flex-1 truncate">{text}</span>
+      <span className="min-w-0 flex-1 truncate" title={text}>{text}</span>
       {count !== undefined && (
         <Badge variant="outline" className="h-[18px] shrink-0 px-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">
           {count}

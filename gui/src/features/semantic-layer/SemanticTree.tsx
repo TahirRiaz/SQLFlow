@@ -12,7 +12,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { semanticLayerApi } from "../../api/endpoints";
 import type { SemanticObjectCoverage, SemanticSchemaCoverage } from "../../api/types";
 import { metaForKind } from "../catalog/kindMeta";
-import { UNRESOLVED_LABEL } from "../catalog/nodeIds";
+import { UNKNOWN_DATABASE_LABEL, UNKNOWN_SCHEMA_LABEL } from "../catalog/nodeIds";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { errorText, SEMANTIC_ROOT } from "./shared";
 
@@ -80,9 +80,10 @@ function ObjectLeaves({
 }) {
   const leaves = useInfiniteQuery({
     queryKey: [SEMANTIC_ROOT, "objects", database, schema, layerOnly],
+    // A database or schema the sync could not work out is asked for as such, so the leaves are exactly the ones counted.
     queryFn: ({ pageParam }) => semanticLayerApi.objects({
-      database: database ?? undefined,
-      schema: schema ?? undefined,
+      ...(database === null ? { databaseUnknown: true } : { database }),
+      ...(schema === null ? { schemaUnknown: true } : { schema }),
       inLayer: layerOnly,
       page: pageParam,
       pageSize: LEAF_PAGE_SIZE,
@@ -237,7 +238,7 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
                 label={(
                   <NodeLabel
                     icon={<Database className="size-4" />}
-                    text={database.database ?? UNRESOLVED_LABEL}
+                    text={database.database ?? UNKNOWN_DATABASE_LABEL}
                     badge={`${database.layerObjectCount}/${database.objectCount}`}
                   />
                 )}
@@ -251,7 +252,7 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
                       label={(
                         <NodeLabel
                           icon={<BookOpen className="size-4" />}
-                          text={schema.schema ?? UNRESOLVED_LABEL}
+                          text={schema.schema ?? UNKNOWN_SCHEMA_LABEL}
                           badge={`${schema.layerObjectCount}/${schema.objectCount}`}
                         />
                       )}

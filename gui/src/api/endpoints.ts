@@ -491,11 +491,18 @@ export const sourceApi = {
 
 // ---- Lineage -------------------------------------------------------------------------------------------------------------------
 
-export interface LineageObjectQuery extends PageQuery {
-  name?: string;
+/** The catalog-browse filters. Names compare without regard to case; `databaseUnknown` and `schemaUnknown` select the
+ * objects whose database or schema a sync could not work out, and exclude naming one at the same time. */
+export interface CatalogBrowseQuery {
   serverRef?: string;
   database?: string;
+  databaseUnknown?: boolean;
   schema?: string;
+  schemaUnknown?: boolean;
+}
+
+export interface LineageObjectQuery extends PageQuery, CatalogBrowseQuery {
+  name?: string;
   kind?: string;
 }
 
@@ -513,10 +520,10 @@ export interface LineageEdgeQuery extends PageQuery {
 
 export const lineageApi = {
   // The whole (server, database, schema) hierarchy with object counts in one response, for tree skeletons.
-  schemas: (query: { serverRef?: string; database?: string } = {}) =>
+  schemas: (query: Omit<CatalogBrowseQuery, "schema" | "schemaUnknown"> = {}) =>
     get<LineageSchema[]>("/api/v1/lineage/schemas", query as QueryParams),
   // The same hierarchy broken down by object kind (Tables/Views/Procedures/...), also unpaged and bounded.
-  schemaKinds: (query: { serverRef?: string; database?: string; schema?: string } = {}) =>
+  schemaKinds: (query: CatalogBrowseQuery = {}) =>
     get<SchemaKindCount[]>("/api/v1/lineage/schemas/kinds", query as QueryParams),
   // Every file endpoint decomposed to its canonical parent (origin/container/folder/leaf), for the source
   // tree. Unpaged and bounded: file nodes are the distinct declared locations, not physical blobs.
@@ -638,9 +645,7 @@ export const aiContextApi = {
 
 // ---- Semantic layer (the served schema and its business context, read-only) ---------------------------------------
 
-export interface SemanticObjectQuery extends PageQuery {
-  database?: string;
-  schema?: string;
+export interface SemanticObjectQuery extends PageQuery, Omit<CatalogBrowseQuery, "serverRef"> {
   name?: string;
   inLayer?: boolean;
 }

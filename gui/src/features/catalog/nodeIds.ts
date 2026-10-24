@@ -4,18 +4,22 @@
 // database/schema/container encodes as the sentinel "~".
 //
 // Five perspectives:
-//   Databases    connection > database > schema > kind > object   (the SQL estate; files excluded)
+//   Databases    database > schema > kind > object                (the SQL estate; files excluded)
 //   Sources      origin system > container > folder > file        (storage accounts, SFTP servers, filesystem)
 //   Datasets     system > namespace > group > dataset             (external systems the flows read and write)
 //   Flows        repo > batch > flow                              (the pipeline estate, for navigation)
 //   Subscribers  type > subscriber                                (the consumption estate: who reads it all)
+//
+// A database and a schema are named as the catalog's node keys name them, case-folded, so two spellings of one database
+// are one node. An object whose database a sync could not work out has no database to be named by: it is grouped by the
+// connection reference it was reached through instead, which its database, schema and kind ids then carry.
 
 export type CatalogNode =
-  // Databases
+  // Databases: `connection` is set only when `database` is null (a database the sync could not work out)
   | { type: "databasesRoot" }
-  | { type: "database"; database: string | null }
-  | { type: "schema"; database: string | null; schema: string | null }
-  | { type: "kind"; database: string | null; schema: string | null; kind: string }
+  | { type: "database"; database: string | null; connection: string | null }
+  | { type: "schema"; database: string | null; connection: string | null; schema: string | null }
+  | { type: "kind"; database: string | null; connection: string | null; schema: string | null; kind: string }
   // Sources (file origins): provider (Azure/AWS/GCP/SFTP/...) > origin (account/bucket/host) > container > folder
   | { type: "sourcesRoot" }
   | { type: "provider"; provider: string }
@@ -40,12 +44,26 @@ export type CatalogNode =
   // A leaf object (a database object, a file, or a dataset), keyed by its global object key
   | { type: "object"; objectKey: string };
 
-export const UNRESOLVED_LABEL = "(unresolved)";
+/** How a tree names a database a sync could not work out. */
+export const UNKNOWN_DATABASE_LABEL = "(database unknown)";
+
+/** How a tree names a schema a sync could not work out. */
+export const UNKNOWN_SCHEMA_LABEL = "(schema unknown)";
 
 const NULL_SENTINEL = "~";
 
 function seg(value: string | null): string {
   return value === null ? NULL_SENTINEL : encodeURIComponent(value);
+}
+
+/** A database or schema name as ids carry it: case-folded, as the node key folds it. */
+export function foldName(value: string | null): string | null {
+  return value === null ? null : value.toLowerCase();
+}
+
+/** The segment an unknown database's ids end with: the connection that groups it. Nothing for a known database. */
+function connectionSuffix(database: string | null, connection: string | null): string {
+  return database === null && connection !== null ? `|${encodeURIComponent(connection)}` : "";
 }
 
 function unseg(value: string): string | null {
@@ -57,11 +75,11 @@ export function encodeNodeId(node: CatalogNode): string {
     case "databasesRoot":
       return "dbs";
     case "database":
-      return `db:${seg(node.database)}`;
+      return `db:${seg(foldName(node.database))}${connectionSuffix(node.database, node.connection)}`;
     case "schema":
-      return `sch:${seg(node.database)}|${seg(node.schema)}`;
+      return `sch:${seg(foldName(node.database))}|${seg(foldName(node.schema))}${connectionSuffix(node.database, node.connection)}`;
     case "kind":
-      return `knd:${seg(node.database)}|${seg(node.schema)}|${seg(node.kind)}`;
+      return `knd:${seg(foldName(node.database))}|${seg(foldName(node.schema))}|${seg(node.kind)}${connectionSuffix(node.database, node.connection)}`;
     case "sourcesRoot":
       return "sources";
     case "provider":
@@ -128,16 +146,22 @@ export function decodeNodeId(id: string): CatalogNode | null {
   const notNull = (value: string) => value !== NULL_SENTINEL;
   try {
     switch (prefix) {
-      case "db":
-        return parts.length === 1 ? { type: "database", database: unseg(parts[0]) } : null;
-      case "sch":
-        return parts.length === 2
-          ? { type: "schema", database: unseg(parts[0]), schema: unseg(parts[1]) }
-          : null;
-      case "knd":
-        return parts.length === 3 && notNull(parts[2])
-          ? { type: "kind", database: unseg(parts[0]), schema: unseg(parts[1]), kind: decodeURIComponent(parts[2]) }
-          : null;
+      case "db": {
+        const connection = connectionOf(parts, 1);
+        return connection === undefined ? null : { type: "database", database: unseg(parts[0]), connection };
+      }
+      case "sch": {
+        const connection = connectionOf(parts, 2);
+        return connection === undefined
+          ? null
+          : { type: "schema", database: unseg(parts[0]), connection, schema: unseg(parts[1]) };
+      }
+      case "knd": {
+        const connection = connectionOf(parts, 3);
+        return connection === undefined || !notNull(parts[2])
+          ? null
+          : { type: "kind", database: unseg(parts[0]), connection, schema: unseg(parts[1]), kind: decodeURIComponent(parts[2]) };
+      }
       case "prov":
         return parts.length === 1 && notNull(parts[0])
           ? { type: "provider", provider: decodeURIComponent(parts[0]) }
@@ -220,6 +244,20 @@ export function decodeNodeId(id: string): CatalogNode | null {
   }
 }
 
+/**
+ * The connection a database, schema or kind id carries after its `segments` own parts: null when there is none (a known
+ * database, or an unknown one from before ids carried it), undefined when the id is malformed (a connection on a known
+ * database, or too many parts).
+ */
+function connectionOf(parts: string[], segments: number): string | null | undefined {
+  if (parts.length === segments) {
+    return null;
+  }
+  return parts.length === segments + 1 && parts[0] === NULL_SENTINEL && parts[segments] !== NULL_SENTINEL
+    ? decodeURIComponent(parts[segments])
+    : undefined;
+}
+
 /** The ancestor chain of ids to expand so the given node is visible (excludes the node itself). Derives only
  * what the id itself carries; a file object's origin/container/folder chain lives in the loaded file list, so
  * the tree reveals it from there, and a flow's batch is not in its id, so a deep-linked flow opens its repo. */
@@ -249,12 +287,14 @@ export function ancestorIds(node: CatalogNode): string[] {
     case "database":
       return [encodeNodeId({ type: "databasesRoot" })];
     case "schema":
-      return [encodeNodeId({ type: "databasesRoot" }), encodeNodeId({ type: "database", database: node.database })];
-    case "kind":
       return [
-        ...ancestorIds({ type: "schema", database: node.database, schema: node.schema }),
-        encodeNodeId({ type: "schema", database: node.database, schema: node.schema }),
+        encodeNodeId({ type: "databasesRoot" }),
+        encodeNodeId({ type: "database", database: node.database, connection: node.connection }),
       ];
+    case "kind": {
+      const schema: CatalogNode = { type: "schema", database: node.database, connection: node.connection, schema: node.schema };
+      return [...ancestorIds(schema), encodeNodeId(schema)];
+    }
     case "object":
       // A file's or a dataset's chain is revealed by the tree from its loaded list; a bare object opens Databases.
       return [encodeNodeId({ type: "databasesRoot" })];
