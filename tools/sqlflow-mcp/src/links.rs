@@ -296,24 +296,28 @@ impl GuiLinks {
             return None;
         }
 
-        let mut links = Map::new();
-
         // A host module's rules first: a row one of them gives a page is the module's, and is not
         // offered to the subject rules, which would otherwise read a module's row as whichever of
         // SQLFlow's rows carries the same fields.
         let mut claimed = false;
+        let mut module = Map::new();
         for rule in self.rules.iter() {
             if let Some(found) = rule(self, map) {
                 for (name, link) in found {
                     claimed = claimed || name == "page";
-                    links.entry(name).or_insert(link);
+                    module.entry(name).or_insert(link);
                 }
             }
         }
+        let mut links = module.clone();
         if !claimed {
             self.subject_links(map, &mut links);
         }
         self.reference_links(map, &mut links);
+        // A module's link wins over a built-in rule's of the same name: the module knows its row
+        // better (a flow opened on the part of it the row is about, where the built-in rule knows
+        // only the pipeline id).
+        links.extend(module);
 
         if links.is_empty() {
             None
@@ -617,6 +621,33 @@ mod tests {
         ruled.decorate(&mut b);
         assert_eq!(a, b);
         assert!(b["items"][3]["links"].is_null());
+    }
+
+    #[test]
+    fn a_modules_link_wins_over_a_built_in_rules_of_the_same_name() {
+        // The module opens the flow a row references on the part of it the row is about; the
+        // built-in reference rule knows only the pipeline id, and gives way.
+        let rules: Vec<LinkRule> = vec![Arc::new(|links: &GuiLinks, row: &Map<String, Value>| {
+            let pipeline = row.get("pipelineId")?.as_str()?;
+            let part = row.get("part")?.as_str()?;
+            let mut found = Map::new();
+            found.insert(
+                "flow".to_string(),
+                links.route(&format!("/pipelines/{}?part={}", encode(pipeline), encode(part))).into(),
+            );
+            Some(found)
+        })];
+        let links = GuiLinks::new("").with_rules(rules);
+        let mut payload = json!([
+            { "runId": "run-1", "pipelineId": "pipe-1", "part": "logs" },
+            { "runId": "run-2", "pipelineId": "pipe-2" }
+        ]);
+        links.decorate(&mut payload);
+
+        assert_eq!(payload[0]["links"]["flow"], json!("/pipelines/pipe-1?part=logs"));
+        assert_eq!(payload[0]["links"]["page"], json!("/runs/run-1"), "the built-in rules still give the rest");
+        // A row the module says nothing about is linked by the built-in rules alone.
+        assert_eq!(payload[1]["links"]["flow"], json!("/pipelines/pipe-2"));
     }
 
     #[test]
