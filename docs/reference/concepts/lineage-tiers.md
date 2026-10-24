@@ -84,7 +84,7 @@ File endpoints are identity-normalized: cloud URLs (`://`) verbatim, local paths
 
 From `run.json`:
 
-- Statements come from `result.sqlTrace` entries. An entry whose `step` starts with `source.` is attributed to the flow's source server; everything else to the target server.
+- Statements come from `result.sqlTrace` entries. An entry whose `step` starts with `source.` is attributed to the flow's source server; everything else to the target server. The engine traces every statement it runs on the source connection under a `source.` step: an ingestion flow's read (`source.select`), its source-minimum probe (`source.incremental.min-probe`) and its match-keys read of the source's keys (`source.matchkeys.keys`), so a table only the source holds is never recorded under the target's server.
 - File flows contribute `result.ddlExecuted` (a plain string list) to the target side.
 - Each side's statements are joined with `GO` into ONE script before extraction, so the engine's transient staging tables (created, loaded, read, then dropped within the run) dissolve through the extractor's local-dependency resolution instead of polluting the graph.
 - Observed identities require at least `schema.name` (minimum two parts; the engine's generated SQL is fully qualified).

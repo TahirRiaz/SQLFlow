@@ -145,7 +145,7 @@ On a **silver** flow, the watermark source flips from the target to the source m
 ```
 incremental.window   run parameters applied: reprocess from source min
 incremental.window   incremental read: WHERE 1=1 AND [FileDate_DW] >= 20260707000000
-incremental.min-probe SELECT MIN([FileDate_DW]) … FROM [pre].[v_…]
+source.incremental.min-probe SELECT MIN([FileDate_DW]) … FROM [pre].[v_…]
 ```
 
 and the run detail shows **`WATERMARK SOURCE: source MIN [pre].[…]`** rather than `target MAX [arc].[…]`. If a silver

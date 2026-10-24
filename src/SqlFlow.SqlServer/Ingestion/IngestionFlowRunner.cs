@@ -460,7 +460,7 @@ public sealed class IngestionFlowRunner
                     ? "full load (no usable watermark)"
                     : window.SourceWhere.Length > 0 ? $"incremental read: WHERE 1=1{window.SourceWhere}" : "full read (no incremental bound)");
                 Trace("incremental.max-probe", window.TargetMaxProbeSql);
-                Trace("incremental.min-probe", window.SourceMinProbeSql);
+                Trace("source.incremental.min-probe", window.SourceMinProbeSql);
                 sourceSelect = BuildSourceSelect(flow.Source.Table, projections, window.SourceWhere, sourceDialect);
                 Trace("source.select", sourceSelect);
                 rowsStaged = await BulkCopyAsync(resolvedSource, sourceSelect, targetConnectionString, staging, bulkColumns, flow.Load, ct).ConfigureAwait(false);
@@ -1097,7 +1097,7 @@ public sealed class IngestionFlowRunner
         var keySelect =
             $"SELECT DISTINCT {string.Join(", ", keyPairs.Select(p => projectionBySource[p.Source].Render(sourceDialect, p.Source)))} " +
             $"FROM {sourceDialect.QualifyObject(flow.Source.Table)} WHERE 1=1{staticWhere}";
-        traceSql("matchkeys.source-keys", keySelect);
+        traceSql("source.matchkeys.keys", keySelect);
         var keysCopied = await BulkCopyAsync(resolvedSource, keySelect, targetConnectionString, keyTable, keyPairs, flow.Load, ct).ConfigureAwait(false);
         dbg("matchkeys", $"{keysCopied} distinct source key(s) landed in {SchemaQualified(keyTable)}");
 
