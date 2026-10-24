@@ -111,6 +111,10 @@ Per reachable server, four read-only passes (all with `CommandTimeout = 0`):
 
 Each connection also records `SELECT DB_NAME()` as that server's default catalog: node-identity ground truth used to complete database-less (two-part) identities against the exact catalog the engine executes them in. After all tiers have collected, a default-database resolution pass fills the remaining servers offline from each reference's `Initial Catalog`.
 
+The inventory lists every object of the database, except the platform's own. A host hands the computation the schemas it keeps its own tables in (`LineageOptions.PlatformSchemas`, src/SqlFlow.Lineage/Collection/LineagePlatformSchema.cs): the catalog sync names SQLFlow's catalog schema (every object in it) and the model of each module database the host registered (the tables and views its EF model maps, so data a module publishes in its schema stays listed). A database holds such a schema when the inventory finds the schema's migrations history table in it. Those objects are set aside rather than listed: the graph makes no node of one on its own and parses no module body of theirs, but an object a flow does read keeps the kind, columns and body the inventory read for it. The progress line reports how many were left out. A server whose inventory completed is recorded in the report's `InventoriedServers`, with every reference proven an alias of it, so a consumer persisting the report knows an object of that server the report lacks is no longer in its database.
+
+A node key folds case, so it decides which database, schema and object a node is, never how they are spelled: a node takes its database and schema from the live inventory, else the connection's own spelling of its default database, else the spelling the fact carried, and the folded key part only when nothing spells it.
+
 ## Module expansion: view chains and procedure bodies in flow lineage
 
 `LineageGraphBuilder` (src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs) folds module-attributed derived facts back into flows in two distinct ways:

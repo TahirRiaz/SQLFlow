@@ -30,6 +30,11 @@ public sealed record CatalogSyncResult
     /// edges reference them.</summary>
     public int ObjectsSuperseded { get; init; }
 
+    /// <summary>Database objects forgotten after the pass committed because nothing knows them any more: no edge or
+    /// relationship of any repo references them, and either this pass read their server's database in full without
+    /// finding them, or no flow of any repo uses their server reference at all.</summary>
+    public int ObjectsRemoved { get; init; }
+
     public int ObjectColumns { get; init; }
     public int LineageEdges { get; init; }
 
@@ -129,6 +134,7 @@ public sealed class CatalogSync
 
     private readonly FlowSetCollector _estate;
     private readonly IReadOnlyList<ICatalogSyncExtension> _extensions;
+    private readonly IReadOnlyList<Modules.ModuleDatabase> _moduleDatabases;
 
     private readonly YamlDocumentLoader _documents;
 
@@ -148,12 +154,23 @@ public sealed class CatalogSync
     /// <summary>A sync that parses with <paramref name="documents"/> and reconciles the document families
     /// <paramref name="extensions"/> add, in its own transaction.</summary>
     public CatalogSync(YamlDocumentLoader documents, IEnumerable<ICatalogSyncExtension> extensions)
+        : this(documents, extensions, [])
+    {
+    }
+
+    /// <summary>A sync that parses with <paramref name="documents"/>, reconciles the document families
+    /// <paramref name="extensions"/> add, and leaves the tables of <paramref name="moduleDatabases"/>, like the catalog's
+    /// own, out of what a connected pass inventories wherever it finds them: they are the platform's, not the estate's.</summary>
+    public CatalogSync(
+        YamlDocumentLoader documents, IEnumerable<ICatalogSyncExtension> extensions, IEnumerable<Modules.ModuleDatabase> moduleDatabases)
     {
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(extensions);
+        ArgumentNullException.ThrowIfNull(moduleDatabases);
         _documents = documents;
         _estate = new FlowSetCollector(documents);
         _extensions = [.. extensions];
+        _moduleDatabases = [.. moduleDatabases];
     }
 
     /// <summary>Whether any sync extension is registered, so a caller reports the document tally only when there is one.</summary>
@@ -292,6 +309,7 @@ public sealed class CatalogSync
                             FlowDirectory = root,
                             IncludeObserved = true,
                             IncludeDerived = includeDerived,
+                            PlatformSchemas = includeDerived ? PlatformSchemas(context) : [],
                             Secrets = secrets,
                             Progress = lineageProgress,
                             Documents = _documents,
@@ -317,7 +335,7 @@ public sealed class CatalogSync
             // so it is a single retriable unit. The control plane enables connection resiliency
             // (EnableRetryOnFailure); EF then forbids a user-initiated transaction unless wrapped this way. A
             // retried attempt re-stages its rows from the phase-one artifacts, never from half-tracked state.
-            var result = await CatalogTransaction.InSerializableAsync(context, async () =>
+            var synced = await CatalogTransaction.InSerializableAsync(context, async () =>
             {
                 // The repo's schedule-name lock comes first, before this transaction takes any other lock, so the
                 // name check below and the schedule writes later in this transaction are one step against an API
@@ -414,6 +432,13 @@ public sealed class CatalogSync
                     Warnings = [.. warnings, .. scheduleWarnings, .. extensionWarnings],
                 };
             }, ct).ConfigureAwait(false);
+
+            // ---- Phase three, once the pass has committed: forget the database objects nothing knows any more. It
+            // reads the whole registry, so it runs outside the serializable transaction rather than hold range locks
+            // over every object and edge while other repositories sync; each of its statements re-checks what it
+            // deletes, so a reference committed meanwhile keeps its object. It reports its own failure as a warning,
+            // so the extensions' committed work below runs whatever it found.
+            var result = report is null ? synced : await ForgetUnknownObjectsAsync(context, report, nowUtc, synced, ct).ConfigureAwait(false);
             return await CommittedAsync(context, repoId, root, nowUtc, result, ct).ConfigureAwait(false);
         }
         finally
@@ -1250,7 +1275,8 @@ public sealed class CatalogSync
                 KeyOrigin = o.KeyColumns.Count > 0 ? LineageModelOrigin.Constraint : null,
             })
             .ToList();
-        await UpsertObjectsAsync(context, nodes, nowUtc, ct).ConfigureAwait(false);
+        // A registration reads its database live, so its spelling of every name is the database's own.
+        await UpsertObjectsAsync(context, nodes, static _ => true, nowUtc, ct).ConfigureAwait(false);
 
         if (!replaceEdges)
         {
@@ -1640,11 +1666,20 @@ public sealed class CatalogSync
     /// object write shared by a lineage sync and a schema registration run. Returns every row touched (updated or
     /// inserted) and how many column rows were staged.
     /// </summary>
+    /// <param name="context">The catalog.</param>
+    /// <param name="nodes">The objects to record.</param>
+    /// <param name="readLive">Whether this pass read a server reference's database live, which makes its spelling of the
+    /// object's database, schema and name the one kept: a pass that did not keeps the stored spelling of a name it only
+    /// spells differently in case, so the spelling does not change with each kind of pass.</param>
+    /// <param name="nowUtc">The pass's time, stamped as each touched object's last sighting.</param>
+    /// <param name="ct">Cancels the reads.</param>
     private static async Task<(Dictionary<string, CatalogObject> Touched, int Columns)> UpsertObjectsAsync(
-        CatalogDbContext context, IReadOnlyList<Core.Lineage.LineageObjectNode> nodes, DateTime nowUtc, CancellationToken ct)
+        CatalogDbContext context, IReadOnlyList<Core.Lineage.LineageObjectNode> nodes, Func<string, bool> readLive, DateTime nowUtc,
+        CancellationToken ct)
     {
-        // Objects are GLOBAL (shared across repos by their canonical key) - upsert, never delete. Load only the
-        // keys this report mentions, so the working set scales with the report, not the whole catalog.
+        // Objects are GLOBAL (shared across repos by their canonical key): upserted here, and forgotten only once
+        // nothing knows them (RemoveUnknownObjectsAsync, after the pass commits). Load only the keys this report
+        // mentions, so the working set scales with the report, not the whole catalog.
         var keys = nodes.Select(o => o.Key).Distinct().ToList();
         // AsTracking so the object-metadata updates below persist under a NoTracking host context (see the pipeline
         // query in ApplyPipelinesAsync); harmless on a tracking context.
@@ -1657,10 +1692,11 @@ public sealed class CatalogSync
         {
             if (existingObjects.TryGetValue(node.Key, out var row))
             {
+                var live = readLive(node.ServerRef);
                 row.ServerRef = node.ServerRef;
-                row.Database = NullIfBlank(node.Database);
-                row.Schema = NullIfBlank(node.Schema);
-                row.Name = node.Name;
+                row.Database = Respelled(row.Database, NullIfBlank(node.Database), live);
+                row.Schema = Respelled(row.Schema, NullIfBlank(node.Schema), live);
+                row.Name = Respelled(row.Name, node.Name, live)!;
                 // A node whose kind this pass could not tell (a read no inventory matched) never downgrades the kind
                 // a connected pass or a schema registration recorded.
                 if (node.Kind != Core.Lineage.LineageNodeKind.Unknown || string.IsNullOrEmpty(row.Kind))
@@ -1708,8 +1744,8 @@ public sealed class CatalogSync
         // previously-collected dictionary. Replace-by-key so a re-read reflects schema changes. Precedence:
         // an offline (Observed) set must not overwrite a live (Derived) set an earlier connected sync stored,
         // so a key is refreshed only when this sync's tier is at least as authoritative as what is on record.
-        // Like the global Object/Definition (upsert-only, never deleted for cross-repo identity), a dropped
-        // object's columns are NOT cleaned up here; the dictionary is additive and tolerates that staleness.
+        // A dropped object's columns are NOT cleaned up here: they go with the object itself when a pass forgets it
+        // (RemoveUnknownObjectsAsync), and until then the dictionary keeps what it last read.
         var columns = 0;
         var withColumns = nodes.Where(o => o.Columns.Count > 0).ToList();
         if (withColumns.Count > 0)
@@ -1794,7 +1830,8 @@ public sealed class CatalogSync
         // databases of one server) keeps the weak identity, mirroring the builder's unification rule.
         report = await AdoptResolvedIdentitiesAsync(context, report, ct).ConfigureAwait(false);
 
-        var (touchedObjects, columns) = await UpsertObjectsAsync(context, report.Objects, nowUtc, ct).ConfigureAwait(false);
+        var readLive = report.InventoriedServers.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var (touchedObjects, columns) = await UpsertObjectsAsync(context, report.Objects, readLive.Contains, nowUtc, ct).ConfigureAwait(false);
 
         // Offline object-body enrichment: fill each resolved object's generating script and interpreted column
         // dictionary from the run-statement trace already persisted in the catalog, so an offline sync (no live
@@ -2100,7 +2137,7 @@ public sealed class CatalogSync
         // when this repo only reads it. Report objects are stamped on their tracked/added rows; objects outside
         // the report whose depth shifted through a cross-repo chain are updated in place, grouped by level (the
         // distinct level count is small). An object that leaves the movement graph entirely keeps its last
-        // level until its own repo resyncs, matching the catalog's additive, staleness-tolerant object registry.
+        // level until its own repo resyncs, or until a pass forgets it once nothing references it.
         var otherRepoFacts = await context.LineageEdges.AsNoTracking()
             .Where(e => e.RepoId != repoId)
             .Select(e => new MovementFact(e.RepoId, e.Flow, e.ViaModule, e.Relation, e.ObjectKey))
@@ -2278,6 +2315,151 @@ public sealed class CatalogSync
 
         return (report.Objects.Count, superseded, columns, edges, dependencies, report.ExecutionPlan.Waves.Count, includeDerived, preservedEdges);
     }
+
+    /// <summary>The object kinds the forgetting pass never touches: file and dataset nodes have the endpoint sweep, and a
+    /// subscriber is replaced with its repository's consumption side.</summary>
+    private static readonly string[] NonDatabaseKinds =
+        [EndpointFileKind, EndpointDatasetKind, nameof(Core.Lineage.LineageNodeKind.Subscriber)];
+
+    /// <summary>
+    /// The schemas the platform keeps its own tables in, which a connected pass leaves out of every database it
+    /// inventories: the catalog's schema, which is SQLFlow's alone (no module may take it), so every object in it; and
+    /// the model of each module database the host registered, whose schema may also hold data the module publishes.
+    /// </summary>
+    private IReadOnlyList<LineagePlatformSchema> PlatformSchemas(CatalogDbContext context)
+    {
+        var schemas = new List<LineagePlatformSchema>
+        {
+            new() { Schema = CatalogDbContext.SchemaName, HistoryTable = CatalogDatabase.MigrationsHistoryTable },
+        };
+        if (_moduleDatabases.Count > 0)
+        {
+            var connection = context.Database.GetDbConnection();
+            schemas.AddRange(_moduleDatabases.Select(module => Modules.ModuleDatabases.PlatformSchema(module, connection)));
+        }
+
+        return schemas;
+    }
+
+    /// <summary>
+    /// Runs <see cref="RemoveUnknownObjectsAsync"/> after a pass committed and adds its count to the pass's tally. It is
+    /// housekeeping over a committed sync, so a failure (a deadlock past its retries, a timeout) is reported as a warning
+    /// of the pass and left for the next sync, which removes the same objects.
+    /// </summary>
+    private static async Task<CatalogSyncResult> ForgetUnknownObjectsAsync(
+        CatalogDbContext context, LineageReport report, DateTime nowUtc, CatalogSyncResult synced, CancellationToken ct)
+    {
+        try
+        {
+            return synced with { ObjectsRemoved = await RemoveUnknownObjectsAsync(context, report, nowUtc, ct).ConfigureAwait(false) };
+        }
+        catch (Exception ex) when (ex is System.Data.Common.DbException or DbUpdateException
+                                       or Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException or TimeoutException)
+        {
+            return synced with
+            {
+                Warnings =
+                [
+                    .. synced.Warnings,
+                    $"the objects nothing references any more were not removed this time ({SecretHygiene.RedactedMessage(ex)}); the next sync removes them.",
+                ],
+            };
+        }
+    }
+
+    /// <summary>
+    /// How long after it was last seen an object of a retired server reference is kept: long enough that nothing is raced
+    /// while a repository or a person is midway through putting objects under a new reference, short enough that a renamed
+    /// reference's objects leave with the first sync after that.
+    /// </summary>
+    internal static readonly TimeSpan RetiredServerGrace = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Forgets the database objects nothing knows any more (docs/reference/concepts/shadow-catalog.md). Objects are global
+    /// and outlive the pass that recorded them, so a table renamed, a view dropped, or a database no flow names any more
+    /// would otherwise stay listed for good. An object goes when this pass did not record it, nothing in the catalog
+    /// references it (an edge or a relationship of any repository, a report model's table, or what a person curated on it:
+    /// a column approval, its AI context, a measure or a declared relationship), and either:
+    /// <list type="bullet">
+    /// <item>this pass read its server's database in full without finding it (<see cref="LineageReport.InventoriedServers"/>), or</item>
+    /// <item>its server reference is retired: no active pipeline and no subscriber query of any repository names it, no edge
+    /// touches any object of it, this pass's documents do not name it, and the object was last seen more than
+    /// <see cref="RetiredServerGrace"/> ago.</item>
+    /// </list>
+    /// A server this pass could not read and that something still names keeps every object it had. Runs at read committed
+    /// once the pass has committed, so this repository's new edges count as references; every delete re-checks its
+    /// conditions, so a reference another sync commits meanwhile keeps its object. Returns how many objects went.
+    /// </summary>
+    internal static async Task<int> RemoveUnknownObjectsAsync(
+        CatalogDbContext context, LineageReport report, DateTime nowUtc, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(report);
+
+        var inventoried = report.InventoriedServers.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // The server references something still names: this pass's documents, an active pipeline of any repository, a
+        // subscriber query, or an edge onto one of the reference's objects.
+        var named = report.Objects.Select(o => o.ServerRef).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        named.UnionWith(await context.Pipelines.AsNoTracking()
+            .Where(p => p.Active && p.SourceServer != null)
+            .Select(p => p.SourceServer!)
+            .Distinct()
+            .ToListAsync(ct).ConfigureAwait(false));
+        named.UnionWith(await context.Pipelines.AsNoTracking()
+            .Where(p => p.Active && p.TargetServer != null)
+            .Select(p => p.TargetServer!)
+            .Distinct()
+            .ToListAsync(ct).ConfigureAwait(false));
+        named.UnionWith(await context.SubscriberQueries.AsNoTracking()
+            .Select(q => q.ServerRef)
+            .Distinct()
+            .ToListAsync(ct).ConfigureAwait(false));
+        named.UnionWith(await context.Objects.AsNoTracking()
+            .Where(o => context.LineageEdges.Any(e => e.ObjectKey == o.Key))
+            .Select(o => o.ServerRef)
+            .Distinct()
+            .ToListAsync(ct).ConfigureAwait(false));
+
+        var retiredBefore = nowUtc - RetiredServerGrace;
+        var candidates = await Unreferenced(context, nowUtc)
+            .AsNoTracking()
+            .Select(o => new { o.Key, o.ServerRef, o.LastSeenUtc })
+            .ToListAsync(ct).ConfigureAwait(false);
+        var forgotten = candidates
+            .Where(o => inventoried.Contains(o.ServerRef) || (!named.Contains(o.ServerRef) && o.LastSeenUtc < retiredBefore))
+            .Select(o => o.Key)
+            .ToList();
+        if (forgotten.Count == 0)
+        {
+            return 0;
+        }
+
+        var removed = await ExecuteByKeysAsync(
+                forgotten, chunk => Unreferenced(context, nowUtc).Where(o => chunk.Contains(o.Key)).ExecuteDeleteAsync(ct))
+            .ConfigureAwait(false);
+        // A column row goes with its object; one whose object a reference kept above stays.
+        await ExecuteByKeysAsync(
+                forgotten,
+                chunk => context.ObjectColumns
+                    .Where(c => chunk.Contains(c.ObjectKey) && !context.Objects.Any(o => o.Key == c.ObjectKey))
+                    .ExecuteDeleteAsync(ct))
+            .ConfigureAwait(false);
+        return removed;
+    }
+
+    /// <summary>The database objects a pass at <paramref name="nowUtc"/> did not record that nothing in the catalog
+    /// references: no edge or relationship of any repository, no report model table, and nothing a person curated on it.</summary>
+    private static IQueryable<CatalogObject> Unreferenced(CatalogDbContext context, DateTime nowUtc)
+        => context.Objects.Where(o => !NonDatabaseKinds.Contains(o.Kind)
+            && o.LastSeenUtc < nowUtc
+            && !context.LineageEdges.Any(e => e.ObjectKey == o.Key)
+            && !context.ObjectRelationships.Any(r => r.FromObjectKey == o.Key || r.ToObjectKey == o.Key)
+            && !context.SubscriberModelTables.Any(t => t.ObjectKey == o.Key)
+            && !context.ColumnPolicies.Any(p => p.ObjectKey == o.Key)
+            && !context.SemanticObjects.Any(s => s.ObjectKey == o.Key)
+            && !context.SemanticMeasures.Any(m => m.ObjectKey == o.Key)
+            && !context.SemanticRelationships.Any(r => r.FromObjectKey == o.Key || r.ToObjectKey == o.Key));
 
     /// <summary>
     /// The offline object-body enrichment. A warehouse's engine-created objects (a transform view, a pre/arc
@@ -2854,4 +3036,15 @@ public sealed class CatalogSync
     private static string Normalize(string path) => path.Replace('\\', '/');
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>
+    /// The spelling a stored name keeps: <paramref name="incoming"/>, unless it only spells <paramref name="stored"/> in
+    /// another case and this pass did not read the object's database live. The key folds case, so both spellings name one
+    /// object; the live database is the authority on how it spells its names, and any other pass (an offline one, or one
+    /// spelling a two-part name from a connection string) keeps what is stored rather than flip it each sync.
+    /// </summary>
+    internal static string? Respelled(string? stored, string? incoming, bool readLive)
+        => !readLive && stored is not null && incoming is not null && string.Equals(stored, incoming, StringComparison.OrdinalIgnoreCase)
+            ? stored
+            : incoming;
 }

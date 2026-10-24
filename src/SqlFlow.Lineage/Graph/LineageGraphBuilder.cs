@@ -35,6 +35,14 @@ public static class LineageGraphBuilder
         string Server(string serverRef)
             => serverAliases.TryGetValue(serverRef, out var canonical) ? canonical : serverRef;
 
+        // The servers whose inventory was read in full, each alias of one with it: an alias names the same database, so
+        // what the inventory lacks is as absent under the alias's spelling as under the representative's.
+        var inventoriedServers = collected.InventoriedServers.Keys
+            .Concat(serverAliases.Where(a => collected.InventoriedServers.ContainsKey(a.Value)).Select(a => a.Key))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         if (collected.ServerAliases.Count > 0)
         {
             collected = ApplyServerAliases(collected, Server);
@@ -201,7 +209,9 @@ public static class LineageGraphBuilder
         // ---- Identity unification BEFORE synonym resolution: a partially qualified fact must first gain
         // its full identity, otherwise a 2-part reference to a synonym never matches the synonym map and
         // its dependency edge silently vanishes.
-        var aliasMap = BuildIdentityAliases(collectedFacts, collected.CatalogObjects, warnings);
+        // The platform's own objects take part like any inventoried object: a fact naming one completes against it.
+        var inventory = collected.CatalogObjects.Concat(collected.PlatformObjects).ToList();
+        var aliasMap = BuildIdentityAliases(collectedFacts, inventory, warnings);
 
         // The folded projections of the raw-cased server maps, for module-key resolution: a module key's parts
         // are already case-folded by NodeKey, so its server segment can never hit the original-cased alias and
@@ -262,8 +272,10 @@ public static class LineageGraphBuilder
         }
 
         // The inventory and the module harvest can both describe one object (a procedure appears in
-        // sys.objects AND, when encrypted, as a warning-bearing module entry): merge, never drop warnings.
-        var catalogByKey = collected.CatalogObjects
+        // sys.objects AND, when encrypted, as a warning-bearing module entry): merge, never drop warnings. The
+        // platform's own objects are here too, so one a fact names keeps the kind, columns and body read for it;
+        // only the estate's are listed as nodes of their own below.
+        var catalogByKey = inventory
             .GroupBy(o => NodeKey.For(o.ServerRef, o.Database, o.Schema, o.Name), StringComparer.Ordinal)
             .ToDictionary(
                 g => g.Key,
@@ -293,16 +305,22 @@ public static class LineageGraphBuilder
             }
 
             // The key is the identity authority: a node reached through a unified or remapped key carries
-            // the key's own database/schema, so metadata and key can never disagree.
+            // the key's own database/schema, so metadata and key can never disagree. The key is case-folded,
+            // so it decides WHICH database and schema, never how they are spelled: the live inventory's
+            // spelling first, then the connection's own spelling of its default database, then the name as
+            // the fact wrote it; the folded key part only when nothing else spells it.
             var keyParts = key.Split('|');
             var fromCatalog = catalogByKey.TryGetValue(key, out var catalogObject) ? catalogObject : null;
             var nodeWarnings = fromCatalog?.Warning is { } w ? new List<string> { w } : [];
+            var defaultDatabase = collected.ServerDefaultDatabases.TryGetValue(serverRef, out var exact)
+                ? exact
+                : foldedDefaultDatabases.GetValueOrDefault(serverRef.ToLowerInvariant());
             nodes[key] = new LineageObjectNode
             {
                 Key = key,
                 ServerRef = serverRef,
-                Database = fromCatalog?.Database ?? (keyParts[1].Length > 0 ? keyParts[1] : database),
-                Schema = fromCatalog?.Schema ?? (keyParts[2].Length > 0 ? keyParts[2] : schema),
+                Database = fromCatalog?.Database ?? Spelled(keyParts[1], database, defaultDatabase),
+                Schema = fromCatalog?.Schema ?? Spelled(keyParts[2], schema, preferred: null),
                 Name = name,
                 Kind = fromCatalog?.Kind ?? hint,
                 Definition = fromCatalog?.Definition,
@@ -843,7 +861,30 @@ public static class LineageGraphBuilder
             DuplicateFlowNames = duplicateFlowNames,
             Warnings = warnings.Distinct(StringComparer.Ordinal).OrderBy(w => w, StringComparer.Ordinal).ToList(),
             DegradedDerivedServers = collected.DegradedServers.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList(),
+            InventoriedServers = inventoriedServers,
         };
+    }
+
+    /// <summary>
+    /// How a node's database or schema is spelled, given the case-folded part its key carries: <paramref name="preferred"/>
+    /// (the connection's own spelling of its default database) when it names that part, else <paramref name="given"/> (the
+    /// spelling the fact or inventory entry carried) when it does, else the folded key part. A key without the part keeps
+    /// <paramref name="given"/>.
+    /// </summary>
+    internal static string? Spelled(string keyPart, string? given, string? preferred)
+    {
+        ArgumentNullException.ThrowIfNull(keyPart);
+        if (keyPart.Length == 0)
+        {
+            return given;
+        }
+
+        if (preferred is not null && string.Equals(preferred, keyPart, StringComparison.OrdinalIgnoreCase))
+        {
+            return preferred;
+        }
+
+        return given is not null && string.Equals(given, keyPart, StringComparison.OrdinalIgnoreCase) ? given : keyPart;
     }
 
     /// <summary>
@@ -1227,6 +1268,7 @@ public static class LineageGraphBuilder
         remapped.Facts.AddRange(collected.Facts.Select(f => f with { ServerRef = server(f.ServerRef) }));
         remapped.ObjectArtifacts.AddRange(collected.ObjectArtifacts.Select(a => a with { ServerRef = server(a.ServerRef) }));
         remapped.CatalogObjects.AddRange(collected.CatalogObjects.Select(o => o with { ServerRef = server(o.ServerRef) }));
+        remapped.PlatformObjects.AddRange(collected.PlatformObjects.Select(o => o with { ServerRef = server(o.ServerRef) }));
 
         ModelObjectRef Remap(ModelObjectRef reference) => reference with { ServerRef = server(reference.ServerRef) };
         remapped.Joins.AddRange(collected.Joins.Select(j => j with { Left = Remap(j.Left), Right = Remap(j.Right) }));
@@ -1267,6 +1309,11 @@ public static class LineageGraphBuilder
         foreach (var (key, database) in collected.ServerDefaultDatabases)
         {
             remapped.ServerDefaultDatabases.TryAdd(server(key), database);
+        }
+
+        foreach (var (key, database) in collected.InventoriedServers)
+        {
+            remapped.InventoriedServers.TryAdd(server(key), database);
         }
 
         return remapped;

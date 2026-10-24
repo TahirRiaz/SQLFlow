@@ -206,7 +206,8 @@ public sealed partial class RepoSyncService : BackgroundService
 
             var result = await new CatalogSync(
                     scope.ServiceProvider.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>(),
-                    scope.ServiceProvider.GetServices<ICatalogSyncExtension>())
+                    scope.ServiceProvider.GetServices<ICatalogSyncExtension>(),
+                    scope.ServiceProvider.GetServices<SqlFlow.Catalog.Modules.ModuleDatabase>())
                 .SyncAsync(catalog, workingDir, source.Name, source.RemoteUrl, _clock.GetUtcNow().UtcDateTime,
                     includeDerived: _connectLineage, secrets: resolver,
                     excludedFlowPaths: excludedFlowPaths, forceLineage: source.ForceLineageOnNextSync,
@@ -336,6 +337,9 @@ public sealed partial class RepoSyncService : BackgroundService
             $"Lineage: {result.ObjectsUpserted} objects, {result.LineageEdges} edges, {result.Waves} waves"
                 + (result.LineageEdgesPreserved > 0
                     ? $" ({result.LineageEdgesPreserved} previously-derived edge(s) preserved from unreachable servers)"
+                    : string.Empty)
+                + (result.ObjectsRemoved > 0
+                    ? $", {result.ObjectsRemoved} object(s) nothing references any more removed"
                     : string.Empty)
                 + (result.LineageConnected ? " (connected)." : "."),
             ct).ConfigureAwait(false);

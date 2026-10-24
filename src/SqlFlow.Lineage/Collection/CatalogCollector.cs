@@ -12,18 +12,25 @@ namespace SqlFlow.Lineage.Collection;
 /// reads, one parser instance per module, no shared state, servers processed in parallel and each server's
 /// module bodies parsed in parallel (bounded by the processor count). An unreachable server or an encrypted
 /// module degrades to a warning, never a failure: the derived tier is an enrichment of the offline graph,
-/// not a prerequisite for it.
+/// not a prerequisite for it. The platform's own tables and views, in a database that holds one of the
+/// <see cref="LineagePlatformSchema"/>s it is given, are set aside rather than inventoried: they are not
+/// estate data, and their module bodies are not parsed.
 /// </summary>
 public sealed class CatalogCollector
 {
     private readonly IConnectionResolver _resolver;
     private readonly Func<string, CancellationToken, Task>? _progress;
+    private readonly IReadOnlyList<LineagePlatformSchema> _platformSchemas;
 
-    public CatalogCollector(IConnectionResolver resolver, Func<string, CancellationToken, Task>? progress = null)
+    public CatalogCollector(
+        IConnectionResolver resolver,
+        Func<string, CancellationToken, Task>? progress = null,
+        IReadOnlyList<LineagePlatformSchema>? platformSchemas = null)
     {
         ArgumentNullException.ThrowIfNull(resolver);
         _resolver = resolver;
         _progress = progress;
+        _platformSchemas = platformSchemas ?? [];
     }
 
     private Task ReportAsync(string message, CancellationToken ct)
@@ -113,17 +120,27 @@ public sealed class CatalogCollector
             // server's two-part identities (database-less facts) against it.
             result.ServerDefaultDatabases[serverRef] = database;
 
-            AddInventory(result, harvest, serverRef);
-            await SynonymsAsync(result, connection, serverRef, database, ct).ConfigureAwait(false);
-            AddModules(result, harvest, serverRef, ct);
+            var platform = LineagePlatformSchema.OwnedIn(_platformSchemas, harvest.Objects.Select(o => (o.Schema, o.Name)));
+            AddInventory(result, harvest, serverRef, platform);
+            await SynonymsAsync(result, connection, serverRef, database, platform, ct).ConfigureAwait(false);
+            AddModules(result, harvest, serverRef, platform, ct);
+
+            // Every object of the database is now either inventoried or set aside as the platform's: the
+            // inventory is complete for this server, which is what lets a consumer forget an object it lacks.
+            result.InventoriedServers[serverRef] = database;
 
             var modules = result.Facts
                 .Where(f => f.ViaModuleKey is not null)
                 .Select(f => f.ViaModuleKey!)
                 .Distinct(StringComparer.Ordinal)
                 .Count();
+            var setAside = result.PlatformObjects
+                .Select(o => (o.Schema, o.Name))
+                .Distinct()
+                .Count();
             await ReportAsync(
-                $"derived tier: server '{serverRef}' (db '{database}'): {result.CatalogObjects.Count} object(s) inventoried, {modules} module bodies parsed.",
+                $"derived tier: server '{serverRef}' (db '{database}'): {result.CatalogObjects.Count} object(s) inventoried, {modules} module bodies parsed"
+                + (setAside == 0 ? "." : $", {setAside} of the platform's own tables and views left out."),
                 ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -140,13 +157,14 @@ public sealed class CatalogCollector
     /// <summary>
     /// The harvested inventory as catalog objects (with their columns) plus a derived-tier script artifact per base
     /// table: SQL Server keeps no CREATE TABLE text (unlike a module's <c>sys.sql_modules</c> body), so the catalog
-    /// would otherwise hold a script for views and procedures but never for tables.
+    /// would otherwise hold a script for views and procedures but never for tables. An object <paramref name="platform"/>
+    /// names is set aside with its columns, and gets no script.
     /// </summary>
-    private static void AddInventory(CollectionResult result, ObjectHarvest harvest, string serverRef)
+    private static void AddInventory(CollectionResult result, ObjectHarvest harvest, string serverRef, Func<string, string, bool> platform)
     {
         foreach (var item in harvest.Objects)
         {
-            result.CatalogObjects.Add(new CatalogObject
+            var entry = new CatalogObject
             {
                 ServerRef = serverRef,
                 Database = harvest.Database,
@@ -154,7 +172,14 @@ public sealed class CatalogCollector
                 Name = item.Name,
                 Kind = item.Kind,
                 Columns = item.Columns,
-            });
+            };
+            if (platform(item.Schema, item.Name))
+            {
+                result.PlatformObjects.Add(entry);
+                continue;
+            }
+
+            result.CatalogObjects.Add(entry);
 
             if (item.TableScript is not null)
             {
@@ -173,7 +198,8 @@ public sealed class CatalogCollector
     }
 
     private static async Task SynonymsAsync(
-        CollectionResult result, SqlConnection connection, string serverRef, string database, CancellationToken ct)
+        CollectionResult result, SqlConnection connection, string serverRef, string database, Func<string, string, bool> platform,
+        CancellationToken ct)
     {
         // PARSENAME splits the base name server-side; a four-part (linked server) base comes back with a
         // server part and is surfaced as unresolvable rather than guessed at.
@@ -195,7 +221,7 @@ public sealed class CatalogCollector
             var baseName = reader.IsDBNull(2) ? null : reader.GetString(2);
             var linkedServer = reader.IsDBNull(5) ? null : reader.GetString(5);
 
-            result.CatalogObjects.Add(new CatalogObject
+            var synonym = new CatalogObject
             {
                 ServerRef = serverRef,
                 Database = database,
@@ -205,7 +231,8 @@ public sealed class CatalogCollector
                 Warning = linkedServer is null
                     ? null
                     : $"synonym base lives on linked server '{linkedServer}'; not resolvable from here.",
-            });
+            };
+            (platform(schema, name) ? result.PlatformObjects : result.CatalogObjects).Add(synonym);
 
             if (baseName is not null && linkedServer is null)
             {
@@ -223,11 +250,32 @@ public sealed class CatalogCollector
         }
     }
 
+    /// <summary>
+    /// The module bodies as derived facts, each parsed through the shared extractor and attributed to its module. A
+    /// module <paramref name="platform"/> names keeps its body for a flow that reads it, but is not parsed: what the
+    /// platform's own views and procedures read is not the estate's lineage.
+    /// </summary>
     private static void AddModules(
-        CollectionResult result, ObjectHarvest harvest, string serverRef, CancellationToken ct)
+        CollectionResult result, ObjectHarvest harvest, string serverRef, Func<string, string, bool> platform, CancellationToken ct)
     {
         var database = harvest.Database;
-        var modules = harvest.Modules.Select(m => (m.Schema, m.Name, m.Definition)).ToList();
+        foreach (var module in harvest.Modules.Where(m => platform(m.Schema, m.Name)))
+        {
+            result.PlatformObjects.Add(new CatalogObject
+            {
+                ServerRef = serverRef,
+                Database = database,
+                Schema = module.Schema,
+                Name = module.Name,
+                Kind = LineageNodeKind.Unknown,
+                Definition = module.Definition,
+            });
+        }
+
+        var modules = harvest.Modules
+            .Where(m => !platform(m.Schema, m.Name))
+            .Select(m => (m.Schema, m.Name, m.Definition))
+            .ToList();
 
         // The ScriptDom walk is pure CPU and the extractor is thread-safe by construction (one parser and one
         // walk state per call, no shared mutable state), so the readable bodies parse in parallel, bounded by

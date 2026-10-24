@@ -26,6 +26,10 @@ public sealed record LineageOptions
     /// <summary>Secret resolution for connection references; environment variables when null.</summary>
     public ISecretResolver? Secrets { get; init; }
 
+    /// <summary>The schemas the platform keeps its own tables in (a host's catalog and module databases), which the derived
+    /// tier's inventory leaves out wherever it finds them; none when empty.</summary>
+    public IReadOnlyList<LineagePlatformSchema> PlatformSchemas { get; init; } = [];
+
     /// <summary>Under-the-hood progress, one human-readable line per step (tier begins, each server's connect /
     /// harvest tally / failure), invoked as the computation runs. The managed sync streams these into the
     /// activity trace the GUI panel tails; the CLI prints them. Callbacks may arrive concurrently (servers are
@@ -113,7 +117,8 @@ public static class LineageService
                 await progress("derived tier: connecting to the referenced servers to harvest object code.", ct).ConfigureAwait(false);
             }
 
-            collected.Merge(await new CatalogCollector(resolver, progress).CollectAsync(collected.Servers, ct).ConfigureAwait(false));
+            collected.Merge(await new CatalogCollector(resolver, progress, options.PlatformSchemas)
+                .CollectAsync(collected.Servers, ct).ConfigureAwait(false));
 
             // Schema registration flows read their own databases' tables and views, separately from the derived
             // inventory above, since a registration takes no part in module parsing or join inference.

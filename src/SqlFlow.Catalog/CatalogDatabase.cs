@@ -25,6 +25,9 @@ namespace SqlFlow.Catalog;
 /// </summary>
 public static class CatalogDatabase
 {
+    /// <summary>The table, in the catalog schema, that records the catalog's applied migrations.</summary>
+    public const string MigrationsHistoryTable = "__CatalogMigrationsHistory";
+
     /// <summary>The build's catalog migrations, read from the migrations assembly once. Reading them opens no connection.</summary>
     private static readonly Lazy<IReadOnlyList<string>> BuildMigrations = new(() =>
     {
@@ -61,7 +64,7 @@ public static class CatalogDatabase
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
         builder.UseSqlServer(connectionString, sql =>
         {
-            sql.MigrationsHistoryTable("__CatalogMigrationsHistory", CatalogDbContext.SchemaName);
+            sql.MigrationsHistoryTable(MigrationsHistoryTable, CatalogDbContext.SchemaName);
             sql.EnableRetryOnFailure();
         });
     }

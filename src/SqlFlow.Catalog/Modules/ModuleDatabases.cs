@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage;
+using SqlFlow.Lineage.Collection;
 
 namespace SqlFlow.Catalog.Modules;
 
@@ -122,6 +123,39 @@ public static class ModuleDatabases
         var status = await StatusAsync(database, connectionString, catalogAppliedMigrations, ct).ConfigureAwait(false);
         status.ThrowIfNotCurrent();
         return status;
+    }
+
+    /// <summary>
+    /// The module's own tables as the derived lineage tier is told to leave them out of a database's inventory: the module's
+    /// schema, its migrations history table, and every table and view its model maps there. A module may keep data of its
+    /// own making in its schema beside those (objects no migration creates), so only the model's objects are named, never
+    /// the whole schema. Read from the model alone: <paramref name="connection"/> only carries the context and is not opened.
+    /// </summary>
+    /// <param name="database">The module database.</param>
+    /// <param name="connection">Any SQL Server connection, open or not, to build the module's context on.</param>
+    /// <exception cref="ModuleDatabaseException">The module's context breaks the shape every module database keeps.</exception>
+    public static LineagePlatformSchema PlatformSchema(ModuleDatabase database, DbConnection connection)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(connection);
+        using var context = database.CreateContext(connection);
+        var historyTable = EnsureShape(database, context);
+        var model = context.GetService<IDesignTimeModel>().Model;
+        var objects = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entity in model.GetEntityTypes())
+        {
+            if (entity.GetTableName() is { } table && string.Equals(entity.GetSchema(), database.Schema, StringComparison.OrdinalIgnoreCase))
+            {
+                objects.Add(table);
+            }
+
+            if (entity.GetViewName() is { } view && string.Equals(entity.GetViewSchema(), database.Schema, StringComparison.OrdinalIgnoreCase))
+            {
+                objects.Add(view);
+            }
+        }
+
+        return new LineagePlatformSchema { Schema = database.Schema, HistoryTable = historyTable, Objects = objects };
     }
 
     /// <summary>

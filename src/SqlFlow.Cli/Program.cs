@@ -1288,7 +1288,8 @@ internal static class Program
                     }
 
                     var catalogSync = new CatalogSync(
-                        provider.GetRequiredService<YamlDocumentLoader>(), provider.GetServices<ICatalogSyncExtension>());
+                        provider.GetRequiredService<YamlDocumentLoader>(), provider.GetServices<ICatalogSyncExtension>(),
+                        provider.GetServices<SqlFlow.Catalog.Modules.ModuleDatabase>());
                     var result = await catalogSync.SyncAsync(
                         context, directory, repoName, repoUrl, DateTime.UtcNow,
                         includeDerived: connect, secrets: provider.GetRequiredService<ISecretResolver>(),
@@ -1303,6 +1304,7 @@ internal static class Program
                         $"{result.Waves} waves, {result.FlowDependencies} dependencies" +
                         $"{(result.LineageEdgesPreserved > 0 ? $", {result.LineageEdgesPreserved} previously-derived edge(s) preserved" : "")}" +
                         $"{(result.ObjectsSuperseded > 0 ? $", {result.ObjectsSuperseded} superseded keys healed" : "")}" +
+                        $"{(result.ObjectsRemoved > 0 ? $", {result.ObjectsRemoved} objects nothing references removed" : "")}" +
                         $"{(result.LineageConnected ? " (connected)" : "")}" +
                         $"{(catalogSync.HasExtensions ? $"; documents +{result.DocumentsAdded} added, {result.DocumentsUpdated} updated, {result.DocumentsUnchanged} unchanged, {result.DocumentsRemoved} removed, {result.DocumentsInvalid} invalid" : "")}.");
                     foreach (var warning in result.Warnings.Take(20))
@@ -1380,7 +1382,9 @@ internal static class Program
             // block is best-effort; a refusal surfaces as a warning and never changes the run's exit code.)
             await CatalogDatabase.MigrateExistingAsync(connectionString).ConfigureAwait(false);
 
-            var sync = new CatalogSync(provider.GetRequiredService<YamlDocumentLoader>(), provider.GetServices<ICatalogSyncExtension>());
+            var sync = new CatalogSync(
+                provider.GetRequiredService<YamlDocumentLoader>(), provider.GetServices<ICatalogSyncExtension>(),
+                provider.GetServices<SqlFlow.Catalog.Modules.ModuleDatabase>());
             var recorded = 0;
             var warnings = new List<string>();
             foreach (var (flowFile, runJson) in candidates)

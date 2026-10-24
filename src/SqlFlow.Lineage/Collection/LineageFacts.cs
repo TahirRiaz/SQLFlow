@@ -363,6 +363,17 @@ public sealed class CollectionResult
 
     public List<CatalogObject> CatalogObjects { get; } = [];
 
+    /// <summary>The objects a live inventory found that belong to the platform itself rather than to the estate: the
+    /// tables and views of a schema a <see cref="LineagePlatformSchema"/> names, in a database that holds it. The graph
+    /// lists none of them on its own; they are kept here so an object a flow does read still carries the kind, columns and
+    /// body the inventory read for it.</summary>
+    public List<CatalogObject> PlatformObjects { get; } = [];
+
+    /// <summary>The servers whose live inventory this collection read in full, each with the database the inventory
+    /// covers (<c>DB_NAME()</c>): what a consumer persisting the result may take as the complete list of that database's
+    /// objects. A server whose connect failed is in <see cref="DegradedServers"/> instead.</summary>
+    public Dictionary<string, string> InventoriedServers { get; } = new(StringComparer.Ordinal);
+
     /// <summary>The interpreted data model's raw observations: join predicates, key hints, and explicit
     /// constraint clauses, all parsed from the codebase's SQL across the tiers.</summary>
     public List<CollectedJoin> Joins { get; } = [];
@@ -427,6 +438,7 @@ public sealed class CollectionResult
         Facts.AddRange(other.Facts);
         ObjectArtifacts.AddRange(other.ObjectArtifacts);
         CatalogObjects.AddRange(other.CatalogObjects);
+        PlatformObjects.AddRange(other.PlatformObjects);
         Joins.AddRange(other.Joins);
         KeyHints.AddRange(other.KeyHints);
         ModelConstraints.AddRange(other.ModelConstraints);
@@ -454,6 +466,11 @@ public sealed class CollectionResult
         foreach (var (serverRef, database) in other.ServerDefaultDatabases)
         {
             ServerDefaultDatabases.TryAdd(serverRef, database);
+        }
+
+        foreach (var (serverRef, database) in other.InventoriedServers)
+        {
+            InventoriedServers.TryAdd(serverRef, database);
         }
     }
 }

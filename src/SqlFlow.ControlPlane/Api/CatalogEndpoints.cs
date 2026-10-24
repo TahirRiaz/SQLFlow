@@ -134,7 +134,7 @@ public static class CatalogEndpoints
             var references = await services.GetRequiredService<Background.RunReferences>().ForAsync(repoId, ct).ConfigureAwait(false);
             using var supplied = SuppliedReferences.Supply(references);
 
-            var result = await new CatalogSync(documents, syncExtensions).SyncAsync(
+            var result = await new CatalogSync(documents, syncExtensions, services.GetServices<SqlFlow.Catalog.Modules.ModuleDatabase>()).SyncAsync(
                 db, repo.RootPath, repo.Name, repo.RemoteUrl, clock.GetUtcNow().UtcDateTime,
                 includeDerived: true, secrets: secrets, ct: ct).ConfigureAwait(false);
 

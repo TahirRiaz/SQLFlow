@@ -533,7 +533,8 @@ public sealed class CatalogSyncIntegrationTests : IDisposable
             {
                 Assert.False(await db.Objects.AnyAsync(o => o.Key == weakKey));
                 var strong = await db.Objects.SingleAsync(o => o.Key == strongKey);
-                Assert.Equal("sinkdb", strong.Database);
+                // The key folds case; the name keeps the connection's own spelling of its database.
+                Assert.Equal("SinkDb", strong.Database);
                 Assert.True(await db.LineageEdges.AnyAsync(e => e.RepoId == repoId && e.ObjectKey == strongKey));
             }
         }

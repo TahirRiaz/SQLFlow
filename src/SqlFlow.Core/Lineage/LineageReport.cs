@@ -589,4 +589,10 @@ public sealed record LineageReport
     /// the report must keep previously-derived edges for these servers instead of wiping them with the
     /// degraded pass. Empty when the derived tier was not requested or every server was reached.</summary>
     public IReadOnlyList<string> DegradedDerivedServers { get; init; } = [];
+
+    /// <summary>Server identities whose live inventory this computation read in full (the derived tier reached them),
+    /// every reference proven an alias of one included: an object of such a server that <see cref="Objects"/> does not
+    /// hold is no longer in its database, so a consumer persisting the report may forget it once nothing references it.
+    /// Empty when the derived tier was not requested or reached no server.</summary>
+    public IReadOnlyList<string> InventoriedServers { get; init; } = [];
 }
