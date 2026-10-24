@@ -4438,9 +4438,9 @@ const ESTATE_READ: &str = "\
   things it references (`flow`, `object`, `objectLineage`, `otherObject`, `run`, `runGroup`, `schedule`,
   `lastRun`, `sampleRun`, `fromFlow`, `toFlow`). Links that leave SQLFlow arrive under their own names and
   are already absolute: `url` (a report's own address in Power BI/Tableau), `remote` (a repo's git remote),
-  `source` (a flow's source location). When an answer names a table, flow, run, schedule, repo, or report,
-  link that name with the URL the row carried, and render an external address as a link too rather than as
-  bare text or inline code. Use them verbatim: never hand-build a SQLFlow URL, and never invent one for a
+  `source` (a flow's source location). When an answer names anything a row carried a link for, whatever it
+  is (a table, flow, run, schedule, repo, report, or a thing a host module's rows link), link that name with
+  that URL, and render an external address as a link too rather than as bare text or inline code. Use them verbatim: never hand-build a SQLFlow URL, and never invent one for a
   row that came back without links. A result about something the CALL named rather than about its rows (a
   flow's columns, an object's columns, a repo's edges, one file's provenance, the insights boards, summary)
   carries the subject's links on the envelope beside `items`, so those answers have a destination too.

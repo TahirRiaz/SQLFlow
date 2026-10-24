@@ -35,9 +35,9 @@ public static class AssistantInstructions
                `runGroup`, `schedule`, `lastRun`, `fromFlow`, `toFlow`). Addresses that leave SQLFlow come
                under their own names and are already absolute: `url` (a report's own address in Power
                BI/Tableau), `remote` (a repo's git remote), `source` (a flow's source location). When you
-               name a table, flow, run, schedule, repo, or report, link that name with the URL the row
-               gave you, as <URL|the name>, and show an external address as <URL|the name> too rather than
-               as bare text. A link that starts with / is relative to the GUI: prefix it with {gui}.
+               name anything a row gave you a link for, whatever it is (a table, flow, run, schedule, repo,
+               report, or a thing a host module's rows link), link that name with that URL, as
+               <URL|the name>, and show an external address as <URL|the name> too rather than as bare text. A link that starts with / is relative to the GUI: prefix it with {gui}.
                A result about something your CALL named rather than about its rows (a flow's columns, a
                repo's edges, the insights boards) carries the subject's links on the envelope beside
                `items`. Never invent a SQLFlow URL for a row that carried no links; name it instead.
@@ -45,8 +45,8 @@ public static class AssistantInstructions
             : "Reference runs, flows, and tables by their names and ids from tool results, without links.";
         return $"""
             WHERE YOU ARE ANSWERING: a Slack thread. Format for Slack mrkdwn: *bold* for emphasis (never
-            double-asterisk), bullet lists with the - character, `inline code` for object and flow names, code
-            blocks only for SQL or YAML. Keep answers tight: lead with the finding, then only the supporting
+            double-asterisk), bullet lists with the - character, `inline code` for an object or flow name no row
+            gave you a link for, code blocks only for SQL or YAML. Keep answers tight: lead with the finding, then only the supporting
             detail a data engineer needs. {linkGuidance}
             Slack cannot draw a query's result, so lay out a query answer as the tool result's layout fields
             describe: `approvalFormat` when you offer a query to run, and `answerFormat` with its `sqlIntro`,
@@ -61,8 +61,8 @@ public static class AssistantInstructions
         var linkBase = gui.Length > 0 ? gui : "";
         return $"""
             WHERE YOU ARE ANSWERING: the GUI's chat. Format answers as GitHub-flavored Markdown: **bold** for
-            emphasis, bullet lists with the - character, `inline code` for object and flow names, and fenced code
-            blocks tagged with their language (```sql, ```yaml) for SQL or YAML. Keep answers tight: lead with
+            emphasis, bullet lists with the - character, `inline code` for an object or flow name no row gave you
+            a link for, and fenced code blocks tagged with their language (```sql, ```yaml) for SQL or YAML. Keep answers tight: lead with
             the finding, then only the supporting detail a data engineer needs.
             Every catalog tool result carries GUI deep links: each row has a `links` object with the page
             for the row itself (`page`, whatever the row is: a table, a flow, a run, a run group, a
@@ -70,8 +70,9 @@ public static class AssistantInstructions
             and the things it references (`flow`, `object`, `objectLineage`, `run`, `runGroup`,
             `schedule`, `lastRun`, `fromFlow`, `toFlow`). Addresses that leave SQLFlow come under their
             own names and are already absolute: `url` (a report's own address in Power BI/Tableau),
-            `remote` (a repo's git remote), `source` (a flow's source location). Link the names you write
-            with the URLs those rows gave you: a table as [sales.Orders](CATALOG_PAGE_URL) with its
+            `remote` (a repo's git remote), `source` (a flow's source location). Link every name you write
+            that a row gave you a URL for, whatever it names (a host module's rows link things of their
+            own), with that URL: for example a table as [sales.Orders](CATALOG_PAGE_URL) with its
             [lineage](LINEAGE_URL) when the question is about where data flows, a flow as
             [orders_ingest](FLOW_URL), a run as [the run](RUN_URL), a report as
             [Sales overview](REPORT_URL) beside its [catalog page](SUBSCRIBER_PAGE_URL). Never print a
