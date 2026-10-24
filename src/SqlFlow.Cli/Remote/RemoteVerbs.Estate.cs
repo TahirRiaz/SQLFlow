@@ -134,13 +134,17 @@ internal static partial class RemoteVerbs
                         return 0;
                     }
 
-                    Console.WriteLine($"{"SCHEDULE",-36}  {"NAME",-28}  {"MEMBERS",7}  {"TRIGGER",-22}  {"STATE",-8}  NEXT FIRE (UTC)");
+                    Console.WriteLine($"{"SCHEDULE",-36}  {"NAME",-28}  {"MEMBERS",7}  {"TRIGGER",-22}  {"STATE",-8}  {"NEXT FIRE (UTC)",-19}  LAST TOOK");
                     foreach (var schedule in schedules.Items)
                     {
                         var trigger = schedule.Cron ?? $"every {schedule.IntervalSeconds}s";
                         var state = schedule.Paused ? "paused" : schedule.Enabled ? "enabled" : "disabled";
+                        // How long the last fire took; a fire still executing says so rather than showing nothing.
+                        var lastTook = schedule.LastDurationSeconds is not null
+                            ? FormatDuration(schedule.LastDurationSeconds)
+                            : schedule.LastStartedUtc is not null && schedule.LastEndedUtc is null ? "running" : "-";
                         Console.WriteLine(
-                            $"{schedule.Id,-36}  {Truncate(schedule.Name, 28),-28}  {schedule.MemberPipelineIds.Count,7}  {Truncate(trigger, 22),-22}  {state,-8}  {FormatUtc(schedule.NextFireUtc)}");
+                            $"{schedule.Id,-36}  {Truncate(schedule.Name, 28),-28}  {schedule.MemberPipelineIds.Count,7}  {Truncate(trigger, 22),-22}  {state,-8}  {FormatUtc(schedule.NextFireUtc),-19}  {lastTook}");
                     }
 
                     Console.WriteLine($"({schedules.Items.Count} of {schedules.Total} schedule(s))");

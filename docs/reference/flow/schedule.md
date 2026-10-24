@@ -55,6 +55,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Background/SchedulerService.cs
   - src/SqlFlow.ControlPlane/Background/ScheduleFire.cs
   - src/SqlFlow.ControlPlane/Api/ScheduleEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/RunSetTiming.cs
   - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
 ---
 
@@ -186,6 +187,10 @@ The GUI's schedule list exposes this per row (the "View the YAML that defines th
 ### Whether the last fire worked
 
 The schedule list and detail (`GET /api/v1/schedules`, `GET /api/v1/schedules/{id}`) carry `lastCounts`: the members of the last fire tallied by lifecycle state (`total`, `queued`, `running`, `succeeded`, `failed`, `cancelled`, `skipped`), or the single run's own state when the fire ran one flow, and `lastGroupActive`, true while the last group still has queued or running members. `lastCounts` is null when the schedule has never fired or its runs have aged out. The GUI rolls it up worst-wins into the status badge next to "Last run", the same rule a run group's header uses, so a set where one member failed reads as failed rather than merely "fired".
+
+### How long the last fire took
+
+The same reads carry `lastStartedUtc`, `lastEndedUtc` and `lastDurationSeconds`: when the last fire's first member started, when its last member ended, and the seconds between them, which is the wall-clock time the fire took rather than its members' durations added up (members of one wave run side by side). For a single-member fire they are the one run's own start, end and duration. `lastEndedUtc` and `lastDurationSeconds` stay null while the fire is still executing, and all three are null when the schedule has never fired or its runs have aged out. The GUI shows the duration in the column beside "Last run", counting up while the fire runs, with when it started and ended and how long it waited after the fire in the hover; `sqlflow schedules list` prints it as `LAST TOOK`.
 
 ### cron
 
@@ -360,7 +365,7 @@ The control plane also manages schedules directly (src/SqlFlow.ControlPlane/Api/
 
 A run-now backfill (`from`, optionally `to`; `to` requires `from` and must be after it) reprocesses the source for that range by each member's role: the members of the fire's first wave whose kind is `cpy`, `api`, `sftp` or `file` take the window and re-land their files, every `ing` member re-reads from the source minimum so the re-landed rows are picked up, and every other member runs with default parameters.
 
-`ScheduleDto` fields: `id`, `repoId`, `name`, `memberPipelineIds`, `cron`, `intervalSeconds`, `timezone`, `enabled`, `catchup`, `paused`, `source`, `nextFireUtc`, `lastFireUtc`, `lastRunId`, `lastGroupId`, `lastGroupActive`, `createdUtc`, `updatedUtc`, `maxConcurrency` (null means unbounded), `lastCounts`, `afterSchedules` (the parents, in declaration order), `triggersSchedules` (the schedules this one sets off, each `{id, name, depth, memberCount, enabled, paused}`; null when none), `parentFreshnessHours`, `lastStaleParents`, `operation`, `values`.
+`ScheduleDto` fields: `id`, `repoId`, `name`, `memberPipelineIds`, `cron`, `intervalSeconds`, `timezone`, `enabled`, `catchup`, `paused`, `source`, `nextFireUtc`, `lastFireUtc`, `lastRunId`, `lastGroupId`, `lastGroupActive`, `createdUtc`, `updatedUtc`, `maxConcurrency` (null means unbounded), `lastCounts`, `afterSchedules` (the parents, in declaration order), `triggersSchedules` (the schedules this one sets off, each `{id, name, depth, memberCount, enabled, paused}`; null when none), `parentFreshnessHours`, `lastStaleParents`, `operation`, `values`, `lastStartedUtc`, `lastEndedUtc`, `lastDurationSeconds`.
 
 ## Examples
 

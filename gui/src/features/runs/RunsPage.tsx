@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { Play } from "lucide-react";
 import { readLocalStorageState, useLocalStorageState, useUrlSeed } from "@/hooks/useLocalStorageState";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RunStatus, RunSummary } from "../../api/types";
 import { pipelineApi, runApi, scheduleApi } from "../../api/endpoints";
 import { activeFilterClass, FilterBar } from "../../components/FilterBar";
@@ -19,8 +21,11 @@ import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column, type TableGrouping } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RunDuration } from "../../components/RunDuration";
 import { RunStatusBadge, rollupStatus } from "../../components/StatusBadge";
-import { formatDurationSeconds } from "../../lib/time";
+import { useNow } from "../../hooks/useNow";
+import { secondsSince, setTiming } from "../../lib/runTiming";
+import { formatDurationSeconds, parseUtc } from "../../lib/time";
 import { contributedKinds, kindContribution } from "../../modules/registry";
 import { TriggerRunDialog } from "./TriggerRunDialog";
 
@@ -55,7 +60,14 @@ const enqueuedColumn: Column<RunSummary> = {
 const durationColumn: Column<RunSummary> = {
   id: "duration",
   header: "Duration",
-  render: (row) => (row.durationSeconds != null ? formatDurationSeconds(row.durationSeconds) : "-"),
+  render: (row) => (
+    <RunDuration
+      durationSeconds={row.durationSeconds}
+      startUtc={row.startUtc}
+      endUtc={row.endUtc}
+      enqueuedUtc={row.enqueuedUtc}
+    />
+  ),
 };
 const impactColumns: Column<RunSummary>[] = [
   { id: "files", header: "Files", align: "right", render: (row) => numCell(row.fileCount) },
@@ -90,12 +102,10 @@ const flatColumns: Column<RunSummary>[] = [
   ...impactColumns,
 ];
 
-/** Aggregates one group's rows for its header line: when it started, total duration, how many failed, and the
- * group's combined data impact (files read and rows loaded / inserted / updated) so a collapsed schedule or batch
- * shows how much data its last run moved without being expanded. */
+/** Aggregates one group's rows for its header line: when it started, how many failed, and the group's combined data
+ * impact (files read and rows loaded / inserted / updated) so a collapsed schedule or batch shows how much data its
+ * last run moved without being expanded. How long the rows took is {@link SetTimingText}'s. */
 function groupStats(rows: RunSummary[]) {
-  let durationTotal = 0;
-  let hasDuration = false;
   let earliest: string | null = null;
   let failed = 0;
   let files = 0;
@@ -103,11 +113,6 @@ function groupStats(rows: RunSummary[]) {
   let inserted = 0;
   let updated = 0;
   for (const row of rows) {
-    if (row.durationSeconds != null) {
-      durationTotal += row.durationSeconds;
-      hasDuration = true;
-    }
-
     const at = row.enqueuedUtc ?? row.writtenUtc;
     if (earliest === null || new Date(at).getTime() < new Date(earliest).getTime()) {
       earliest = at;
@@ -123,7 +128,54 @@ function groupStats(rows: RunSummary[]) {
     updated += row.rowsUpdated ?? 0;
   }
 
-  return { durationTotal: hasDuration ? durationTotal : null, earliest, failed, files, loaded, inserted, updated };
+  return { earliest, failed, files, loaded, inserted, updated };
+}
+
+function clock(utc: string): string {
+  return format(parseUtc(utc), "MMM d, HH:mm:ss");
+}
+
+/**
+ * How long a header's rows took, worded for what they are. Rows of one fire (one run group) took from the first one's
+ * start to the last one's end, which is less than their durations added up when they ran side by side; while some still
+ * run, it counts up. Rows that did not run together (each flow's latest run) have no span worth naming, so they say how
+ * much run time they add up to instead, and say so.
+ */
+function SetTimingText({ rows }: { rows: RunSummary[] }) {
+  const timing = setTiming(rows);
+  const now = useNow(timing.kind === "running");
+
+  if (timing.kind === "none") {
+    return null;
+  }
+
+  const [face, detail] = timing.kind === "took"
+    ? [
+      `took ${formatDurationSeconds(timing.seconds)}`,
+      `From the first of these runs' start (${clock(timing.startedUtc)}) to the last one's end (${clock(timing.endedUtc)}).`
+        + (timing.summedSeconds !== null && timing.summedSeconds > timing.seconds + 1
+          ? ` They ran side by side: their durations add up to ${formatDurationSeconds(timing.summedSeconds)}.`
+          : ""),
+    ]
+    : timing.kind === "running"
+      ? [
+        `running ${formatDurationSeconds(secondsSince(timing.startedUtc, now))}`,
+        `Running since the first of these runs started (${clock(timing.startedUtc)}).`,
+      ]
+      : [
+        `run time ${formatDurationSeconds(timing.seconds)}`,
+        `What the durations of these ${timing.timedRuns} runs add up to. They did not run as one fire, so this is how much `
+          + "work they were, not how long they took together.",
+      ];
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="text-[13px] tabular-nums text-muted-foreground" data-testid="group-timing">{face}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">{detail}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 function GroupStatsInline({ rows }: { rows: RunSummary[] }) {
@@ -142,11 +194,7 @@ function GroupStatsInline({ rows }: { rows: RunSummary[] }) {
       <span className="text-[13px] text-muted-foreground">
         started <RelativeTime value={stats.earliest} />
       </span>
-      {stats.durationTotal != null && (
-        <span className="text-[13px] text-muted-foreground">
-          duration {formatDurationSeconds(stats.durationTotal)}
-        </span>
-      )}
+      <SetTimingText rows={rows} />
       <span className="text-[13px] text-muted-foreground">({rows.length})</span>
       {/* Only non-zero impact metrics show, so a group that loaded nothing stays uncluttered while one that moved
           data reports its totals inline (e.g. "120 files", "45,678 loaded"). */}

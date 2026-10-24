@@ -32,7 +32,9 @@ namespace SqlFlow.ControlPlane.Api;
 /// the resolved high-water mark). Those three are null for a run that has not reached the read, or a flow kind with
 /// no incremental surface. <see cref="Operation"/> is the operation a flow of a registered kind performed (null
 /// for the kind's default and for built-in kinds), and <see cref="RequestedBy"/> who asked for the run (null for a
-/// schedule fire).</summary>
+/// schedule fire). <see cref="StartUtc"/> and <see cref="EndUtc"/> are when the run started (its hand-out, unless its
+/// artifact names its own start) and ended, so a list can say how long a run has been executing before it has a
+/// <see cref="DurationSeconds"/>, and how long a set of runs took from its first start to its last end.</summary>
 public sealed record RunSummaryDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
@@ -42,7 +44,8 @@ public sealed record RunSummaryDto(
     string? TriggerSource, bool FullLoad, DateTime? BackfillFrom, DateTime? BackfillTo,
     string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark,
     string? Operation = null, string? RequestedBy = null,
-    Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null);
+    Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
+    DateTime? StartUtc = null, DateTime? EndUtc = null);
 
 /// <summary>One run with its full header for the detail view: the summary plus the lifecycle fields (status, when it
 /// was enqueued, the node that claimed it), the schema version, the start/end window, the host, the error, and the
@@ -135,10 +138,12 @@ public sealed record RunGroupCountsDto(
 
 /// <summary>One run group's header: what it was (mode, anchor), when it was enqueued, the commit every member is
 /// pinned to, and the live rollup of its members' states. The members themselves come from the runs list filtered
-/// by this group id.</summary>
+/// by this group id. <see cref="StartedUtc"/>, <see cref="EndedUtc"/> and <see cref="DurationSeconds"/> say when the
+/// group ran and how long it took, from its first member's start to its last member's end (<see cref="RunSetTiming"/>):
+/// the wall-clock time of the whole set, not the sum of its members' durations.</summary>
 public sealed record RunGroupDto(
     Guid GroupId, Guid RepoId, string Mode, string Anchor, int MemberCount, string? CommitSha, DateTime EnqueuedUtc,
-    RunGroupCountsDto Counts);
+    RunGroupCountsDto Counts, DateTime? StartedUtc = null, DateTime? EndedUtc = null, double? DurationSeconds = null);
 
 /// <summary>
 /// The read API over the shadow catalog's run history: the run headers and their drill-down detail (the files a run
@@ -172,6 +177,9 @@ public static class RunEndpoints
         var pipelines = group.MapGroup("/pipelines").WithTags("Runs");
         pipelines.MapGet("/{pipelineId:guid}/trace", GetPipelineTraceAsync).WithName("GetPipelineLatestRunTrace");
         pipelines.MapGet("/{pipelineId:guid}/trace/text", GetPipelineTraceTextAsync).WithName("GetPipelineLatestRunTraceText");
+        // How long the pipeline's runs take: the typical figures over its newest succeeded runs, its last run, and the
+        // run executing now, so "is this run slow" is answerable without paging its history.
+        pipelines.MapGet("/{pipelineId:guid}/runs/durations", GetPipelineRunDurationsAsync).WithName("GetPipelineRunDurations");
         runs.MapGet("/{runId:guid}/surrogate-keys", GetRunSurrogateKeysAsync).WithName("GetRunSurrogateKeys");
         runs.MapGet("/{runId:guid}/health-metrics", GetRunHealthMetricsAsync).WithName("GetRunHealthMetrics");
 
@@ -364,7 +372,8 @@ public static class RunEndpoints
                 x.Run.Error,
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
-                x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount))
+                x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount,
+                x.Run.StartUtc, x.Run.EndUtc))
             : source.Select(x => new RunSummaryDto(
                 x.Run.RunId, x.Run.PipelineId, x.Run.RepoId, x.Run.FlowName, x.Run.FlowKind, x.Batch, x.Wave,
                 x.Run.Status, x.Run.Success,
@@ -375,7 +384,8 @@ public static class RunEndpoints
                 x.Run.Error,
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
-                x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount));
+                x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount,
+                x.Run.StartUtc, x.Run.EndUtc));
 
     /// <summary>A group's member summaries in execution order: the shape both the group view's member list and
     /// the group stream serve. This is the one list that shows the last action, so it resolves it.</summary>
@@ -493,21 +503,43 @@ public static class RunEndpoints
             return NotFound("run group", groupId);
         }
 
-        // The live rollup: the members' current lifecycle states, counted in one grouped pass.
+        // The live rollup: the members' current lifecycle states, counted in one grouped pass that also finds each
+        // state's earliest start and latest end, which together say when the group ran and how long it took.
         var byStatus = await db.Runs.AsNoTracking()
             .Where(r => r.GroupId == groupId)
             .GroupBy(r => r.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .Select(g => new
+            {
+                Status = g.Key,
+                Count = g.Count(),
+                FirstStart = g.Min(r => r.StartUtc),
+                LastEnd = g.Max(r => r.EndUtc),
+            })
             .ToListAsync(ct).ConfigureAwait(false);
         int CountOf(string status) => byStatus.FirstOrDefault(x => x.Status == status)?.Count ?? 0;
         var counts = new RunGroupCountsDto(
             byStatus.Sum(x => x.Count),
             CountOf(RunStatuses.Queued), CountOf(RunStatuses.Running), CountOf(RunStatuses.Succeeded),
             CountOf(RunStatuses.Failed), CountOf(RunStatuses.Cancelled), CountOf(RunStatuses.Skipped));
+        var timing = RunSetTiming.Of(
+            byStatus.Min(x => x.FirstStart),
+            byStatus.Max(x => x.LastEnd),
+            finished: counts.Total > 0 && counts.Queued + counts.Running == 0);
 
         return TypedResults.Ok(new RunGroupDto(
             group.GroupId, group.RepoId, group.Mode, group.Anchor, group.MemberCount, group.CommitSha,
-            group.EnqueuedUtc, counts));
+            group.EnqueuedUtc, counts, timing.StartedUtc, timing.EndedUtc, timing.DurationSeconds));
+    }
+
+    private static async Task<Results<Ok<PipelineRunDurationsDto>, ProblemHttpResult>> GetPipelineRunDurationsAsync(
+        Guid pipelineId, CatalogDbContext db, CancellationToken ct)
+    {
+        if (!await db.Pipelines.AsNoTracking().AnyAsync(p => p.Id == pipelineId, ct).ConfigureAwait(false))
+        {
+            return NotFound("pipeline", pipelineId);
+        }
+
+        return TypedResults.Ok(await PipelineRunDurations.ComputeAsync(db, pipelineId, ct).ConfigureAwait(false));
     }
 
     // Every drill-down endpoint first verifies the run exists and returns 404 when it does not, so an unknown run id

@@ -189,6 +189,32 @@ export interface PipelineColumn {
   converted: boolean;
 }
 
+/** One run of a pipeline as its duration profile names it. */
+export interface PipelineRunTiming {
+  runId: string;
+  status: RunStatus;
+  startUtc: string | null;
+  /** Null for the run still executing. */
+  endUtc: string | null;
+  /** Null for the run still executing: its elapsed time is the time since startUtc. */
+  durationSeconds: number | null;
+}
+
+/** How long a pipeline's runs take. The typical figures read the newest succeeded runs only (a failed run's duration
+ * says when it failed, not how long the work takes), and a run whose work was spread over members is read as its root. */
+export interface PipelineRunDurations {
+  /** How many succeeded runs the typical figures are over (at most 50); zero leaves them all null. */
+  runs: number;
+  medianSeconds: number | null;
+  averageSeconds: number | null;
+  fastestSeconds: number | null;
+  slowestSeconds: number | null;
+  /** The newest run that started and ended, whatever its outcome. */
+  last: PipelineRunTiming | null;
+  /** The run executing now. */
+  running: PipelineRunTiming | null;
+}
+
 // ---- Runs -----------------------------------------------------------------------------------------------------------
 
 export type RunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "skipped";
@@ -252,6 +278,11 @@ export interface RunSummary {
   operation: string | null;
   /** Who asked for the run: the signed-in user, a token's subject, or the scheduler; null when it was not recorded. */
   requestedBy: string | null;
+  /** When the run started (its hand-out, unless its artifact names its own start); null while it is queued, and for a
+   * run that never started. With it a list says how long a running run has been executing. */
+  startUtc: string | null;
+  /** When the run ended; null until it has. */
+  endUtc: string | null;
 }
 
 export interface RunDetail extends RunSummary {
@@ -260,8 +291,6 @@ export interface RunDetail extends RunSummary {
    * is still "running", the owning node is aborting the in-flight statement (a transitional "cancelling" state). */
   cancelRequestedUtc: string | null;
   schemaVersion: number;
-  startUtc: string | null;
-  endUtc: string | null;
   error: string | null;
   host: string | null;
   filePattern: string | null;
@@ -640,6 +669,13 @@ export interface RunGroup {
   commitSha: string | null;
   enqueuedUtc: string;
   counts: RunGroupCounts;
+  /** When the first member started; null while none has. */
+  startedUtc: string | null;
+  /** When the last member ended, once every member is terminal; null while any is queued or running. */
+  endedUtc: string | null;
+  /** How long the group took, first start to last end: the wall-clock time of the set, not the sum of its members'
+   * durations. Null until it has ended, and for a group none of whose members started. */
+  durationSeconds: number | null;
 }
 
 // ---- Schedules -------------------------------------------------------------------------------------------------------
@@ -675,6 +711,13 @@ export interface Schedule {
   /** How the last fire ended: its members tallied by lifecycle state (the single run's own state when the fire ran
    * one flow). Null when the schedule has never fired, or its runs have aged out of the catalog. */
   lastCounts: RunGroupCounts | null;
+  /** When the last fire's first flow started (the one run's start for a single-member fire); null before it has. */
+  lastStartedUtc: string | null;
+  /** When the last fire's last flow ended; null while it is still executing. */
+  lastEndedUtc: string | null;
+  /** How long the last fire took, first start to last end (the one run's duration for a single-member fire); null while
+   * it executes, and when the schedule has never fired or its runs have aged out. */
+  lastDurationSeconds: number | null;
   /** The operation a fire runs its members with, for members of a kind a host module registers; null for the kinds' default. */
   operation: string | null;
   /** The parameters a fire runs its members with, each one value or a list; empty when it passes none. */

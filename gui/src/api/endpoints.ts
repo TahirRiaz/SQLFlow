@@ -25,7 +25,7 @@ import type {
   SemanticReportCapabilities, SemanticReportSpec, SemanticReportSpecDetail, SemanticReportSubscriber,
   PrepareQueryRequest, PreparedQuery,
   FlowParameters,
-  PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
+  PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineRunDurations, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
   RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry, RunTraceStorage, RunTraceRetention, RunTraceRetentionUpdate, RunStatementPurgeResult, RunEventPurgeResult,
   RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
   RunTriggerAccepted, RunTriggerRequest, Schedule, ScheduleCreated, ScheduleDefinition, SchedulePlan, ScheduleRunAccepted, SessionResponse, TokenResponse,
@@ -167,6 +167,8 @@ export const pipelineApi = {
   /** The size profile of this flow's file deliveries (average, median, spread, extremes), computed over its
    * whole run history: the header's "what does a delivery from here normally weigh". */
   fileStats: (id: string) => get<PipelineFileStats>(`/api/v1/pipelines/${id}/files/stats`),
+  /** How long the pipeline's runs take: the typical figures, its last run and the run executing now. */
+  runDurations: (id: string) => get<PipelineRunDurations>(`/api/v1/pipelines/${id}/runs/durations`),
 };
 
 export interface PipelineFilesQuery extends PageQuery {

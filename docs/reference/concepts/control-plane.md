@@ -34,6 +34,8 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/CatalogEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/RunEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/RunSetTiming.cs
+  - src/SqlFlow.ControlPlane/Api/PipelineRunDurations.cs
   - src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs
   - src/SqlFlow.Catalog/RepoSourceStore.cs
@@ -100,11 +102,13 @@ Read surface (policy `read`):
 | `GET /pipelines/{id}/definition` | The pipeline's parsed definition as JSON |
 | `GET /pipelines/{id}/columns` | Declared and detected pre-ingestion transform columns |
 | `GET /pipelines/{id}/files`, `GET /pipelines/{id}/files/stats` | Every distinct file the pipeline has processed (deduplicated by name and path), and the size profile over them: average, median, standard deviation, extremes, totals, and a window over the newest files, so a caller can tell a normal delivery from an anomalous one |
-| `GET /runs`, `GET /runs/{runId}` | Run history and detail (filters include `repoId`, `pipelineId`, `flowKind`, `status`, `success`, `flowName`, `batch`, `latest`) |
+| `GET /runs`, `GET /runs/{runId}` | Run history and detail (filters include `repoId`, `pipelineId`, `flowKind`, `status`, `success`, `flowName`, `batch`, `latest`). A summary carries `startUtc` and `endUtc` beside `durationSeconds`, so how long a running run has been executing is known before it has a duration |
+| `GET /runs/groups/{groupId}` | One run group: its mode, anchor and member counts by state, and when it ran and how long it took: `startedUtc` (its first member's start), `endedUtc` (its last member's end, null while a member is queued or running) and `durationSeconds` between them, the wall-clock time of the set rather than its members' durations added up. Time spent waiting before the first member started is `startedUtc - enqueuedUtc` |
 | `GET /runs/{runId}/files` `/assertions` `/statements` `/surrogate-keys` `/health-metrics` | Per-run drill-down |
 | `GET /runs/{runId}/trace` | The run's consolidated trace: canonical engine events (file progress, resolved watermarks, decisions, stage summaries, warnings) interleaved with the generated SQL statements by timestamp |
 | `GET /runs/{runId}/trace/text` | The whole trace rendered as one plain-text document (run header, then every entry with SQL inline): the Copy-trace surface, and the form to hand an LLM when debugging a run |
 | `GET /runs/{runId}/trace/stream` | The trace as Server-Sent Events while the run executes: one `entry` frame per new trace entry, a final `end` frame at the terminal status (the client then refetches the paged endpoint, which holds the authoritative re-projection); `afterEventId`/`afterStatementId` cursors resume a dropped connection |
+| `GET /pipelines/{pipelineId}/runs/durations` | How long the pipeline's runs take: `runs`, `medianSeconds`, `averageSeconds`, `fastestSeconds` and `slowestSeconds` over its newest 50 succeeded runs (a failed run's duration says when it failed, not how long the work takes), `last` (the newest run that started and ended, whatever its outcome) and `running` (the run executing now), each `{runId, status, startUtc, endUtc, durationSeconds}`. A run whose work was spread over members of its own pipeline is read through its root. 404 for an unknown pipeline |
 | `GET /pipelines/{pipelineId}/trace`, `/trace/text` | The pipeline's LATEST run's trace (paged JSON or plain text) without resolving a run id first: the entry point for "show me what its last run did" when debugging a pipeline, by hand or from an LLM tool |
 | `GET /runs/groups/{groupId}/stream` | The run group as Server-Sent Events while it executes: a `member` frame (a run summary with its newest trace event as the "last action") whenever a member changes, a full snapshot on connect, one `end` frame with the final rollup once every member is terminal |
 | `GET /lineage/objects`, `/lineage/objects/detail`, `/lineage/objects/columns` | Lineage objects |

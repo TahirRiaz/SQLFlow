@@ -22,12 +22,12 @@ import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RunDuration } from "../../components/RunDuration";
 import { RunStatusBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
 import { useRunDock } from "./RunDockContext";
 import { pollingInterval } from "../../hooks/usePolling";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
-import { formatDurationSeconds } from "../../lib/time";
 import { useRunGroupStream } from "./useRunGroupStream";
 
 const memberColumns: Column<RunSummary>[] = [
@@ -53,7 +53,14 @@ const memberColumns: Column<RunSummary>[] = [
   {
     id: "duration",
     header: "Duration",
-    render: (row) => (row.durationSeconds != null ? formatDurationSeconds(row.durationSeconds) : "-"),
+    render: (row) => (
+      <RunDuration
+        durationSeconds={row.durationSeconds}
+        startUtc={row.startUtc}
+        endUtc={row.endUtc}
+        enqueuedUtc={row.enqueuedUtc}
+      />
+    ),
   },
   {
     // The member's newest trace event: while the group executes this ticks live with what each member is doing
@@ -334,12 +341,26 @@ function RunGroupContent({ groupId }: { groupId: string }) {
           </>
         )}
       >
-        <DetailPair label="Mode">{modeLabel}</DetailPair>
+        {/* The mode is the title's own prefix and the badge beside it, so the facts start at the anchor and leave the row
+          * to when the group ran and how long it took. */}
         <DetailPair label="Anchor"><Mono>{group.anchor}</Mono></DetailPair>
         <DetailPair label="Members">
           <span className="font-mono tabular-nums">{group.memberCount}</span>
         </DetailPair>
         <DetailPair label="Enqueued"><RelativeTime value={group.enqueuedUtc} absolute /></DetailPair>
+        {/* The group as one execution: from its first member's start to its last member's end, which is the wall-clock
+          * time the set took, not its members' durations added up. While it runs the duration counts up. */}
+        <DetailPair label="Started"><RelativeTime value={group.startedUtc} absolute /></DetailPair>
+        <DetailPair label="Ended"><RelativeTime value={group.endedUtc} absolute /></DetailPair>
+        <DetailPair label="Duration">
+          <RunDuration
+            durationSeconds={group.durationSeconds}
+            startUtc={group.startedUtc}
+            endUtc={group.endedUtc}
+            enqueuedUtc={group.enqueuedUtc}
+            testId="group-duration"
+          />
+        </DetailPair>
       </DetailHeaderCard>
 
       {active

@@ -26,6 +26,8 @@
     "src/features/nodes/scalingMode.ts",
     "src/features/repos/gitCredential.ts",
     "src/api/types.ts",
-    "src/layout/workbench/sideBarStart.ts"
+    "src/layout/workbench/sideBarStart.ts",
+    "src/lib/runTiming.ts",
+    "src/lib/time.ts"
   ]
 }

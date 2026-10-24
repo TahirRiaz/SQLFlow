@@ -25,6 +25,7 @@ import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column } from "../../components/PagedTable";
+import { RunDuration } from "../../components/RunDuration";
 import { SearchInput } from "../../components/SearchInput";
 import { IconBadge, RunStatusBadge, rollupStatus, ScheduleStateBadge } from "../../components/StatusBadge";
 import { readLocalStorageState, useLocalStorageState } from "../../hooks/useLocalStorageState";
@@ -623,6 +624,21 @@ export default function SchedulesPage() {
           </div>
         );
       },
+    },
+    {
+      id: "lastDuration",
+      // How long the last fire took, from its first flow's start to its last flow's end: the wall-clock time of the set,
+      // which is what an operator plans a window around. While the fire runs it counts up.
+      header: "Duration",
+      render: (row) => (
+        <RunDuration
+          durationSeconds={row.lastDurationSeconds}
+          startUtc={row.lastStartedUtc}
+          endUtc={row.lastEndedUtc}
+          enqueuedUtc={row.lastFireUtc}
+          testId="schedule-last-duration"
+        />
+      ),
     },
     {
       id: "actions",

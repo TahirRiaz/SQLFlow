@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- How long things take, at every level. A schedule's list row shows how long its last fire took, and a run group's
+  page when it started and ended and how long it took, both from the first flow's start to the last flow's end rather
+  than the flows' durations added up. A pipeline's page shows how long its last run took and how long a run usually
+  takes (the median of its newest successful runs). A run still executing counts up wherever its duration shows, and
+  the hover says how long it waited in the queue. The run board's headers say how long one fire's runs took, or how
+  much run time unrelated runs add up to. The API carries `startUtc` and `endUtc` on every run summary,
+  `startedUtc`, `endedUtc` and `durationSeconds` on a run group, `lastStartedUtc`, `lastEndedUtc` and
+  `lastDurationSeconds` on a schedule, and the new `GET /pipelines/{id}/runs/durations`; `sqlflow groups show` and
+  `sqlflow schedules list` print them ([How long the last fire took](docs/reference/flow/schedule.md#how-long-the-last-fire-took)).
 - Azure Storage is reached over the account's Blob or Data Lake (`dfs`) endpoint, whichever the host can reach. File
   sources, landing, exports, copies and SFTP transfers decide once per account which endpoint answers (a private
   endpoint first) and move to the other when the network refuses a request before the service processed it, so a

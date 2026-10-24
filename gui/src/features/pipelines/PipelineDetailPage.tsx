@@ -26,8 +26,10 @@ import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RunDuration } from "../../components/RunDuration";
 import { ActiveBadge, RunStatusBadge, ScheduleStateBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
+import { pollingInterval } from "../../hooks/usePolling";
 import { useTabFlowKind, useTabTitle } from "../../layout/workbench/TabsContext";
 import { embeddedHealthCheckName } from "../../lib/definition";
 import { formatBytes, formatDurationSeconds } from "../../lib/time";
@@ -68,7 +70,14 @@ const runColumns: Column<RunSummary>[] = [
   {
     id: "duration",
     header: "Duration",
-    render: (row) => (row.durationSeconds !== null ? formatDurationSeconds(row.durationSeconds) : "-"),
+    render: (row) => (
+      <RunDuration
+        durationSeconds={row.durationSeconds}
+        startUtc={row.startUtc}
+        endUtc={row.endUtc}
+        enqueuedUtc={row.enqueuedUtc}
+      />
+    ),
   },
   { id: "rowsLoaded", header: "Rows loaded", align: "right", render: (row) => numeric(row.rowsLoaded) },
   { id: "rowsInserted", header: "Inserted", align: "right", render: (row) => numeric(row.rowsInserted) },
@@ -274,6 +283,94 @@ function AvgFileSize({ pipelineId }: { pipelineId: string }) {
         </div>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * The header's run-time facts: how long the last run took (or, while one executes, how long it has run, counting up),
+ * and how long a run usually takes, the median of the newest successful runs, with the rest of the profile (average,
+ * fastest, slowest, how many runs) in the hover. Together they answer "is this run slow" at a glance: a run going on
+ * three times its usual is visible without opening the run history. A failed run says when it failed, not how long the
+ * work takes, so the usual figure reads successful runs only.
+ */
+function RunTimes({ pipelineId }: { pipelineId: string }) {
+  const durationsQuery = useQuery({
+    queryKey: ["pipelines", "run-durations", pipelineId],
+    queryFn: () => pipelineApi.runDurations(pipelineId),
+    enabled: pipelineId !== "",
+    refetchInterval: pollingInterval(15000),
+  });
+
+  const profile = durationsQuery.data;
+  if (durationsQuery.isError) {
+    return (
+      <>
+        <DetailPair label="Last run">-</DetailPair>
+        <DetailPair label="Usually takes">-</DetailPair>
+      </>
+    );
+  }
+
+  if (profile === undefined) {
+    return (
+      <>
+        <DetailPair label="Last run"><Skeleton className="h-4 w-16" /></DetailPair>
+        <DetailPair label="Usually takes"><Skeleton className="h-4 w-16" /></DetailPair>
+      </>
+    );
+  }
+
+  // The run executing now takes the place of the last finished one: how long it has run is the live question.
+  const current = profile.running ?? profile.last;
+  const usual = profile.medianSeconds;
+
+  return (
+    <>
+      <DetailPair label={profile.running !== null ? "Running for" : "Last run"}>
+        {current === null
+          ? <span className="text-muted-foreground">-</span>
+          : (
+            <span className="inline-flex items-baseline gap-1.5">
+              <RunDuration
+                durationSeconds={current.durationSeconds}
+                startUtc={current.startUtc}
+                endUtc={current.endUtc}
+                testId="pipeline-last-run-duration"
+              />
+              {current.status !== "succeeded" && current.status !== "running" && (
+                <span className="text-[11px] text-muted-foreground">{current.status}</span>
+              )}
+            </span>
+          )}
+      </DetailPair>
+      <DetailPair label="Usually takes">
+        {usual === null
+          ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-muted-foreground" data-testid="pipeline-usual-run">-</span>
+              </TooltipTrigger>
+              <TooltipContent>No successful run has been timed yet.</TooltipContent>
+            </Tooltip>
+          )
+          : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="font-mono tabular-nums" data-testid="pipeline-usual-run">{formatDurationSeconds(usual)}</span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <div className="flex flex-col gap-0.5">
+                  <span>{`The median of the last ${profile.runs} successful run${profile.runs === 1 ? "" : "s"}.`}</span>
+                  {profile.averageSeconds !== null && <span>{`Average ${formatDurationSeconds(profile.averageSeconds)}`}</span>}
+                  {profile.fastestSeconds !== null && profile.slowestSeconds !== null && (
+                    <span>{`Fastest ${formatDurationSeconds(profile.fastestSeconds)}, slowest ${formatDurationSeconds(profile.slowestSeconds)}`}</span>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
+      </DetailPair>
+    </>
   );
 }
 
@@ -563,6 +660,7 @@ export default function PipelineDetailPage() {
         <DetailPair label="Path">
           <TruncatedText text={detail.relativePath} mono maxWidth={240} copy copyTestId="copy-pipeline-path" />
         </DetailPair>
+        <RunTimes pipelineId={pipelineId} />
         {shows("files") && <DetailPair label="Avg file size"><AvgFileSize pipelineId={pipelineId} /></DetailPair>}
         <DetailPair label="First seen"><RelativeTime value={detail.firstSeenUtc} absolute /></DetailPair>
         <DetailPair label="Last seen"><RelativeTime value={detail.lastSeenUtc} absolute /></DetailPair>

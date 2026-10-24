@@ -18,6 +18,11 @@ namespace SqlFlow.ControlPlane.Api;
 /// <paramref name="LastCounts"/> is how the last fire actually ended: its members tallied by lifecycle state (the one
 /// run's own state for a single-member fire), null when the schedule has never fired or its runs have aged out. It is
 /// what makes "did the last execution succeed" answerable from the list without opening the run board.
+/// <paramref name="LastStartedUtc"/>, <paramref name="LastEndedUtc"/> and <paramref name="LastDurationSeconds"/> say
+/// when that fire ran and how long it took: from its first member's start to its last member's end
+/// (<see cref="RunSetTiming"/>), or the one run's own start, end and duration for a single-member fire. The end and the
+/// duration stay null while the fire is still executing, and every one of them is null when the schedule has never fired
+/// or its runs have aged out.
 /// <para><paramref name="AfterSchedules"/> are the schedules this one CHAINS BEHIND, empty when it is clock driven. A
 /// chained schedule has no cadence of its own and a null <paramref name="NextFireUtc"/>: it becomes due once, when its
 /// parents' fires complete, and with several parents it waits for all of them.
@@ -35,7 +40,8 @@ public sealed record ScheduleDto(
     RunGroupCountsDto? LastCounts, IReadOnlyList<string>? AfterSchedules = null,
     IReadOnlyList<ScheduleChainLinkDto>? TriggersSchedules = null,
     int ParentFreshnessHours = 24, string? LastStaleParents = null,
-    string? Operation = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null);
+    string? Operation = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null,
+    DateTime? LastStartedUtc = null, DateTime? LastEndedUtc = null, double? LastDurationSeconds = null);
 
 /// <summary>One link a schedule sets off, in chain order: the schedule that will fire, how many flows it runs, and
 /// whether it is currently able to (a disabled or paused link stops the chain there, and an operator about to start
@@ -510,11 +516,12 @@ public static class ScheduleEndpoints
             : TypedResults.Problem(detail: $"No schedule '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
     }
 
-    /// <summary>One (run group, status) tally from the last-fire pass.</summary>
-    private sealed record GroupStatusTally(Guid? GroupId, string Status, int Count);
+    /// <summary>One (run group, status) tally from the last-fire pass, with the earliest start and latest end among
+    /// the group's members in that state.</summary>
+    private sealed record GroupStatusTally(Guid? GroupId, string Status, int Count, DateTime? FirstStart, DateTime? LastEnd);
 
-    /// <summary>One single-run fire's current status, keyed by the run the schedule points at.</summary>
-    private sealed record RunStatusRow(Guid Id, string Status);
+    /// <summary>One single-run fire's current status and timing, keyed by the run the schedule points at.</summary>
+    private sealed record RunStatusRow(Guid Id, string Status, DateTime? StartUtc, DateTime? EndUtc, double? DurationSeconds);
 
     /// <summary>A schedule as the database returns it: everything but the last fire's outcome, which is tallied for
     /// the whole page in one pass rather than as a correlated subquery per row.</summary>
@@ -628,11 +635,11 @@ public static class ScheduleEndpoints
     }
 
     /// <summary>
-    /// Fills in how each schedule's last fire ended: the member states of the run group it enqueued, or the single
-    /// run's own state when the fire ran one flow. Two set-based queries for the whole page (one grouped tally over
-    /// the groups, one status read over the single runs) rather than a handful of correlated subqueries per row, so
-    /// the cost does not scale with page size. A schedule that never fired, or whose runs have aged out of the
-    /// catalog, gets a null tally: "unknown", never a fabricated success.
+    /// Fills in how each schedule's last fire ended and how long it took: the member states and the span of the run
+    /// group it enqueued, or the single run's own state and timing when the fire ran one flow. Two set-based queries for
+    /// the whole page (one grouped tally over the groups, one read over the single runs) rather than a handful of
+    /// correlated subqueries per row, so the cost does not scale with page size. A schedule that never fired, or whose
+    /// runs have aged out of the catalog, gets a null tally and no timing: "unknown", never a fabricated success.
     /// </summary>
     private static async Task<IReadOnlyList<ScheduleDto>> WithLastFireOutcomeAsync(
         CatalogDbContext db, IReadOnlyList<ScheduleRow> rows, CancellationToken ct)
@@ -652,7 +659,8 @@ public static class ScheduleEndpoints
             groupTallies = await db.Runs.AsNoTracking()
                 .Where(r => groupIds.Contains(r.GroupId))
                 .GroupBy(r => new { r.GroupId, r.Status })
-                .Select(g => new GroupStatusTally(g.Key.GroupId, g.Key.Status, g.Count()))
+                .Select(g => new GroupStatusTally(
+                    g.Key.GroupId, g.Key.Status, g.Count(), g.Min(r => r.StartUtc), g.Max(r => r.EndUtc)))
                 .ToListAsync(ct).ConfigureAwait(false);
         }
 
@@ -661,28 +669,38 @@ public static class ScheduleEndpoints
         {
             runStatuses = await db.Runs.AsNoTracking()
                 .Where(r => runIds.Contains(r.RunId))
-                .Select(r => new RunStatusRow(r.RunId, r.Status))
+                .Select(r => new RunStatusRow(r.RunId, r.Status, r.StartUtc, r.EndUtc, r.DurationSeconds))
                 .ToListAsync(ct).ConfigureAwait(false);
         }
 
         var byGroup = groupTallies
             .Where(t => t.GroupId is not null)
             .GroupBy(t => t.GroupId!.Value)
-            .ToDictionary(g => g.Key, g => Tally(g.Select(t => (t.Status, t.Count))));
-        var byRun = runStatuses.ToDictionary(r => r.Id, r => Tally([(r.Status, 1)]));
+            .ToDictionary(g => g.Key, g =>
+            {
+                var counts = Tally(g.Select(t => (t.Status, t.Count)));
+                var timing = RunSetTiming.Of(
+                    g.Min(t => t.FirstStart), g.Max(t => t.LastEnd), finished: counts.Queued + counts.Running == 0);
+                return (Counts: counts, Timing: timing);
+            });
+        // A single-member fire is its run: its own start, its end and duration once it is terminal.
+        var byRun = runStatuses.ToDictionary(r => r.Id, r =>
+        {
+            var finished = RunStatuses.IsTerminal(r.Status);
+            return (
+                Counts: Tally([(r.Status, 1)]),
+                Timing: new RunSetTiming(r.StartUtc, finished ? r.EndUtc : null, finished ? r.DurationSeconds : null));
+        });
         var chains = await ChainsAsync(db, rows, ct).ConfigureAwait(false);
 
         return rows.Select(r =>
         {
-            RunGroupCountsDto? counts = null;
-            if (r.LastGroupId is { } groupId)
-            {
-                byGroup.TryGetValue(groupId, out counts);
-            }
-            else if (r.LastRunId is { } runId)
-            {
-                byRun.TryGetValue(runId, out counts);
-            }
+            (RunGroupCountsDto Counts, RunSetTiming Timing) fire = default;
+            var known = r.LastGroupId is { } groupId
+                ? byGroup.TryGetValue(groupId, out fire)
+                : r.LastRunId is { } runId && byRun.TryGetValue(runId, out fire);
+            var counts = known ? fire.Counts : null;
+            var timing = known ? fire.Timing : null;
 
             chains.TryGetValue(r.Id, out var triggers);
 
@@ -693,7 +711,8 @@ public static class ScheduleEndpoints
                 // point to it. A single-member fire has no group, so this is always false there.
                 r.LastGroupId is not null && counts is { } c && c.Queued + c.Running > 0,
                 r.CreatedUtc, r.UpdatedUtc, r.MaxConcurrency, counts, r.AfterSchedules, triggers,
-                r.ParentFreshnessHours, r.LastStaleParents, r.Operation, RunParameters.ValuesFromJson(r.ValuesJson));
+                r.ParentFreshnessHours, r.LastStaleParents, r.Operation, RunParameters.ValuesFromJson(r.ValuesJson),
+                timing?.StartedUtc, timing?.EndedUtc, timing?.DurationSeconds);
         }).ToList();
     }
 

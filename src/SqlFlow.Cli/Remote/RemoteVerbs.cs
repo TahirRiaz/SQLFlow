@@ -472,6 +472,7 @@ internal static partial class RemoteVerbs
                     Note(json, $"group {group.GroupId}: {group.Mode} '{group.Anchor}', {group.MemberCount} member(s), enqueued {group.EnqueuedUtc:yyyy-MM-dd HH:mm:ss} UTC" +
                                (group.CommitSha is null ? string.Empty : $", commit {group.CommitSha}"));
                     Note(json, $"  {FormatCounts(group.Counts)}");
+                    Note(json, $"  {FormatGroupTiming(group)}");
                     if (!json)
                     {
                         foreach (var member in members.Items)
@@ -1111,6 +1112,20 @@ internal static partial class RemoteVerbs
 
     private static string FormatCounts(RunGroupCountsDto counts)
         => $"{counts.Total} total: {counts.Queued} queued, {counts.Running} running, {counts.Succeeded} succeeded, {counts.Failed} failed, {counts.Cancelled} cancelled, {counts.Skipped} skipped";
+
+    /// <summary>When a group ran and how long it took, and how long it waited before its first member started.</summary>
+    private static string FormatGroupTiming(RunGroupDto group)
+    {
+        if (group.StartedUtc is not { } started)
+        {
+            return group.EndedUtc is null ? "not started" : $"ended {FormatUtc(group.EndedUtc)} UTC without a member running";
+        }
+
+        var waited = $"waited {FormatDuration(Math.Max(0, (started - group.EnqueuedUtc).TotalSeconds))} in the queue";
+        return group.EndedUtc is { } ended
+            ? $"ran {FormatUtc(started)} to {FormatUtc(ended)} UTC, took {FormatDuration(group.DurationSeconds)}; {waited}"
+            : $"running since {FormatUtc(started)} UTC; {waited}";
+    }
 
     private static string FormatUtc(DateTime? value)
         => value is { } utc ? utc.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) : "-";

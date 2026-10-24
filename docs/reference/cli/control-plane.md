@@ -87,6 +87,9 @@ sqlflow runs trace <runId> [--follow]                                 # consolid
 sqlflow runs cancel <runId>                                           # API when a URL is configured; --db forces the
                                                                       # direct-catalog break-glass route
 sqlflow groups show <groupId> [--follow] | cancel <groupId> | rerun <groupId>
+                                                  # show: the rollup, when the group ran and how long it took
+                                                  # (first member's start to last member's end) and waited, then
+                                                  # each member with its duration
 ```
 
 ## Estate
@@ -95,6 +98,7 @@ sqlflow groups show <groupId> [--follow] | cancel <groupId> | rerun <groupId>
 sqlflow summary                                    # the dashboard rollup
 sqlflow nodes                                      # the worker fleet, heartbeat-derived liveness
 sqlflow schedules list | show <id> | create --repo r --flow f (--cron "0 6 * * *"|--interval 3600)
+                 # list: each schedule's next fire and LAST TOOK, how long its last fire took ("running" while it does)
                  [--timezone Europe/Oslo] [--disabled] [--catchup]
                  | pause <id> | resume <id> | delete <id>
 sqlflow repos list | show <name> | sync <name>     # git source sync-now, or local-path re-sync

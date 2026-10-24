@@ -26,13 +26,14 @@ import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RunDuration } from "../../components/RunDuration";
 import { RunStatusBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
 import { pollingInterval } from "../../hooks/usePolling";
 import { usePanel } from "../../layout/workbench/PanelContext";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
 import { embeddedHealthCheckName } from "../../lib/definition";
-import { formatBytes, formatDurationSeconds, parseUtc } from "../../lib/time";
+import { formatBytes, parseUtc } from "../../lib/time";
 import { kindContribution } from "../../modules/registry";
 import { RunTracePanel } from "./RunTracePanel";
 import { TriggerRunDialog } from "./TriggerRunDialog";
@@ -395,9 +396,13 @@ function RunDetailContent({ runId }: { runId: string }) {
         <DetailPair label="Started"><RelativeTime value={run.startUtc} absolute /></DetailPair>
         <DetailPair label="Ended"><RelativeTime value={run.endUtc} absolute /></DetailPair>
         <DetailPair label="Duration">
-          <span className="font-mono tabular-nums">
-            {run.durationSeconds != null ? formatDurationSeconds(run.durationSeconds) : "-"}
-          </span>
+          <RunDuration
+            durationSeconds={run.durationSeconds}
+            startUtc={run.startUtc}
+            endUtc={run.endUtc}
+            enqueuedUtc={run.enqueuedUtc}
+            testId="run-duration"
+          />
         </DetailPair>
         {kindRun?.headerDetails !== undefined
           ? kindRun.headerDetails(run)

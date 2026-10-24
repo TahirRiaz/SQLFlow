@@ -136,10 +136,11 @@ internal sealed record RunHealthCheckMetricDto(
 internal sealed record RunGroupCountsDto(
     int Total, int Queued, int Running, int Succeeded, int Failed, int Cancelled, int Skipped);
 
-/// <summary>One run group's header plus the live rollup of its members' states.</summary>
+/// <summary>One run group's header plus the live rollup of its members' states, and when it ran and how long it took
+/// (first member's start to last member's end; the end and duration stay null while it executes).</summary>
 internal sealed record RunGroupDto(
     Guid GroupId, Guid RepoId, string Mode, string Anchor, int MemberCount, string? CommitSha, DateTime EnqueuedUtc,
-    RunGroupCountsDto Counts);
+    RunGroupCountsDto Counts, DateTime? StartedUtc = null, DateTime? EndedUtc = null, double? DurationSeconds = null);
 
 /// <summary>Who the presented credential authenticates as (<c>GET /api/v1/me</c>).</summary>
 internal sealed record IdentityDto(string Subject, string? Role, IReadOnlyList<string> Scopes, Guid? UserId);
@@ -162,7 +163,8 @@ internal sealed record ScheduleDto(
     string Timezone, bool Enabled, bool Catchup, bool Paused, string Source, DateTime? NextFireUtc,
     DateTime? LastFireUtc, Guid? LastRunId, Guid? LastGroupId, bool LastGroupActive, DateTime CreatedUtc,
     DateTime UpdatedUtc, int? MaxConcurrency, RunGroupCountsDto? LastCounts, string? Operation = null,
-    [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null);
+    [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null,
+    DateTime? LastStartedUtc = null, DateTime? LastEndedUtc = null, double? LastDurationSeconds = null);
 
 /// <summary>Creates a schedule: at least one member flow, exactly one of cron / interval. The name defaults to the
 /// first member's flow name on the server. The operation and values are what every fire passes to the members of a

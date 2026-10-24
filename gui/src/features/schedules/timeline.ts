@@ -33,10 +33,10 @@ export function windowBounds(nowMs: number, days: number): { fromMs: number; toM
   return { fromMs: nowMs - days * DAY_MS, toMs: nowMs };
 }
 
-/** One run drawn as a bar: its execution window [startMs, endMs] and the status that colors it. The window is the
- * run's outcome instant (WrittenUtc) back-dated by its duration, so a bar's width reads as how long the run took;
- * a run with no recorded duration (still queued, or one that never timed) collapses to a zero-width marker the
- * chart widens to a minimum so it is still visible. */
+/** One run drawn as a bar: its execution window [startMs, endMs] and the status that colors it, so a bar's width reads
+ * as how long the run took. The window is the run's own start and end when it carries them; otherwise its outcome
+ * instant (WrittenUtc) back-dated by its duration. A run with neither (still queued, or one that never started)
+ * collapses to a zero-width marker the chart widens to a minimum so it is still visible. */
 export interface RunBar {
   runId: string;
   flowName: string;
@@ -86,14 +86,16 @@ export function triggerLabel(schedule: Schedule): string {
 }
 
 function toBar(run: RunSummary): RunBar {
-  const endMs = parseUtc(run.writtenUtc).getTime();
+  const endMs = parseUtc(run.endUtc ?? run.writtenUtc).getTime();
   const durationMs = run.durationSeconds !== null ? Math.max(0, run.durationSeconds) * 1000 : 0;
+  // A start recorded after the end (two clocks that disagree) draws a marker at the end rather than a bar running backwards.
+  const startMs = run.startUtc !== null ? Math.min(parseUtc(run.startUtc).getTime(), endMs) : endMs - durationMs;
   return {
     runId: run.runId,
     flowName: run.flowName,
     status: run.status,
     success: run.success,
-    startMs: endMs - durationMs,
+    startMs,
     endMs,
     durationSeconds: run.durationSeconds,
   };
