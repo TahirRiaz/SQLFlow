@@ -28,6 +28,8 @@ sourceRefs:
   - src/SqlFlow.Catalog/Migrations/20260915090833_RenameColumnPolicyToAllowList.cs
   - src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs
   - src/SqlFlow.Catalog/RunQueueStore.cs
+  - src/SqlFlow.Catalog/RunElapsed.cs
+  - src/SqlFlow.Catalog/Migrations/20261024092533_RunDurationFromStartAndEnd.cs
   - src/SqlFlow.Lineage/Collection/FlowSetCollector.cs
   - src/SqlFlow.Cli/Program.cs
 ---
@@ -128,9 +130,20 @@ Runs are insert-only, keyed by their own `RunId`, so re-syncing the same folders
 
 A run recorded from its artifact is born in a terminal `Status`: `succeeded` or `failed` from the artifact's `success` boolean. Queue-born runs (control plane) use the lifecycle `queued` -> `running` -> `succeeded` / `failed`, or `cancelled` while still queued (`RunStatuses` constants with an `IsTerminal` helper).
 
-Metric fields are best-effort from the kind-specific `result`: `StartUtc` / `EndUtc` from `result.startTimeUtc` / `endTimeUtc`, `DurationSeconds` from `result.durationSeconds` or `result.totalMs / 1000`, `RowsLoaded` from `result.rowsLoaded ?? result.totalRows`, plus `RowsInserted` / `RowsUpdated` / `RowsDeleted`; `Host` comes from the root's `host` field.
+Metric fields are best-effort from the kind-specific `result`: `StartUtc` / `EndUtc` from `result.startTimeUtc` / `endTimeUtc`, `DurationSeconds` from `result.durationSeconds` (seconds, fractions kept) or `result.totalMs / 1000`, `RowsLoaded` from `result.rowsLoaded ?? result.totalRows`, plus `RowsInserted` / `RowsUpdated` / `RowsDeleted`; `Host` comes from the root's `host` field.
 
 Per-run substitution columns make the built-in backfill auditable from history: `FullLoad`, `BackfillFrom` / `BackfillTo` (UTC), `FilePattern`. Queue-routing columns are `TargetPool` (null means any node), `CommitSha` (a pinned commit), `ClaimedByNode`, and `EnqueuedUtc`. The control plane's run queue sets these eight when it enqueues and claims a run (`RunQueueStore`, `src/SqlFlow.Catalog/RunQueueStore.cs`), not the run.json projection: a run recorded straight from an on-disk artifact leaves them at their defaults, since `run.json` carries none of them.
+
+### How long a run took
+
+`DurationSeconds` is the kind's own figure when its `result` carries one. A run whose kind reports none (a kind a host module registers need not) is timed by its instants instead, so every run that started and ended says how long it took (`RunElapsed`, `src/SqlFlow.Catalog/RunElapsed.cs`):
+
+- Projected from an artifact, it is the seconds from `result.startTimeUtc` to `result.endTimeUtc`.
+- Completed by the queue, it is the seconds from the run's `StartUtc` (its hand-out, unless the artifact names its own start) to its `EndUtc` (the artifact's end, or the completion).
+- Ended without an artifact (a failure its node reported, an operator's cancel the node honoured, an interrupted run failed or cancelled for it), it is the seconds from the hand-out to that end, timed in the database: to the millisecond for a run under 24 days, in whole seconds beyond that, where `DATEDIFF` in milliseconds would overflow.
+- A run that never started (cancelled, skipped or failed while still queued) has no duration, and neither has one whose end is recorded before its start.
+
+The migration `RunDurationFromStartAndEnd` gave every finished run recorded before this its duration from the same two instants.
 
 ### Drill-down tables
 

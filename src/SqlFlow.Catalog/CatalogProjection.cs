@@ -634,6 +634,8 @@ public static class CatalogProjection
         var result = Prop(root, "result");
         var success = Bool(root, "success") ?? false;
         var incremental = result is { } inc ? Prop(inc, "incremental") : null;
+        var startUtc = result is { } r1 ? Date(r1, "startTimeUtc") : null;
+        var endUtc = result is { } r2 ? Date(r2, "endTimeUtc") : null;
 
         return new CatalogRun
         {
@@ -648,9 +650,11 @@ public static class CatalogProjection
             SchemaVersion = Int(Long(root, "schemaVersion")),
             WrittenUtc = Date(root, "writtenUtc") ?? default,
             Error = NullIfBlank(Str(root, "error")),
-            StartUtc = result is { } r1 ? Date(r1, "startTimeUtc") : null,
-            EndUtc = result is { } r2 ? Date(r2, "endTimeUtc") : null,
-            DurationSeconds = DurationSeconds(result),
+            StartUtc = startUtc,
+            EndUtc = endUtc,
+            // The kind's own figure when it reports one; a kind that reports only when it started and ended is timed by
+            // those two instants, so its run still says how long it took.
+            DurationSeconds = DurationSeconds(result) ?? RunElapsed.Seconds(startUtc, endUtc),
             // Each flow kind names its "rows read from the source" field for its own domain: a file flow lands
             // rowsLoaded/totalRows, an ingestion flow stages rowsStaged. Reading only the first two left RowsLoaded
             // NULL on every ingestion run ever recorded, so the GUI showed no rows for flows that were staging and
@@ -715,7 +719,9 @@ public static class CatalogProjection
             return null;
         }
 
-        if (Long(r, "durationSeconds") is { } seconds)
+        // Read as a fraction: a kind times its run to the millisecond (an ingestion run reports 1.234), and reading the
+        // field as a whole number dropped every such value, leaving those runs with no duration at all.
+        if (Dbl(r, "durationSeconds") is { } seconds)
         {
             return seconds;
         }

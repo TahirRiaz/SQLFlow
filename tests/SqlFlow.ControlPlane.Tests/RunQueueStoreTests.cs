@@ -376,6 +376,96 @@ public sealed class RunQueueStoreTests
         }
     }
 
+    [SkippableFact]
+    public async Task CompleteFromArtifact_AKindThatReportsNoDuration_IsTimedFromItsHandOutToItsCompletion()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var handedOut = new DateTime(2026, 6, 19, 9, 0, 0, DateTimeKind.Utc);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), handedOut)).RunId;
+            Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, handedOut));
+
+            var recorded = await RunQueueStore.RecordOutcomeAsync(
+                db, runId, Node, 1, RunOutcomeKind.Completed, null, ArtifactWithoutTiming(runId, flowName),
+                handedOut.AddSeconds(90.5));
+            Assert.Equal(RunOutcomeStatus.Recorded, recorded.Status);
+
+            var done = await Reload(db, runId);
+            Assert.Equal(RunStatuses.Succeeded, done.Status);
+            Assert.Equal(90.5, done.DurationSeconds);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task EndingARunWithoutAnArtifact_TimesItFromItsHandOut_AndARunThatNeverStartedHasNone()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var handedOut = new DateTime(2026, 6, 19, 9, 0, 0, DateTimeKind.Utc);
+
+            async Task<Guid> RunningAsync(string suffix)
+            {
+                var runId = (await RunQueueStore.EnqueueAsync(
+                    db, new RunEnqueueRequest(repoId, flowName + suffix, "ing"), handedOut)).RunId;
+                Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, handedOut));
+                return runId;
+            }
+
+            // A failure its node reported, timed to the millisecond.
+            var failed = await RunningAsync("_f");
+            await RunQueueStore.RecordOutcomeAsync(
+                db, failed, Node, 1, RunOutcomeKind.Failed, "boom", null, handedOut.AddSeconds(12.25));
+            Assert.Equal(12.25, (await Reload(db, failed)).DurationSeconds);
+
+            // An operator's cancel the node honoured while the run executed.
+            var cancelled = await RunningAsync("_c");
+            await RunQueueStore.RecordOutcomeAsync(
+                db, cancelled, Node, 1, RunOutcomeKind.Cancelled, null, null, handedOut.AddMinutes(3));
+            Assert.Equal(180, (await Reload(db, cancelled)).DurationSeconds);
+
+            // A run whose node died after weeks of work: past what DATEDIFF counts in milliseconds, it is timed in whole
+            // seconds, and the write that ends it does not fail on an overflow.
+            var interrupted = await RunningAsync("_i");
+            Assert.True((await RunQueueStore.FailInterruptedAsync(
+                db, interrupted, Node, 1, handedOut.AddDays(30).AddMilliseconds(500))).Applied);
+            var longRun = await Reload(db, interrupted);
+            Assert.Equal(RunStatuses.Failed, longRun.Status);
+            Assert.Equal(30 * 86_400, longRun.DurationSeconds);
+
+            // A run cancelled before any node took it never started, so it has no duration.
+            var queued = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, flowName + "_q", "ing"), handedOut)).RunId;
+            Assert.Equal(CancelOutcome.Cancelled, await RunQueueStore.CancelAsync(db, queued, handedOut.AddMinutes(1)));
+            var neverStarted = await Reload(db, queued);
+            Assert.Null(neverStarted.StartUtc);
+            Assert.Null(neverStarted.DurationSeconds);
+
+            // Nor does one failed while still queued.
+            var failedQueued = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, flowName + "_fq", "ing"), handedOut)).RunId;
+            Assert.True((await RunQueueStore.FailAsync(db, failedQueued, "refused", handedOut.AddMinutes(1))).Applied);
+            Assert.Null((await Reload(db, failedQueued)).DurationSeconds);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
     [Fact]
     public void RunStatements_ProjectsTheErrorOntoTheFailingStatementOnly()
     {
@@ -668,6 +758,21 @@ public sealed class RunQueueStoreTests
               "success": {{(success ? "true" : "false")}},
               "writtenUtc": "2026-06-19T10:00:00Z",
               "result": { "rowsLoaded": {{rowsLoaded}}, "durationSeconds": 1.0 }
+            }
+            """;
+
+    // A completed artifact that says nothing about time, as a kind a host module registers may write it: no duration and
+    // no start or end instant in its result.
+    private static string ArtifactWithoutTiming(Guid runId, string flowName)
+        => $$"""
+            {
+              "schemaVersion": 1,
+              "flowKind": "ing",
+              "flowName": "{{flowName}}",
+              "runId": "{{runId}}",
+              "success": true,
+              "writtenUtc": "2026-06-19T10:00:00Z",
+              "result": { "rowsLoaded": 5 }
             }
             """;
 

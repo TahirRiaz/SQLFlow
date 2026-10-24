@@ -269,13 +269,13 @@ public sealed class CatalogProjectionEdgeCaseTests
     }
 
     [Fact]
-    public void RunFromJson_FractionalDurationSecondsWithoutTotalMs_YieldsNull()
+    public void RunFromJson_FractionalDurationSecondsWithoutTotalMs_IsKept()
     {
-        // durationSeconds is read as an integer; a fractional value is not an Int64 and currently drops to null
-        // (there is no totalMs fallback here), so the duration is lost. Asserting the observed behavior.
+        // An ingestion run times itself to the millisecond. Read as a whole number the field was dropped, and every such
+        // run showed when it ran but never how long.
         var run = CatalogProjection.RunFromJson(RunDoc("ing", """{ "durationSeconds": 5.5 }"""), RepoA);
         Assert.NotNull(run);
-        Assert.Null(run!.DurationSeconds);
+        Assert.Equal(5.5, run!.DurationSeconds);
     }
 
     [Fact]

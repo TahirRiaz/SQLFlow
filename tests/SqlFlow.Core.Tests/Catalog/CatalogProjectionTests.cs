@@ -89,6 +89,46 @@ public sealed class CatalogProjectionTests
         Assert.NotNull(run.EndUtc);
     }
 
+    [Fact]
+    public void RunFromJson_AKindThatReportsOnlyItsInstants_IsTimedByThem()
+    {
+        var run = CatalogProjection.RunFromJson(Json("""
+            {
+              "flowKind": "custom",
+              "flowName": "estate-delivery",
+              "runId": "55555555-5555-5555-5555-555555555555",
+              "success": true,
+              "writtenUtc": "2026-06-17T11:00:00Z",
+              "result": { "startTimeUtc": "2026-06-17T10:58:30.250Z", "endTimeUtc": "2026-06-17T11:00:00Z" }
+            }
+            """), Repo);
+
+        Assert.NotNull(run);
+        Assert.Equal(89.75, run!.DurationSeconds);
+    }
+
+    [Theory]
+    // No instants at all: nothing to time the run by.
+    [InlineData("""{ "rowsLoaded": 3 }""")]
+    // An end recorded before the start says the clocks disagree, not how long the run took.
+    [InlineData("""{ "startTimeUtc": "2026-06-17T11:00:00Z", "endTimeUtc": "2026-06-17T10:59:00Z" }""")]
+    public void RunFromJson_WithoutAUsableDurationOrPairOfInstants_HasNoDuration(string result)
+    {
+        var run = CatalogProjection.RunFromJson(Json($$"""
+            {
+              "flowKind": "custom",
+              "flowName": "estate-delivery",
+              "runId": "66666666-6666-6666-6666-666666666666",
+              "success": true,
+              "writtenUtc": "2026-06-17T11:00:00Z",
+              "result": {{result}}
+            }
+            """), Repo);
+
+        Assert.NotNull(run);
+        Assert.Null(run!.DurationSeconds);
+    }
+
     [Theory]
     [InlineData("""{ "flowKind": "file", "success": true, "writtenUtc": "2026-06-17T10:00:00Z" }""")] // no runId
     [InlineData("""{ "runId": "33333333-3333-3333-3333-333333333333", "flowKind": "file" }""")]        // no flowName

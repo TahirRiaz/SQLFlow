@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using SqlFlow.Core.Runs;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Dispatch;
@@ -760,6 +761,7 @@ public static class RunQueueStore
             existing.Status = RunStatuses.Failed;
             existing.Success = false;
             existing.EndUtc = nowUtc;
+            existing.DurationSeconds = RunElapsed.Seconds(existing.StartUtc, nowUtc);
             existing.WrittenUtc = nowUtc;
             existing.Error = $"the run executed but its result could not be recorded: {readError}.";
             // An unrecordable run is still a failed group member: its dependents are stranded like any other failure's.
@@ -799,12 +801,7 @@ public static class RunQueueStore
             .Where(r => r.RunId == runId && (r.Status == RunStatuses.Queued || r.Status == RunStatuses.Running))
             .Where(r => claimedByNode == null
                 || (r.Status == RunStatuses.Running && r.ClaimedByNode == claimedByNode && r.Attempt == claimAttempt))
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, RunStatuses.Failed)
-                .SetProperty(r => r.Success, false)
-                .SetProperty(r => r.Error, error)
-                .SetProperty(r => r.EndUtc, nowUtc)
-                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+            .ExecuteUpdateAsync(Ended(RunStatuses.Failed, error, nowUtc), ct)
             .ConfigureAwait(false);
 
         if (failed == 0)
@@ -918,12 +915,8 @@ public static class RunQueueStore
         var cancelled = await catalog.Runs
             .Where(r => r.RunId == runId && r.Status == RunStatuses.Running)
             .Where(r => claimedByNode == null || (r.ClaimedByNode == claimedByNode && r.Attempt == claimAttempt))
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, RunStatuses.Cancelled)
-                .SetProperty(r => r.Success, false)
-                .SetProperty(r => r.Error, "The run was cancelled by an operator while executing.")
-                .SetProperty(r => r.EndUtc, nowUtc)
-                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+            .ExecuteUpdateAsync(
+                Ended(RunStatuses.Cancelled, "The run was cancelled by an operator while executing.", nowUtc), ct)
             .ConfigureAwait(false);
 
         if (cancelled == 0)
@@ -1185,6 +1178,33 @@ public static class RunQueueStore
         return new FanOutMembersEnded(cancelledIds, requested);
     }
 
+    /// <summary>
+    /// The one write that ends a run without an artifact (a failure its node reported, an operator's cancel the node
+    /// honoured, an interrupted run failed or cancelled for it): the terminal state, the reason, the end instant, and how
+    /// long the run took, timed in the database from the instant it was handed out. A run that never started (failed
+    /// while still queued) gets no duration. A run under <see cref="RunElapsed.MillisecondSpan"/> is timed to the
+    /// millisecond; a longer one in whole seconds, where <c>DATEDIFF</c> in milliseconds would overflow and fail the
+    /// write that ends it.
+    /// </summary>
+    private static Expression<Func<SetPropertyCalls<CatalogRun>, SetPropertyCalls<CatalogRun>>> Ended(
+        string status, string error, DateTime nowUtc)
+    {
+        var timedInMilliseconds = nowUtc - RunElapsed.MillisecondSpan;
+        return s => s
+            .SetProperty(r => r.Status, status)
+            .SetProperty(r => r.Success, false)
+            .SetProperty(r => r.Error, error)
+            .SetProperty(r => r.EndUtc, nowUtc)
+            .SetProperty(r => r.WrittenUtc, nowUtc)
+            .SetProperty(
+                r => r.DurationSeconds,
+                r => r.StartUtc == null || r.StartUtc > nowUtc
+                    ? null
+                    : r.StartUtc >= timedInMilliseconds
+                        ? EF.Functions.DateDiffMillisecond(r.StartUtc.Value, nowUtc) / 1000.0
+                        : (double?)EF.Functions.DateDiffSecond(r.StartUtc.Value, nowUtc));
+    }
+
     private static string InterruptedTerminalError(string node, int attempt) =>
         $"Run interrupted: its node '{node}' stopped without recording an outcome, and this was execution "
         + $"attempt {attempt} of {MaxExecutionAttempts}, so it is not requeued again (a run that repeatedly dies "
@@ -1241,12 +1261,7 @@ public static class RunQueueStore
         var failed = await catalog.Runs
             .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
                 && r.ClaimedByNode == node && r.Attempt == attempt)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, RunStatuses.Failed)
-                .SetProperty(r => r.Success, false)
-                .SetProperty(r => r.Error, InterruptedTerminalError(node, attempt))
-                .SetProperty(r => r.EndUtc, nowUtc)
-                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+            .ExecuteUpdateAsync(Ended(RunStatuses.Failed, InterruptedTerminalError(node, attempt), nowUtc), ct)
             .ConfigureAwait(false);
         if (failed == 0)
         {
@@ -1268,12 +1283,12 @@ public static class RunQueueStore
         var cancelled = await catalog.Runs
             .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
                 && r.ClaimedByNode == node && r.Attempt == attempt)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, RunStatuses.Cancelled)
-                .SetProperty(r => r.Success, false)
-                .SetProperty(r => r.Error, "The run was cancelled by an operator; its node stopped before recording the cancellation.")
-                .SetProperty(r => r.EndUtc, nowUtc)
-                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+            .ExecuteUpdateAsync(
+                Ended(
+                    RunStatuses.Cancelled,
+                    "The run was cancelled by an operator; its node stopped before recording the cancellation.",
+                    nowUtc),
+                ct)
             .ConfigureAwait(false);
         if (cancelled == 0)
         {
@@ -1407,7 +1422,9 @@ public static class RunQueueStore
         target.WrittenUtc = projected.WrittenUtc == default ? nowUtc : projected.WrittenUtc;
         target.StartUtc = projected.StartUtc ?? target.StartUtc;
         target.EndUtc = projected.EndUtc ?? nowUtc;
-        target.DurationSeconds = projected.DurationSeconds;
+        // The kind's own figure when its artifact carries one. A kind that reports none (a host module's kind need not)
+        // is timed from its hand-out to this completion, so every run the queue dispatched says how long it took.
+        target.DurationSeconds = projected.DurationSeconds ?? RunElapsed.Seconds(target.StartUtc, target.EndUtc);
         target.RowsLoaded = projected.RowsLoaded;
         target.RowsInserted = projected.RowsInserted;
         target.RowsUpdated = projected.RowsUpdated;

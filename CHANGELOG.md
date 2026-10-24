@@ -117,4 +117,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open-source project scaffolding: license, contribution guide, code of conduct, security policy,
   CI, and central package management.
 
+### Fixed
+- Every run says how long it took, whatever its flow kind. An ingestion run's duration was dropped because it is a
+  fraction of a second, and a kind a host module registers reports none, so those runs showed when they ran and never
+  how long. A run whose kind reports no duration is now timed from its start to its end, a run failed, cancelled or
+  interrupted without an artifact from its hand-out to its end, and the migration `RunDurationFromStartAndEnd` gives
+  the runs already recorded theirs. The Insights page's averages, slowest runs and slowdown alerts read these
+  durations too ([How long a run took](docs/reference/concepts/shadow-catalog.md#how-long-a-run-took)).
+
 [Unreleased]: https://github.com/TahirRiaz/SQLFlow/commits/master

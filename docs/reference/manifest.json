@@ -1568,6 +1568,8 @@
         "src/SqlFlow.Catalog/Migrations/20260915090833_RenameColumnPolicyToAllowList.cs",
         "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
         "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.Catalog/RunElapsed.cs",
+        "src/SqlFlow.Catalog/Migrations/20261024092533_RunDurationFromStartAndEnd.cs",
         "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
         "src/SqlFlow.Cli/Program.cs"
       ]
