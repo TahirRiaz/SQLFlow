@@ -12,8 +12,9 @@ namespace SqlFlow.Tests.Integration;
 /// staged, with the repository's id and materialized root; the tallies of all extensions are summed onto the result and
 /// their warnings reported; and an extension that throws, or returns no result, fails the sync and rolls every write
 /// back, so the catalog never shows a repository half reconciled. An extension also decides whether an otherwise
-/// unchanged estate recomputes its lineage, because a companion document it owns can change what a flow declares.
-/// Cleans up its own repository's rows.
+/// unchanged estate recomputes its lineage, because a companion document it owns can change what a flow declares, and
+/// does its work after the sync's transaction committed, every extension once all of them reconciled, with what it reports
+/// joined to the result. Cleans up its own repository's rows.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
@@ -165,6 +166,62 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         }
     }
 
+    [SkippableFact]
+    public async Task CommittedWork_RunsOnceTheTransactionCommitted_AfterEveryExtensionReconciled_AndItsWarningsAreReported()
+    {
+        var cs = IntegrationDb.Require();
+        var (repo, repoId, flowName) = NewEstate();
+        await CatalogDatabase.MigrateAsync(cs);
+        var calls = new List<string>();
+        var first = new CommittingExtension("first", cs, flowName, calls, "moved what the reconciliation recorded.");
+        var second = new CommittingExtension("second", cs, flowName, calls, null);
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var result = await new CatalogSync(YamlDocumentLoader.CreateDefault(), [first, second]).SyncAsync(db, _dir, repo, null, DateTime.UtcNow);
+
+            Assert.Equal(["first:sync", "second:sync", "first:committed", "second:committed"], calls);
+            Assert.Equal("moved what the reconciliation recorded.", Assert.Single(result.Warnings, w => w.StartsWith("moved", StringComparison.Ordinal)));
+            foreach (var extension in new[] { first, second })
+            {
+                Assert.Equal(repoId, extension.CommittedRepoId);
+                Assert.False(extension.CommittedInTransaction);
+                Assert.True(extension.SawCommittedPipeline);
+            }
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId, repo);
+        }
+    }
+
+    [SkippableFact]
+    public async Task CommittedWorkThatThrows_Escapes_WithTheSyncCommitted()
+    {
+        var cs = IntegrationDb.Require();
+        var (repo, repoId, flowName) = NewEstate();
+        await CatalogDatabase.MigrateAsync(cs);
+        var failing = new CommittingExtension("failing", cs, flowName, [], null) { Failure = new InvalidOperationException("the moves could not be made.") };
+
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                var failure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                    new CatalogSync(YamlDocumentLoader.CreateDefault(), [failing]).SyncAsync(db, _dir, repo, null, DateTime.UtcNow));
+                Assert.Equal("the moves could not be made.", failure.Message);
+            }
+
+            await using var check = CatalogDatabase.Create(cs);
+            Assert.True(await check.Pipelines.AnyAsync(p => p.RepoId == repoId && p.Name == flowName));
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId, repo);
+        }
+    }
+
     private async Task<CatalogSyncResult> SyncWithAsync(string cs, string repo, ICatalogSyncExtension extension)
     {
         await using var db = CatalogDatabase.Create(cs);
@@ -247,6 +304,49 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
             }
 
             return Task.FromResult(tally);
+        }
+    }
+
+    /// <summary>
+    /// Records the order it is called in, and whether its work after the commit runs outside any transaction and finds the
+    /// sync's pipeline committed, read on a connection of its own; reports a warning from that work, or throws there.
+    /// </summary>
+    private sealed class CommittingExtension(string name, string cs, string flowName, List<string> calls, string? warning) : ICatalogSyncExtension
+    {
+        public Exception? Failure { get; init; }
+
+        public Guid CommittedRepoId { get; private set; }
+
+        public bool CommittedInTransaction { get; private set; }
+
+        public bool SawCommittedPipeline { get; private set; }
+
+        public Task<CatalogSyncExtensionResult> SyncAsync(
+            CatalogDbContext context, Guid repoId, string root, DateTime nowUtc, ICollection<string> warnings, CancellationToken ct)
+        {
+            calls.Add(name + ":sync");
+            return Task.FromResult(CatalogSyncExtensionResult.Empty);
+        }
+
+        public async Task CommittedAsync(CatalogDbContext context, Guid repoId, string root, DateTime nowUtc, ICollection<string> warnings, CancellationToken ct)
+        {
+            calls.Add(name + ":committed");
+            CommittedRepoId = repoId;
+            CommittedInTransaction = context.Database.CurrentTransaction is not null;
+            await using (var other = CatalogDatabase.Create(cs))
+            {
+                SawCommittedPipeline = await other.Pipelines.AnyAsync(p => p.RepoId == repoId && p.Name == flowName, ct);
+            }
+
+            if (Failure is not null)
+            {
+                throw Failure;
+            }
+
+            if (warning is not null)
+            {
+                warnings.Add(warning);
+            }
         }
     }
 

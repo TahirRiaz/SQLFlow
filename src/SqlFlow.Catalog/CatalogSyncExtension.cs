@@ -22,8 +22,9 @@ public sealed record CatalogSyncExtensionResult(int Added, int Updated, int Unch
 /// inside its reconciliation transaction, after the pipelines, runs and lineage, with the repository's materialized
 /// root; the extension reconciles its rows for that repository through the same connection and transaction and
 /// reports the tally. A document-level problem is reported as a warning; an exception fails the whole sync and rolls
-/// every write back, so the catalog never shows a repository half reconciled. Extensions are registered in the host's
-/// composition root, so the catalog never depends on the modules that exist.
+/// every write back, so the catalog never shows a repository half reconciled. Once the transaction has committed, the
+/// sync calls every extension again (<see cref="ICatalogSyncExtension.CommittedAsync"/>) for the work that must not hold
+/// it. Extensions are registered in the host's composition root, so the catalog never depends on the modules that exist.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -64,4 +65,22 @@ public interface ICatalogSyncExtension
     /// <param name="ct">Cancellation.</param>
     Task<bool> LineageInputsChangedAsync(CatalogDbContext context, Guid repoId, string root, CancellationToken ct)
         => Task.FromResult(false);
+
+    /// <summary>
+    /// The extension's work for the repository once the sync's transaction has committed: work too long to hold the
+    /// serializable transaction for, or that commits in steps of its own, such as carrying out what the extension's
+    /// reconciliation recorded in the transaction. The sync calls every registered extension in turn, on its context,
+    /// outside any transaction, after every extension's <see cref="SyncAsync"/>, and joins the warnings to its result. The
+    /// sync has landed by then, so an exception escapes with the sync's rows committed: an extension reports what it can as
+    /// a warning, and works from what its rows record, so the next sync carries on with what an earlier one left. The
+    /// default does nothing.
+    /// </summary>
+    /// <param name="context">The sync's catalog context, its transaction committed.</param>
+    /// <param name="repoId">The repository that was synced.</param>
+    /// <param name="root">The repository's materialized root directory.</param>
+    /// <param name="nowUtc">The sync's timestamp.</param>
+    /// <param name="warnings">Where what the work did, or could not do, is reported in the sync's result.</param>
+    /// <param name="ct">Cancellation.</param>
+    Task CommittedAsync(CatalogDbContext context, Guid repoId, string root, DateTime nowUtc, ICollection<string> warnings, CancellationToken ct)
+        => Task.CompletedTask;
 }

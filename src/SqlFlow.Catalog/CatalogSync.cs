@@ -317,7 +317,7 @@ public sealed class CatalogSync
             // so it is a single retriable unit. The control plane enables connection resiliency
             // (EnableRetryOnFailure); EF then forbids a user-initiated transaction unless wrapped this way. A
             // retried attempt re-stages its rows from the phase-one artifacts, never from half-tracked state.
-            return await CatalogTransaction.InSerializableAsync(context, async () =>
+            var result = await CatalogTransaction.InSerializableAsync(context, async () =>
             {
                 // The repo's schedule-name lock comes first, before this transaction takes any other lock, so the
                 // name check below and the schedule writes later in this transaction are one step against an API
@@ -414,6 +414,7 @@ public sealed class CatalogSync
                     Warnings = [.. warnings, .. scheduleWarnings, .. extensionWarnings],
                 };
             }, ct).ConfigureAwait(false);
+            return await CommittedAsync(context, repoId, root, nowUtc, result, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -710,6 +711,22 @@ public sealed class CatalogSync
         }
 
         return kept;
+    }
+
+    /// <summary>
+    /// Lets every extension do its work for the repository now that the sync's transaction has committed
+    /// (<see cref="ICatalogSyncExtension.CommittedAsync"/>), and joins what they report to the result's warnings.
+    /// </summary>
+    private async Task<CatalogSyncResult> CommittedAsync(
+        CatalogDbContext context, Guid repoId, string root, DateTime nowUtc, CatalogSyncResult result, CancellationToken ct)
+    {
+        var committedWarnings = new List<string>();
+        foreach (var extension in _extensions)
+        {
+            await extension.CommittedAsync(context, repoId, root, nowUtc, committedWarnings, ct).ConfigureAwait(false);
+        }
+
+        return committedWarnings.Count == 0 ? result : result with { Warnings = [.. result.Warnings, .. committedWarnings] };
     }
 
     /// <summary>Whether any extension reports that a document it owns changed in a way the lineage of the flows depends
