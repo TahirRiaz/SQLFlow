@@ -26,10 +26,11 @@ import type {
   PrepareQueryRequest, PreparedQuery,
   FlowParameters,
   PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineRunDurations, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
-  RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry, RunTraceStorage, RunTraceRetention, RunTraceRetentionUpdate, RunStatementPurgeResult, RunEventPurgeResult,
+  RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry,
   RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
   RunTriggerAccepted, RunTriggerRequest, Schedule, ScheduleCreated, ScheduleDefinition, SchedulePlan, ScheduleRunAccepted, SessionResponse, TokenResponse,
-  SearchHit, SourceDiscoverRequest, SourceDiscoverResult, Subscriber, SubscriberDossier, SubscriberHit,
+  SearchHit, SourceDiscoverRequest, SourceDiscoverResult, StorageCleanup, StorageCleanupPreview, StorageDays, StorageReport,
+  StorageRetention, Subscriber, SubscriberDossier, SubscriberHit,
   UpdateNotificationSubscriptionRequest, UpdateUserProfileRequest, User, Wave, WorkerPool, WorkerPoolScaleRequest,
 } from "./types";
 
@@ -749,12 +750,18 @@ export const chatApi = {
 };
 
 export const maintenanceApi = {
-  traceStorage: () => get<RunTraceStorage>("/api/v1/maintenance/trace-storage"),
-  /** Set how many days to keep superseded SQL statements, or null to keep forever (age-based pruning off). */
-  setStatementRetention: (retentionDays: number | null) =>
-    put<RunTraceRetention>("/api/v1/maintenance/statement-retention", { retentionDays } satisfies RunTraceRetentionUpdate),
-  /** Delete all generated SQL statements now and return how many rows were deleted; run events are never touched. */
-  purgeStatements: () => post<RunStatementPurgeResult>("/api/v1/maintenance/statements/purge"),
-  /** Delete all run events now and return how many rows were deleted; the deliberate escape hatch (events are never auto-pruned). */
-  purgeEvents: () => post<RunEventPurgeResult>("/api/v1/maintenance/events/purge"),
+  /** What the database holds, area by area, with each area's verdict, size, retention and latest cleanup. */
+  storage: () => get<StorageReport>("/api/v1/maintenance/storage"),
+  /** An area's cleanups, newest first. */
+  cleanups: (areaId: string, take = 50) =>
+    get<StorageCleanup[]>(`/api/v1/maintenance/areas/${encodeURIComponent(areaId)}/cleanups`, { take }),
+  /** What a cleanup keeping `days` would remove now; changes nothing. */
+  preview: (areaId: string, days: number) =>
+    post<StorageCleanupPreview>(`/api/v1/maintenance/areas/${encodeURIComponent(areaId)}/preview`, { days } satisfies StorageDays),
+  /** Sets how many days an area's data stays, or null for no limit (admin). */
+  setRetention: (areaId: string, days: number | null) =>
+    put<StorageRetention>(`/api/v1/maintenance/areas/${encodeURIComponent(areaId)}/retention`, { days } satisfies StorageDays),
+  /** Starts a cleanup keeping `days` (admin); answers its open entry, which closes when the cleanup ends. */
+  cleanUp: (areaId: string, days: number) =>
+    post<StorageCleanup>(`/api/v1/maintenance/areas/${encodeURIComponent(areaId)}/cleanup`, { days } satisfies StorageDays),
 };

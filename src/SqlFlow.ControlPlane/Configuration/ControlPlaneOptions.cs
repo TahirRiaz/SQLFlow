@@ -42,7 +42,7 @@ public sealed class ControlPlaneOptions
 
     public NotificationOptions Notifications { get; set; } = new();
 
-    public RunTraceRetentionOptions RunTrace { get; set; } = new();
+    public MaintenanceOptions Maintenance { get; set; } = new();
 
     public DataStreamOptions DataStreams { get; set; } = new();
 
@@ -126,7 +126,7 @@ public sealed class ControlPlaneOptions
         Bootstrap.Validate();
         Proxy.Validate();
         Notifications.Validate();
-        RunTrace.Validate();
+        Maintenance.Validate();
         Assistant.Validate();
         DataOps.Validate();
         AiContext.Validate(Assistant.Anthropic);
@@ -560,29 +560,24 @@ public sealed class WorkerOptions
 }
 
 /// <summary>
-/// Housekeeping for the per-run SQL trace. Every run persists its generated statements (the RunStatement table, a
-/// full SQL blob per statement) and its events (RunEvent); across a busy estate these two tables grow without
-/// bound and are almost never read once a run is old and succeeded. This prunes that detail on a cadence, keeping
-/// only what stays useful: each pipeline's most recent run, every failed run (so the offending SQL is always there
-/// to debug), any run still in flight, and anything still inside the grace window. The run header row itself (its
-/// stats and its error message) is never touched, so the history and every failure reason stay complete and only
-/// the heavy, unread detail is reclaimed. The manual GUI trigger runs the exact same prune on demand.
+/// The Maintenance page's automatic cleanup: a pass on every replica that applies the retention an admin set for each storage
+/// area (SQLFlow's own and a module's), records what it removed, closes cleanups a stopped control plane left open, and trims
+/// the cleanup log. An area with no retention set is never touched, so the pass does nothing until an admin sets one.
 /// </summary>
-public sealed class RunTraceRetentionOptions
+public sealed class MaintenanceOptions
 {
-    /// <summary>Turns the automatic pruning sweep off. Off means the two trace tables grow unbounded until someone
-    /// triggers the manual cleanup, which still works. On by default. Note the sweep also does nothing while no
-    /// retention period is set (that setting is operator-tunable from the GUI and defaults to "keep forever").</summary>
+    /// <summary>Runs the automatic cleanup pass. On by default; off, nothing is removed but what an admin cleans up by hand
+    /// from the Maintenance page.</summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>How often the automatic prune sweep runs (when enabled and a retention period is set).</summary>
+    /// <summary>How often the pass runs.</summary>
     public int PollSeconds { get; set; } = 3600;
 
     public void Validate()
     {
         if (PollSeconds < 1)
         {
-            throw new InvalidOperationException("ControlPlane:RunTrace:PollSeconds must be positive.");
+            throw new InvalidOperationException("ControlPlane:Maintenance:PollSeconds must be positive.");
         }
     }
 }

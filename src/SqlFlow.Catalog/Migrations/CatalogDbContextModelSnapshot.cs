@@ -536,24 +536,59 @@ namespace SqlFlow.Catalog.Migrations
                     b.ToTable("LineageEdge", "catalog");
                 });
 
-            modelBuilder.Entity("SqlFlow.Catalog.CatalogMaintenanceSetting", b =>
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogMaintenanceCleanup", b =>
                 {
-                    b.Property<int>("Id")
-                        .HasColumnType("int");
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
 
-                    b.Property<int?>("RunTraceRetentionDays")
-                        .HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("UpdatedBy")
+                    b.Property<string>("Actor")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<DateTime>("UpdatedUtc")
+                    b.Property<string>("AreaId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("CompletedUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("Days")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("OlderThanUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("Removed")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("StartedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("MaintenanceSetting", "catalog");
+                    b.HasIndex("StartedUtc");
+
+                    b.HasIndex("AreaId", "StartedUtc");
+
+                    b.ToTable("MaintenanceCleanup", "catalog");
                 });
 
             modelBuilder.Entity("SqlFlow.Catalog.CatalogNode", b =>
@@ -1418,6 +1453,27 @@ namespace SqlFlow.Catalog.Migrations
                     b.HasIndex("NextSyncUtc");
 
                     b.ToTable("RepoSource", "catalog");
+                });
+
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogRetentionSetting", b =>
+                {
+                    b.Property<string>("AreaId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int?>("Days")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AreaId");
+
+                    b.ToTable("RetentionSetting", "catalog");
                 });
 
             modelBuilder.Entity("SqlFlow.Catalog.CatalogRole", b =>

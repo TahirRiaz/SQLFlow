@@ -18,6 +18,7 @@ related:
   - concept-shadow-catalog
   - guide-deployment
   - guide-github-app
+  - concept-maintenance
 sourceRefs:
   - src/SqlFlow.ControlPlane/Background/RunReferences.cs
   - src/SqlFlow.ControlPlane/Background/BootstrapSteps.cs
@@ -127,6 +128,7 @@ Read surface (policy `read`):
 | `GET /repos/sources` | Managed repo sources |
 | `GET /summary` | Estate summary |
 | `GET /dataops/capabilities` | Whether the data-operations surface is enabled here, the operations available, and the linked servers a baseline comparison may name (concept-data-operations) |
+| `GET /maintenance/storage`, `GET /maintenance/areas/{areaId}/cleanups` | What the catalog's database holds, area by area, with each area's verdict, size, limit and cleanups, and one area's cleanup log ([Maintenance](maintenance.md)); closed to an assistant run's delegated token |
 
 Operate surface (policy `operate`):
 
@@ -144,8 +146,9 @@ Operate surface (policy `operate`):
 | `POST /datasources/tasks/{taskId}/cancel` | Cancel a queued or running compute task |
 | `POST /dataops/queries/prepare` | Validate an ad-hoc SELECT and mint a one-time plan token; nothing runs. Behind `AiContext:Enabled` |
 | `POST /dataops/queries/{planId}/run` | Redeem an approved plan token and queue the query. Takes a token, never a statement, so the confirmation cannot be skipped |
+| `POST /maintenance/areas/{areaId}/preview` | What a cleanup of a storage area at the days named would remove; changes nothing ([Maintenance](maintenance.md)) |
 
-Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/activate` `/deactivate` `/password`, and `GET /roles` (src/SqlFlow.ControlPlane/Api/UserEndpoints.cs).
+Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/activate` `/deactivate` `/password`, and `GET /roles` (src/SqlFlow.ControlPlane/Api/UserEndpoints.cs); and a storage area's limit and cleanup, `PUT /maintenance/areas/{areaId}/retention` and `POST /maintenance/areas/{areaId}/cleanup` ([Maintenance](maintenance.md)).
 
 ### Health probes and rate limiting
 
@@ -216,6 +219,7 @@ All settings bind from the `ControlPlane` configuration section (environment var
 | `Dispatch:ReconcileSeconds` | `5` | How often memory is diffed against the journal |
 | `Dispatch:NodeFlushSeconds` | `5` | How often the fleet registry is flushed to the catalog |
 | `Dispatch:NodeRetentionHours` | `24` | How long a silent node stays in the registry; `0` never prunes |
+| `Maintenance:Enabled` / `Maintenance:PollSeconds` | `true` / `3600` | The automatic cleanup: a pass on every replica that applies the limit an admin set for each storage area, and removes nothing while none is set ([Maintenance](maintenance.md)). `RunTrace:*`, which configured the run trace's sweep before it, is refused at startup |
 | `Dispatch:TaskQueuedExpiryMinutes` / `Dispatch:TaskRunningExpiryHours` | `15` / `6` | When an unclaimed or overlong compute task is failed with a hint |
 | `Dispatch:MaxExecutionAttempts` | `3` | Hand-outs a run may consume before an interrupted attempt is failed |
 | `Dispatch:OwnershipTtlSeconds` / `Dispatch:OwnershipRenewSeconds` | `30` / `10` | The dispatch ownership lease; the TTL is at least twice the renew interval |

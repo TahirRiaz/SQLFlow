@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- The run trace's sweep is the Maintenance page's automatic cleanup, configured as `ControlPlane:Maintenance:Enabled` and
+  `ControlPlane:Maintenance:PollSeconds`; `ControlPlane:RunTrace:*` is refused at startup naming them. Run events take a
+  limit like SQL statements, each pipeline's latest run and every failed run keeping theirs
+  ([Maintenance](docs/reference/concepts/maintenance.md)).
 - Only the person's command moves the assistant between data mode and estate mode. `!data` or a bare `!` starts data
   mode and `!exit` or `!estate` ends it; a question's wording, a request in words and a follow-up of the other kind no
   longer move it, and the assistant no longer switches by itself. Every MCP session answers only the tools of its mode:
@@ -43,6 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- Settings > Maintenance accounts for every table of the catalog's database in storage areas, each marked keep, safe to
+  remove or optional, with its size, how its data leaves and what removing it costs, grouped by verdict or by subject.
+  An admin sets a limit per area after a preview, or cleans up once; the automatic cleanup applies the limits and logs
+  every cleanup. A host module describes its own schema the same way (`IStorageContributor`,
+  `AddStorageContributor`) ([Maintenance](docs/reference/concepts/maintenance.md)).
 - How long things take, at every level. A schedule's list row shows how long its last fire took, and a run group's
   page when it started and ended and how long it took, both from the first flow's start to the last flow's end rather
   than the flows' durations added up. A pipeline's page shows how long its last run took and how long a run usually
@@ -126,6 +135,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open-source project scaffolding: license, contribution guide, code of conduct, security policy,
   CI, and central package management.
 
+### Removed
+- The Maintenance page's Purge all buttons and the routes `GET /api/v1/maintenance/trace-storage`,
+  `PUT /api/v1/maintenance/statement-retention`, `POST /api/v1/maintenance/statements/purge` and
+  `POST /api/v1/maintenance/events/purge`; `/api/v1/maintenance/storage` and the storage-area routes replace them, and a
+  limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
+
 ### Fixed
 - Every run says how long it took, whatever its flow kind. An ingestion run's duration was dropped because it is a
   fraction of a second, and a kind a host module registers reports none, so those runs showed when they ran and never
@@ -133,5 +148,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interrupted without an artifact from its hand-out to its end, and the migration `RunDurationFromStartAndEnd` gives
   the runs already recorded theirs. The Insights page's averages, slowest runs and slowdown alerts read these
   durations too ([How long a run took](docs/reference/concepts/shadow-catalog.md#how-long-a-run-took)).
+
+### Security
+- Setting a limit and cleaning up on the Maintenance page need the admin scope; until now any signed-in user could change
+  the SQL statements' retention and delete every statement and run event
+  ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 [Unreleased]: https://github.com/TahirRiaz/SQLFlow/commits/master

@@ -3,18 +3,10 @@ using SqlFlow.Dispatch.Protocol;
 
 namespace SqlFlow.Catalog;
 
-/// <summary>How much per-run trace is stored, split by kind, and how many SQL-statement rows the retention policy
-/// would reclaim: the numbers the maintenance view shows. Events are reported for context only; they are never
-/// pruned, so there is no "prunable events" count.</summary>
-public sealed record RunTraceStorageSummary(
-    long TotalStatements,
-    long TotalEvents,
-    long PrunableStatements,
-    int PrunableRuns);
-
 /// <summary>
-/// The per-run trace tables: the live append a node's feed writes while a run executes, and retention for the
-/// per-run <b>SQL statements</b> (<see cref="CatalogRunStatement"/>) afterwards.
+/// The per-run trace tables: the live append a node's feed writes while a run executes, and the cleanup of the per-run
+/// <b>SQL statements</b> (<see cref="CatalogRunStatement"/>) and <b>run events</b> (<see cref="CatalogRunEvent"/>) the
+/// Maintenance page offers afterwards.
 /// <para>
 /// The live append (<see cref="AppendLiveAsync"/>) is what makes the Statements and Events views stream while a run
 /// is still executing and keeps the trace durable even if the node dies before its <c>run.json</c> is written. The
@@ -22,17 +14,18 @@ public sealed record RunTraceStorageSummary(
 /// the tail the feed missed, so the trace stream delivers each entry exactly once.
 /// </para>
 /// <para>
-/// Retention reclaims the generated SQL. That SQL is near-identical on every execution of a flow (it only changes
-/// when a table's schema does), so keeping a fresh copy per run is almost all duplication, and it is the heaviest
-/// per-run data. Run <b>events</b> (<see cref="CatalogRunEvent"/>) are deliberately out of scope: they carry the rows
-/// affected and when each run executed, which stays useful for run history and analytics, so nothing here ever
-/// deletes an event. The <see cref="CatalogRun"/> header (stats and error message) is likewise never touched.
+/// The generated SQL is near-identical on every execution of a flow (it only changes when a table's schema does, and
+/// those changes are recorded on their own), so keeping a fresh copy per run is almost all duplication: removing the
+/// statements of a superseded successful run loses nothing. The events are each step's rows and timing and the run's
+/// log lines: removing them loses those details for the runs they belonged to (Insights' step timings, the run's
+/// Events tab), while the run's own totals on its <see cref="CatalogRun"/> row stay. Neither cleanup ever touches the
+/// run row.
 /// </para>
-/// A run's statements are prunable when the run finished successfully (or was cancelled/skipped, never failed), is
-/// older than the grace window, and is not its pipeline's most recent run, so each pipeline keeps the statements of
-/// its latest run (the current-schema copy) and of every failed run (the offending SQL), and only the older
-/// duplicates are dropped. The predicate is defined once here and drives both the summary count and the batched
-/// delete, so what the view reports as prunable is exactly what a cleanup removes.
+/// Both cleanups take a run's rows only when the run finished successfully (or was cancelled or skipped, never failed),
+/// was written before the cut-off, and is not its pipeline's most recent run, so each pipeline keeps the statements and
+/// events of its latest run (the current-schema copy) and of every failed run (the offending SQL and what led to it). The
+/// predicate is defined once here and drives both the count and the batched delete, so what the page reports a cleanup
+/// would remove is exactly what it removes.
 /// </summary>
 public static class RunTraceStore
 {
@@ -146,69 +139,44 @@ public static class RunTraceStore
             .Select(r => r.RunId);
     }
 
-    /// <summary>Counts what is stored (statements and events) and how many statement rows are prunable. A null
-    /// <paramref name="supersededBeforeUtc"/> means retention is off (keep forever): the totals are still reported
-    /// but nothing is prunable.</summary>
-    public static async Task<RunTraceStorageSummary> SummarizeAsync(
-        CatalogDbContext catalog, DateTime? supersededBeforeUtc, CancellationToken ct = default)
+    /// <summary>How many SQL-statement rows a cleanup at <paramref name="supersededBeforeUtc"/> would remove.</summary>
+    public static Task<long> CountPrunableStatementsAsync(
+        CatalogDbContext catalog, DateTime supersededBeforeUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-
-        var totalStatements = await catalog.RunStatements.LongCountAsync(ct).ConfigureAwait(false);
-        var totalEvents = await catalog.RunEvents.LongCountAsync(ct).ConfigureAwait(false);
-
-        if (supersededBeforeUtc is not { } before)
-        {
-            return new RunTraceStorageSummary(totalStatements, totalEvents, 0, 0);
-        }
-
-        var prunable = PrunableRunIds(catalog, before);
-        // Count only runs that still have statements to drop, so the view never reports "N runs" with nothing behind it.
-        var prunableRuns = await prunable.CountAsync(r => catalog.RunStatements.Any(s => s.RunId == r), ct).ConfigureAwait(false);
-        var prunableStatements = await catalog.RunStatements
-            .LongCountAsync(s => prunable.Contains(s.RunId), ct).ConfigureAwait(false);
-
-        return new RunTraceStorageSummary(totalStatements, totalEvents, prunableStatements, prunableRuns);
+        var prunable = PrunableRunIds(catalog, supersededBeforeUtc);
+        return catalog.RunStatements.LongCountAsync(s => prunable.Contains(s.RunId), ct);
     }
 
-    /// <summary>Deletes the prunable SQL-statement rows (retention policy), in bounded batches. A null
-    /// <paramref name="supersededBeforeUtc"/> (retention off) is a no-op. Events are never touched. Idempotent and
-    /// safe to run concurrently across replicas: each batch simply claims whatever prunable rows remain. Returns the
-    /// number of statement rows deleted.</summary>
-    public static async Task<int> PruneStatementsAsync(
-        CatalogDbContext catalog, DateTime? supersededBeforeUtc, CancellationToken ct = default)
+    /// <summary>How many run-event rows a cleanup at <paramref name="supersededBeforeUtc"/> would remove.</summary>
+    public static Task<long> CountPrunableEventsAsync(
+        CatalogDbContext catalog, DateTime supersededBeforeUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        if (supersededBeforeUtc is not { } before)
-        {
-            return 0;
-        }
-
-        var statementTable = QualifiedTable(catalog, typeof(CatalogRunStatement));
-        var runTable = QualifiedTable(catalog, typeof(CatalogRun));
-        return await DeletePrunableInBatchesAsync(catalog, statementTable, runTable, before, ct).ConfigureAwait(false);
+        var prunable = PrunableRunIds(catalog, supersededBeforeUtc);
+        return catalog.RunEvents.LongCountAsync(e => prunable.Contains(e.RunId), ct);
     }
 
-    /// <summary>Deletes every SQL-statement row for every run, in bounded batches: the generated SQL in full,
-    /// keeping the run headers (history, timing, stats, error) and every run event. This is the one-button "purge
-    /// SQL statements" the maintenance view offers, distinct from the retention prune, which spares each pipeline's
-    /// latest run and failed runs. Returns the number of statement rows deleted.</summary>
-    public static async Task<int> PurgeAllStatementsAsync(CatalogDbContext catalog, CancellationToken ct = default)
+    /// <summary>Deletes the SQL-statement rows of the runs <see cref="PrunableRunIds"/> names at
+    /// <paramref name="supersededBeforeUtc"/>, in bounded batches. Idempotent and safe to run concurrently across replicas:
+    /// each batch claims whatever prunable rows remain. Returns the number of rows deleted.</summary>
+    public static Task<long> PruneStatementsAsync(
+        CatalogDbContext catalog, DateTime supersededBeforeUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        var statementTable = QualifiedTable(catalog, typeof(CatalogRunStatement));
-        return await DeleteAllInBatchesAsync(catalog, statementTable, ct).ConfigureAwait(false);
+        return DeletePrunableInBatchesAsync(
+            catalog, QualifiedTable(catalog, typeof(CatalogRunStatement)), QualifiedTable(catalog, typeof(CatalogRun)), supersededBeforeUtc, ct);
     }
 
-    /// <summary>Deletes every run-event row for every run, in bounded batches: the execution log in full, keeping the
-    /// run headers (history, timing, stats, error). Events are never pruned automatically (they carry the rows
-    /// affected and timing kept for analytics); this is the deliberate, operator-driven escape hatch for reclaiming
-    /// them on demand. Returns the number of event rows deleted.</summary>
-    public static async Task<int> PurgeAllEventsAsync(CatalogDbContext catalog, CancellationToken ct = default)
+    /// <summary>Deletes the run-event rows of the runs <see cref="PrunableRunIds"/> names at
+    /// <paramref name="supersededBeforeUtc"/>, in bounded batches, exactly as <see cref="PruneStatementsAsync"/> deletes
+    /// their statements. Returns the number of rows deleted.</summary>
+    public static Task<long> PruneEventsAsync(
+        CatalogDbContext catalog, DateTime supersededBeforeUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        var eventTable = QualifiedTable(catalog, typeof(CatalogRunEvent));
-        return await DeleteAllInBatchesAsync(catalog, eventTable, ct).ConfigureAwait(false);
+        return DeletePrunableInBatchesAsync(
+            catalog, QualifiedTable(catalog, typeof(CatalogRunEvent)), QualifiedTable(catalog, typeof(CatalogRun)), supersededBeforeUtc, ct);
     }
 
     /// <summary>The schema-qualified, bracketed table name for a mapped entity (for example
@@ -224,47 +192,27 @@ public static class RunTraceStore
         return schema is null ? $"[{table}]" : $"[{schema}].[{table}]";
     }
 
-    private static async Task<int> DeletePrunableInBatchesAsync(
-        CatalogDbContext catalog, string statementTable, string runTable, DateTime supersededBeforeUtc, CancellationToken ct)
+    private static async Task<long> DeletePrunableInBatchesAsync(
+        CatalogDbContext catalog, string traceTable, string runTable, DateTime supersededBeforeUtc, CancellationToken ct)
     {
-        // DELETE TOP (N) statement rows joined to their prunable run, looped until a pass deletes fewer than the cap
-        // (the tail). The join drives from the run side, so the optimizer seeks prunable runs (Status + WrittenUtc
-        // index) then their statement rows (the RunStatement RunId index) instead of scanning the whole table. The
-        // table names come from the model (schema-qualified) and the status values are the RunStatuses constants, so
-        // the interpolation carries no injection surface; the only runtime value, the grace instant, is the bound
-        // {0} parameter.
+        // DELETE TOP (N) trace rows joined to their prunable run, looped until a pass deletes fewer than the cap (the
+        // tail). The join drives from the run side, so the optimizer seeks prunable runs (Status + WrittenUtc index) then
+        // their trace rows (each trace table's RunId index) instead of scanning the whole table. The table names come from
+        // the model (schema-qualified) and the status values are the RunStatuses constants, so the interpolation carries no
+        // injection surface; the only runtime value, the grace instant, is the bound {0} parameter.
         var sql =
-            $"DELETE TOP ({DeleteBatchSize}) c FROM {statementTable} AS c " +
+            $"DELETE TOP ({DeleteBatchSize}) c FROM {traceTable} AS c " +
             $"INNER JOIN {runTable} r ON r.[RunId] = c.[RunId] " +
             $"WHERE r.[Status] IN ('{RunStatuses.Succeeded}', '{RunStatuses.Cancelled}', '{RunStatuses.Skipped}') " +
             "AND r.[WrittenUtc] < {0} " +
             $"AND EXISTS (SELECT 1 FROM {runTable} nr WHERE nr.[PipelineId] = r.[PipelineId] AND nr.[WrittenUtc] > r.[WrittenUtc]);";
 
-        var total = 0;
+        long total = 0;
         while (true)
         {
             ct.ThrowIfCancellationRequested();
             var deleted = await catalog.Database
                 .ExecuteSqlRawAsync(sql, new object[] { supersededBeforeUtc }, ct).ConfigureAwait(false);
-            total += deleted;
-            if (deleted < DeleteBatchSize)
-            {
-                return total;
-            }
-        }
-    }
-
-    private static async Task<int> DeleteAllInBatchesAsync(CatalogDbContext catalog, string table, CancellationToken ct)
-    {
-        // DELETE TOP (N) with no predicate, looped until the table is empty (a pass deletes fewer than the cap), so
-        // even a huge table drains in bounded batches without one giant transaction. The table name comes from the
-        // model (schema-qualified), so there is no injection surface.
-        var sql = $"DELETE TOP ({DeleteBatchSize}) FROM {table};";
-        var total = 0;
-        while (true)
-        {
-            ct.ThrowIfCancellationRequested();
-            var deleted = await catalog.Database.ExecuteSqlRawAsync(sql, ct).ConfigureAwait(false);
             total += deleted;
             if (deleted < DeleteBatchSize)
             {

@@ -804,7 +804,8 @@
         "concept-authentication-and-identity",
         "concept-shadow-catalog",
         "guide-deployment",
-        "guide-github-app"
+        "guide-github-app",
+        "concept-maintenance"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
@@ -1311,6 +1312,51 @@
       ]
     },
     {
+      "id": "concept-maintenance",
+      "corpus": "reference",
+      "path": "concepts/maintenance.md",
+      "title": "Maintenance: what the catalog's database holds, what is kept, and what may be removed",
+      "type": "concept",
+      "summary": "Every table of the catalog's database in storage areas, each with a verdict (keep, safe to remove, optional) and its size; admins set limits and clean up.",
+      "keywords": [
+        "maintenance",
+        "storage",
+        "retention",
+        "cleanup",
+        "storage area",
+        "safe to remove",
+        "optional",
+        "keep",
+        "run statements",
+        "run events",
+        "IStorageContributor",
+        "ControlPlane:Maintenance"
+      ],
+      "related": [
+        "concept-shadow-catalog",
+        "concept-control-plane",
+        "guide-notifications",
+        "concept-run-artifacts"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Maintenance/StorageArea.cs",
+        "src/SqlFlow.ControlPlane/Maintenance/CatalogStorageContributor.cs",
+        "src/SqlFlow.ControlPlane/Maintenance/MaintenanceRunner.cs",
+        "src/SqlFlow.ControlPlane/Maintenance/MaintenanceReaper.cs",
+        "src/SqlFlow.ControlPlane/Maintenance/StorageReport.cs",
+        "src/SqlFlow.ControlPlane/Api/MaintenanceEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneModuleServices.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.Catalog/MaintenanceStore.cs",
+        "src/SqlFlow.Catalog/CatalogStorage.cs",
+        "src/SqlFlow.Catalog/RunTraceStore.cs",
+        "src/SqlFlow.Catalog/Migrations/20261024215740_MaintenanceStorageAreas.cs",
+        "gui/src/features/maintenance/MaintenancePage.tsx",
+        "gui/src/features/maintenance/StorageAreaSheet.tsx",
+        "gui/src/features/maintenance/storageText.ts"
+      ]
+    },
+    {
       "id": "concept-pre-ingestion-transform",
       "corpus": "reference",
       "path": "concepts/pre-ingestion-transform.md",
@@ -1557,7 +1603,8 @@
         "cli-db",
         "cli-run",
         "concept-control-plane",
-        "concept-lineage-graph-and-plan"
+        "concept-lineage-graph-and-plan",
+        "concept-maintenance"
       ],
       "sourceRefs": [
         "src/SqlFlow.Catalog/CatalogSync.cs",

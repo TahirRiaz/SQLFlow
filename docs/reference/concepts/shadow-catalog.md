@@ -17,6 +17,7 @@ related:
   - cli-run
   - concept-control-plane
   - concept-lineage-graph-and-plan
+  - concept-maintenance
 sourceRefs:
   - src/SqlFlow.Catalog/CatalogSync.cs
   - src/SqlFlow.Catalog/CatalogProjection.cs
@@ -160,7 +161,7 @@ A run is immutable, so its detail rows are inserted exactly once, with the run i
 
 `CatalogRunStatement` is the V3 equivalent of the legacy `flw.SysLog.TraceLog`: every statement the engine generated for a run, queryable from the database instead of the file. `Step` is truncated to 128 characters; `Sql` is nvarchar(max).
 
-`RunStatement` and `RunEvent` are special: a queue-run's node streams them live as it executes, in batches over the node protocol (`POST /api/v1/node/runs/{runId}/trace`, written by `RunTraceStore.AppendLiveAsync` under the hand-out's fence), and the trace SSE stream tails those rows by their id. A requeue of an interrupted attempt discards that attempt's rows, so the run's trace is always the execution that produced its outcome. They are therefore an immutable, append-only log: completion does NOT delete and re-project them (that would re-issue every row under a fresh id and make the tail re-stream the whole trace). It reads the highest live ordinal already present and appends only the tail the feed did not write, which is nothing in the normal case and just the gap after a best-effort feed broke. The live-sink ordinals (publication / execution order) match the artifact projection's ordinals, so the append aligns. The CLI and full-sync paths have no live rows, so they insert the whole detail. The other four detail tables are only ever written at completion, so they are still inserted exactly once.
+`RunStatement` and `RunEvent` are special: a queue-run's node streams them live as it executes, in batches over the node protocol (`POST /api/v1/node/runs/{runId}/trace`, written by `RunTraceStore.AppendLiveAsync` under the hand-out's fence), and the trace SSE stream tails those rows by their id. A requeue of an interrupted attempt discards that attempt's rows, so the run's trace is always the execution that produced its outcome. They are therefore an immutable, append-only log: completion does NOT delete and re-project them (that would re-issue every row under a fresh id and make the tail re-stream the whole trace). It reads the highest live ordinal already present and appends only the tail the feed did not write, which is nothing in the normal case and just the gap after a best-effort feed broke. The live-sink ordinals (publication / execution order) match the artifact projection's ordinals, so the append aligns. The CLI and full-sync paths have no live rows, so they insert the whole detail. The other four detail tables are only ever written at completion, so they are still inserted exactly once. How long they stay is the Maintenance page's to set: a superseded successful run's statements are safe to remove and its events optional, each pipeline's latest run and every failed run keep theirs, and nothing goes until an admin sets a limit ([Maintenance](maintenance.md)).
 
 ## Lineage projection: global objects, repo-scoped edges, waves
 

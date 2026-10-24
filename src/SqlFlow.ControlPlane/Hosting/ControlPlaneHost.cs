@@ -18,6 +18,7 @@ using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.ControlPlane.Dispatch;
 using SqlFlow.ControlPlane.Infrastructure;
+using SqlFlow.ControlPlane.Maintenance;
 using SqlFlow.ControlPlane.Notifications;
 using SqlFlow.ControlPlane.Proposals;
 using SqlFlow.ControlPlane.Security;
@@ -105,6 +106,7 @@ public static class ControlPlaneHost
             ("ControlPlane:Reaper", "ControlPlane:Dispatch (node leases replaced the orphan reaper)"),
             ("ControlPlane:Worker:PollMilliseconds", "ControlPlane:Dispatch:LongPollSeconds (nodes long-poll the dispatcher; there is no catalog poll)"),
             ("ControlPlane:PowerAI:QuestionGeneration", "'generateQuestions: true' on each subscriber in its subscriber library (questions are generated per subscriber wherever ControlPlane:Assistant:Anthropic:ApiKey is set)"),
+            ("ControlPlane:RunTrace", "ControlPlane:Maintenance (the Maintenance page's automatic cleanup, which covers the run trace and every other storage area)"),
         })
         {
             if (builder.Configuration.GetSection(retired).Exists())
@@ -193,17 +195,16 @@ public static class ControlPlaneHost
         // advances the next-fire atomically so multiple control-plane nodes never double-fire an occurrence.
         builder.Services.AddHostedService<SchedulerService>();
 
-        // ---- Run-trace retention: the two heaviest per-run tables (RunStatement, the full SQL of every generated
-        // statement, and RunEvent) grow without bound and are almost never read once a run is old and green. This service
-        // prunes them on a cadence to each pipeline's latest run + every failed run + anything still recent, keeping the
-        // run header (its stats and error message) intact. The delete runs on the service's own loop and connection, never
-        // on the request thread or inside a pipeline run. Hosted on every replica like the orphan reaper (its batched
-        // delete is idempotent under concurrency); the retention is read fresh each sweep, so a null retention keeps traces
-        // forever. The Maintenance page's "clean up now" runs the same prune synchronously via the endpoint so it can
-        // report the outcome. Disabled here turns the automatic sweep off while the manual trigger keeps working.
-        if (options.RunTrace.Enabled)
+        // ---- Maintenance: what the catalog's database holds, described area by area (SQLFlow's own here, each module's by
+        // its own contributor), the cleanups an admin runs from the Maintenance page and the automatic pass that applies the
+        // retention an admin set. Both go through the one runner, so a cleanup asked for and one applied automatically run
+        // the same code and land in the same log. The pass runs on every replica; its batched deletes are idempotent.
+        builder.Services.AddScoped<IStorageContributor, CatalogStorageContributor>();
+        builder.Services.AddSingleton<MaintenanceRunner>();
+        builder.Services.AddHostedService<StorageAreaStartupCheck>();
+        if (options.Maintenance.Enabled)
         {
-            builder.Services.AddHostedService<RunTraceReaper>();
+            builder.Services.AddHostedService<MaintenanceReaper>();
         }
 
         // ---- Managed sync: keeps the shadow catalog current from git. A background service pulls each registered repo
@@ -586,7 +587,7 @@ public static class ControlPlaneHost
             .MapMeEndpoints()
             .MapBootstrapEndpoints()
             .MapNotificationEndpoints()
-            .MapMaintenanceEndpoints()
+            .MapMaintenanceReadEndpoints()
             // The GUI chat assistant: per-user conversations, streamed answers, each run under its own delegated token.
             .MapChatEndpoints();
 
@@ -602,7 +603,8 @@ public static class ControlPlaneHost
             .MapRepoSourceWriteEndpoints()
             .MapSourceDiscoverEndpoints()
             .MapNodeControlEndpoints()
-            .MapIntegrationDebugEndpoints();
+            .MapIntegrationDebugEndpoints()
+            .MapMaintenanceOperateEndpoints();
 
         // The author surface: proposing pipelines to a source repo as a pull request pushes a branch under the source's own
         // credential, so it lives under the "author" scope rather than "operate".
@@ -620,7 +622,9 @@ public static class ControlPlaneHost
             // The semantic layer's example queries (the saved answers): list, read, and remove one a person or a report gave.
             .MapSemanticExampleAdminEndpoints()
             // The Power BI reports the layer holds: store (extracted in the isolated extractor), list, and remove.
-            .MapSemanticReportEndpoints();
+            .MapSemanticReportEndpoints()
+            // The Maintenance page's writes: an area's retention, and a cleanup now.
+            .MapMaintenanceAdminEndpoints();
 
         // The node protocol: compute nodes poll for work and report outcomes here, under the "node" scope. This is the
         // only way work leaves the control plane; a node needs no catalog access to take or finish a run.

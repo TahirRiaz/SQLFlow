@@ -1460,25 +1460,62 @@ public class CatalogRunEvent
     public double? ElapsedMs { get; set; }
 }
 
-/// <summary>Operator-tunable maintenance settings, held as a single row (<see cref="Id"/> is always 1) so the GUI's
-/// Maintenance page can change them without a redeploy. Today it carries only the run-trace retention.</summary>
-public class CatalogMaintenanceSetting
+/// <summary>How long one storage area's data stays (an area of the Maintenance page: SQLFlow's own, or one a host module
+/// describes), as an admin set it from the GUI so the automatic cleanup can apply it without a redeploy. No row, or a null
+/// <see cref="Days"/>, means the area's data stays until something else removes it, which is where every area starts.</summary>
+public class CatalogRetentionSetting
 {
-    /// <summary>The fixed singleton key (always 1); one row governs the whole estate.</summary>
-    public int Id { get; set; }
+    /// <summary>The storage area's stable id (<c>sqlflow.run-statements</c>, say).</summary>
+    public string AreaId { get; set; } = string.Empty;
 
-    /// <summary>How many days a superseded successful run keeps its SQL trace (<see cref="CatalogRunStatement"/> /
-    /// <see cref="CatalogRunEvent"/>) before it is pruned; null keeps every trace forever (age-based pruning off,
-    /// the default until an operator sets a value). Each pipeline's latest run and every failed run are kept
-    /// regardless of this, so the current state and every failure reason always survive.</summary>
-    public int? RunTraceRetentionDays { get; set; }
+    /// <summary>How many days the area's data stays before the automatic cleanup removes it; null when no limit is set.
+    /// What the area always keeps (each flow's latest run, say) is kept whatever the days.</summary>
+    public int? Days { get; set; }
 
-    /// <summary>When the settings were last changed (UTC).</summary>
+    /// <summary>When the setting was last changed (UTC).</summary>
     public DateTime UpdatedUtc { get; set; }
 
-    /// <summary>Who last changed the settings (the caller's username), for a light audit trail; null before any
-    /// edit.</summary>
+    /// <summary>Who last changed the setting (the caller's username); null when no caller was named.</summary>
     public string? UpdatedBy { get; set; }
+}
+
+/// <summary>One cleanup of a storage area: an admin's "clean up now", or an automatic pass that removed something or failed.
+/// It records who asked, at which cut-off, how many rows went and how it ended, so what maintenance removed is never a
+/// mystery. A row with no <see cref="CompletedUtc"/> is a cleanup still running.</summary>
+public class CatalogMaintenanceCleanup
+{
+    public long Id { get; set; }
+
+    /// <summary>The storage area cleaned.</summary>
+    public string AreaId { get; set; } = string.Empty;
+
+    /// <summary><c>manual</c> (an admin's "clean up now") or <c>automatic</c> (the retention an admin set, applied by the
+    /// control plane's cleanup pass).</summary>
+    public string Trigger { get; set; } = string.Empty;
+
+    /// <summary>Who asked for a manual cleanup, or who set the retention an automatic one applied; null when unknown.</summary>
+    public string? Actor { get; set; }
+
+    /// <summary>The control-plane host that ran the cleanup, so a host that restarts closes the cleanups it was running and
+    /// leaves another replica's alone.</summary>
+    public string Host { get; set; } = string.Empty;
+
+    /// <summary>The days the cleanup kept.</summary>
+    public int Days { get; set; }
+
+    /// <summary>The cut-off: data older than this went, apart from what the area always keeps.</summary>
+    public DateTime OlderThanUtc { get; set; }
+
+    public DateTime StartedUtc { get; set; }
+
+    /// <summary>When the cleanup ended; null while it runs.</summary>
+    public DateTime? CompletedUtc { get; set; }
+
+    /// <summary>How many rows (or, for an area of one column, values) it removed.</summary>
+    public long Removed { get; set; }
+
+    /// <summary>Why it failed or stopped, redacted; null when it finished.</summary>
+    public string? Error { get; set; }
 }
 
 /// <summary>One surrogate-key generation outcome of a run (ingestion flows): the IDENTITY-backed lookup-table

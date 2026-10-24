@@ -2711,41 +2711,110 @@ export interface SendNotificationDigestRequest {
   subscriptionId: string;
 }
 
-// ---- Maintenance (run-trace storage retention) ------------------------------------------------------------------
+// ---- Maintenance (what the database holds, what may go) ----------------------------------------------------------------
 
-/** How much per-run trace is stored, split by kind, and how many SQL-statement rows a cleanup would reclaim. SQL
- * statements are the generated SQL (heavy, near-identical every run, so purgeable); events are the run's execution
- * log (rows affected + timing), kept for history/analytics and never purged. "Prunable" counts statements of older,
- * superseded successful runs (each pipeline's latest run and every failed run are kept, as is anything newer than
- * the retention window). */
-export interface RunTraceStorage {
-  totalStatements: number;
-  totalEvents: number;
-  prunableStatements: number;
-  /** How many runs' statements would be removed. */
-  prunableRuns: number;
-  /** The SQL-statement retention window (days); null means keep forever (age-based pruning off). */
-  retentionDays: number | null;
+/** What maintenance may do with an area's data: keep it, remove it at no loss, or remove it at a stated cost. */
+export type StorageVerdict = "keep" | "safe" | "optional";
+
+/** One table: its schema and name, its rows and the bytes it takes (indexes included). */
+export interface StorageTable {
+  schema: string;
+  name: string;
+  rows: number;
+  bytes: number;
 }
 
-/** A change to the SQL-statement retention: days to keep, or null to keep forever (age-based pruning off). */
-export interface RunTraceRetentionUpdate {
-  retentionDays: number | null;
+/** The column an area clears in a table another area holds; the rows stay. */
+export interface StorageColumn {
+  schema: string;
+  table: string;
+  column: string;
 }
 
-/** The stored SQL-statement retention after an update; null means keep forever. */
-export interface RunTraceRetention {
-  retentionDays: number | null;
+/** An area's retention: what it always keeps, what its cleanup counts (`unit`, plural), the days it takes, the days an
+ * admin set (null: no limit) and, when set, how many a cleanup at those days would remove now. */
+export interface StorageRetention {
+  keeps: string;
+  unit: string;
+  minDays: number;
+  maxDays: number;
+  days: number | null;
+  updatedUtc: string | null;
+  updatedBy: string | null;
+  reclaimable: number | null;
+  reclaimableError: string | null;
 }
 
-/** The outcome of a manual SQL-statement purge: how many statement rows were deleted. */
-export interface RunStatementPurgeResult {
-  statementsDeleted: number;
+/** One cleanup of an area: an admin's ("manual") or the automatic pass's, with who, the cut-off, and what it removed. */
+export interface StorageCleanup {
+  id: number;
+  areaId: string;
+  trigger: "manual" | "automatic";
+  actor: string | null;
+  days: number;
+  olderThanUtc: string;
+  startedUtc: string;
+  completedUtc: string | null;
+  removed: number;
+  error: string | null;
+  /** Whether a control plane is still working on it. */
+  running: boolean;
 }
 
-/** The outcome of a manual run-event purge: how many event rows were deleted. */
-export interface RunEventPurgeResult {
-  eventsDeleted: number;
+/** One storage area: tables (or one column) holding one kind of data, with the verdict on what may go and why. */
+export interface StorageArea {
+  id: string;
+  /** Who the data belongs to: SQLFlow, or the module that describes it. */
+  owner: string;
+  group: string;
+  title: string;
+  verdict: StorageVerdict;
+  holds: string;
+  reason: string;
+  /** How the data leaves the database today, apart from any retention. */
+  lifecycle: string | null;
+  /** The lifecycle in a few words, for the grid; every area without a retention has one. */
+  brief: string | null;
+  /** Grows with use and nothing removes it. */
+  grows: boolean;
+  /** The GUI route where the data is managed or read. */
+  managedAt: string | null;
+  /** The tables the area holds, as written in its description (`schema.table`, `schema.prefix*`). */
+  claims: string[];
+  column: StorageColumn | null;
+  tables: StorageTable[];
+  rows: number;
+  bytes: number;
+  measureError: string | null;
+  retention: StorageRetention | null;
+  lastCleanup: StorageCleanup | null;
+  running: boolean;
+}
+
+/** The whole database as the Maintenance page shows it. */
+export interface StorageReport {
+  measuredUtc: string;
+  database: string;
+  dataFileBytes: number;
+  automaticCleanup: boolean;
+  cleanupIntervalSeconds: number;
+  areas: StorageArea[];
+  /** Tables of the database no area describes. */
+  undescribed: StorageTable[];
+}
+
+/** Days for an area: how long its data stays (null for no limit). */
+export interface StorageDays {
+  days: number | null;
+}
+
+/** What a cleanup at the days named would remove now: how many of the area's unit. */
+export interface StorageCleanupPreview {
+  areaId: string;
+  days: number;
+  olderThanUtc: string;
+  count: number;
+  unit: string;
 }
 
 // ---- Insights ------------------------------------------------------------------------------------------------------------------

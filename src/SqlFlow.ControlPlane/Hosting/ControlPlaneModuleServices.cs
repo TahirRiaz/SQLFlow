@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SqlFlow.Catalog.Modules;
+using SqlFlow.ControlPlane.Maintenance;
 
 namespace SqlFlow.ControlPlane.Hosting;
 
@@ -107,6 +108,15 @@ public sealed class ControlPlaneModuleServices
             throw new ControlPlaneModuleException(ModuleName, ex.Message, ex);
         }
     }
+
+    /// <summary>
+    /// Registers the storage areas the module's own data takes up, so the Maintenance page describes them beside SQLFlow's and
+    /// the automatic cleanup applies the retention an admin sets for them. The contributor is resolved per request and per
+    /// cleanup, so it may depend on scoped services; its areas are checked with every other contributor's as the host starts.
+    /// </summary>
+    public void AddStorageContributor<TContributor>()
+        where TContributor : class, IStorageContributor
+        => Services.AddScoped<IStorageContributor, TContributor>();
 
     /// <summary>Registers a hosted service the control plane starts and stops with the host.</summary>
     public void AddHostedService<THostedService>()

@@ -68,7 +68,9 @@ public sealed class CatalogDbContext : DbContext
 
     public DbSet<CatalogRunEvent> RunEvents => Set<CatalogRunEvent>();
 
-    public DbSet<CatalogMaintenanceSetting> MaintenanceSettings => Set<CatalogMaintenanceSetting>();
+    public DbSet<CatalogRetentionSetting> RetentionSettings => Set<CatalogRetentionSetting>();
+
+    public DbSet<CatalogMaintenanceCleanup> MaintenanceCleanups => Set<CatalogMaintenanceCleanup>();
 
     public DbSet<CatalogRunSurrogateKey> RunSurrogateKeys => Set<CatalogRunSurrogateKey>();
 
@@ -556,13 +558,28 @@ public sealed class CatalogDbContext : DbContext
             entity.HasIndex(e => e.RunId);
         });
 
-        modelBuilder.Entity<CatalogMaintenanceSetting>(entity =>
+        modelBuilder.Entity<CatalogRetentionSetting>(entity =>
         {
-            entity.ToTable("MaintenanceSetting");
-            entity.HasKey(s => s.Id);
-            // A single operator-set row; the id is the fixed singleton key (1), never database-generated.
-            entity.Property(s => s.Id).ValueGeneratedNever();
+            entity.ToTable("RetentionSetting");
+            // One row per storage area an admin set a retention for; the key is the area's own id.
+            entity.HasKey(s => s.AreaId);
+            entity.Property(s => s.AreaId).HasMaxLength(128);
             entity.Property(s => s.UpdatedBy).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<CatalogMaintenanceCleanup>(entity =>
+        {
+            entity.ToTable("MaintenanceCleanup");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.AreaId).HasMaxLength(128).IsRequired();
+            entity.Property(c => c.Trigger).HasMaxLength(16).IsRequired();
+            entity.Property(c => c.Actor).HasMaxLength(256);
+            entity.Property(c => c.Host).HasMaxLength(256).IsRequired();
+            entity.Property(c => c.Error).HasMaxLength(2000);
+            // An area's cleanups newest first (its history, its latest, one still running); StartedUtc alone serves the
+            // log's own trimming.
+            entity.HasIndex(c => new { c.AreaId, c.StartedUtc });
+            entity.HasIndex(c => c.StartedUtc);
         });
 
         modelBuilder.Entity<CatalogRunSurrogateKey>(entity =>
