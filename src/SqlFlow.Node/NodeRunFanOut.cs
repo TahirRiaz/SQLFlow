@@ -34,10 +34,10 @@ internal sealed partial class NodeRunFanOut : IRunFanOut
         _logger = logger;
     }
 
-    public async Task<RunFanOutHandle> EnqueueAsync(IReadOnlyList<RunParameters> members, CancellationToken ct)
+    public async Task<RunFanOutHandle> EnqueueAsync(IReadOnlyList<RunParameters> members, bool wholeNode, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(members);
-        var request = new FanOutRequest(_node, _attempt, members);
+        var request = new FanOutRequest(_node, _attempt, members, wholeNode);
         request.Validate();
         var response = await CallAsync(
             "fan-out", token => _transport.EnqueueFanOutAsync(_runId, request, token), ct).ConfigureAwait(false);

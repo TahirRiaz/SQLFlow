@@ -804,8 +804,9 @@ export interface NodePurgeResult {
 
 /** One worker pool's desired compute state and its live resolution. `pool` is the empty string for the default
  *  (untargeted) pool. `replicaTarget` is the count the autoscaler holds, exactly what the control plane answers the
- *  scaler with: the greatest of the demand (`eligibleQueuedRuns` over `runSlotsPerNode`, rounded up, plus
- *  `busyNodes`), the always-on floor, and the manual override while active. */
+ *  scaler with: the greatest of the demand (one worker for each of the `eligibleWholeNodeRuns`, the rest of
+ *  `eligibleQueuedRuns` over `runSlotsPerNode`, rounded up, plus `busyNodes`), the always-on floor, and the manual
+ *  override while active. */
 export interface WorkerPool {
   pool: string;
   minReplicas: number;
@@ -821,6 +822,9 @@ export interface WorkerPool {
   /** The part of the backlog the pool's workers would start right now with a slot for each: queued runs no gate holds
    *  back once the pool's runs ahead of them have taken their places. */
   eligibleQueuedRuns: number;
+  /** Of the eligible queued runs, those that take a worker to themselves (fan-out members that asked for it): each asks
+   *  for a worker of its own. */
+  eligibleWholeNodeRuns: number;
   /** Online workers of the pool that hold at least one run. */
   busyNodes: number;
   /** What one worker of the pool executes at once, as the workers report it. */

@@ -28,11 +28,11 @@ public sealed class FleetPlannerTests
         IReadOnlyList<FleetWorker>? workers = null, IReadOnlyList<NodeView>? nodes = null,
         IReadOnlyDictionary<string, int>? eligible = null, IReadOnlyDictionary<string, int>? gui = null,
         bool listCurrent = true, DateTime? takeover = null, IReadOnlyDictionary<string, DateTime>? blocked = null,
-        TimeSpan? timeLimit = null, DateTime? resumed = null)
+        TimeSpan? timeLimit = null, DateTime? resumed = null, IReadOnlyDictionary<string, int>? wholeNode = null)
         => new(
             Now, takeover ?? LongAgo, gui ?? new Dictionary<string, int>(),
             eligible ?? new Dictionary<string, int>(), nodes ?? [], workers ?? [], listCurrent,
-            blocked ?? new Dictionary<string, DateTime>(), timeLimit, resumed);
+            blocked ?? new Dictionary<string, DateTime>(), timeLimit, resumed, wholeNode);
 
     /// <summary>A worker this control plane started <paramref name="ageMinutes"/> ago, which the launcher lists as
     /// running (or in <paramref name="state"/>).</summary>
@@ -773,5 +773,39 @@ public sealed class FleetPlannerTests
 
         Assert.Empty(plan.Launches);
         Assert.Equal(Now.AddMinutes(1), Assert.Single(plan.Pools).BlockedUntilUtc);
+    }
+
+    // ---------------------------------------------------------------------------------------- whole-node runs ----
+
+    [Fact]
+    public void RunsThatTakeAWorkerToThemselves_StartAWorkerEach_WhereNoIdleWorkerTakesThem()
+    {
+        // Two workers each executing one run, three of four slots free: room for six shared runs, and none for a run
+        // that takes a worker to itself. The two such runs ask for two workers.
+        string[] names = ["worker-default-0000000001", "worker-default-0000000002"];
+        var busy = names.Select(n => Node(n, busy: 1)).ToList();
+        var plan = FleetPlanner.Plan(
+            Snapshot(names.Select(n => Listed(n)).ToList(), busy, eligible: Pools((string.Empty, 2)), wholeNode: Pools((string.Empty, 2))),
+            Settings());
+
+        Assert.Equal(2, plan.Launches.Count);
+        Assert.Equal(4, Assert.Single(plan.Pools).Target);
+
+        // The same runs shared with other runs fit the free slots already there.
+        var shared = FleetPlanner.Plan(Snapshot(names.Select(n => Listed(n)).ToList(), busy, eligible: Pools((string.Empty, 2))), Settings());
+        Assert.Empty(shared.Launches);
+    }
+
+    [Fact]
+    public void AnIdleWorker_TakesARunThatTakesAWorkerToItself_AndOnlyTheRestAskForWorkers()
+    {
+        string[] names = ["worker-default-0000000001", "worker-default-0000000002"];
+        var nodes = new List<NodeView> { Node(names[0], busy: 1), Node(names[1], idleMinutes: 1) };
+        var plan = FleetPlanner.Plan(
+            Snapshot(names.Select(n => Listed(n)).ToList(), nodes, eligible: Pools((string.Empty, 3)), wholeNode: Pools((string.Empty, 3))),
+            Settings());
+
+        // One of the three goes to the idle worker; the other two need a worker each.
+        Assert.Equal(2, plan.Launches.Count);
     }
 }

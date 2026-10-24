@@ -81,11 +81,18 @@ public sealed class DispatchState
         }
     }
 
+    /// <summary>Picks up to <paramref name="maxCount"/> eligible runs for an idle node with that many run slots, as
+    /// <see cref="ReserveRuns(string, IReadOnlyList{string}, int, int)"/> does.</summary>
+    public IReadOnlyList<RunReservation> ReserveRuns(string node, IReadOnlyList<string> poolKeys, int maxCount)
+        => ReserveRuns(node, poolKeys, maxCount, nodeSlots: maxCount);
+
     /// <summary>Picks up to <paramref name="maxCount"/> eligible runs for a node serving <paramref name="poolKeys"/>
     /// (plus the untargeted pool), oldest first across those pools, and reserves each for the node. A reservation
     /// occupies the run's pipeline and group slot at once, so the picks in one batch respect the gates among
-    /// themselves. The caller journals each reservation and then confirms or releases it.</summary>
-    public IReadOnlyList<RunReservation> ReserveRuns(string node, IReadOnlyList<string> poolKeys, int maxCount)
+    /// themselves. A run that takes a node to itself goes only to a node whose <paramref name="maxCount"/> free slots are
+    /// all its <paramref name="nodeSlots"/>, and alone: it is skipped on any other node and in a batch that already picked
+    /// a run, and nothing is picked after it. The caller journals each reservation and then confirms or releases it.</summary>
+    public IReadOnlyList<RunReservation> ReserveRuns(string node, IReadOnlyList<string> poolKeys, int maxCount, int nodeSlots)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
         ArgumentNullException.ThrowIfNull(poolKeys);
@@ -104,6 +111,13 @@ public sealed class DispatchState
                     break;
                 }
 
+                if (entry.WholeNode && (picks.Count > 0 || maxCount < nodeSlots))
+                {
+                    // The node executes something already, or this batch gave it something: the run waits for an idle node,
+                    // and the runs behind it are not held back by it.
+                    continue;
+                }
+
                 if (IsEligibleLocked(entry))
                 {
                     // Occupy at once so the next pick in this batch sees this pipeline busy and this group slot taken.
@@ -111,6 +125,10 @@ public sealed class DispatchState
                     entry.Node = node;
                     OccupyLocked(entry);
                     picks.Add(entry);
+                    if (entry.WholeNode)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -974,19 +992,37 @@ public sealed class DispatchState
     /// never below what the pool's nodes could start. This is the demand term of an autoscaler's replica target, and it
     /// deliberately ignores whether any node is online: the absence of nodes is exactly what the target exists to
     /// correct, while a run a gate blocks would occupy no node even if one appeared.</summary>
-    public int CountEligibleQueuedRuns(string poolKey)
+    public int CountEligibleQueuedRuns(string poolKey) => CountEligible(poolKey).Runs;
+
+    /// <summary>The eligible queued runs of a pool, as <see cref="CountEligibleQueuedRuns"/> counts them, with how many of
+    /// them take a node to themselves: each of those asks for a node of its own, where the others share one.</summary>
+    public EligibleQueuedRuns CountEligible(string poolKey)
     {
         ArgumentNullException.ThrowIfNull(poolKey);
         lock (_gate)
         {
             if (!_queuedRunsByPool.TryGetValue(poolKey, out var queued) || queued.Count == 0)
             {
-                return 0;
+                return default;
             }
 
             var gates = new Dictionary<Guid, string>(queued.Count);
             AdmitQueuedLocked(queued, gates);
-            return gates.Values.Count(gate => gate == DispatchBlockReasons.Eligible);
+            var runs = 0;
+            var wholeNode = 0;
+            foreach (var entry in queued)
+            {
+                if (gates.TryGetValue(entry.RunId, out var gate) && gate == DispatchBlockReasons.Eligible)
+                {
+                    runs++;
+                    if (entry.WholeNode)
+                    {
+                        wholeNode++;
+                    }
+                }
+            }
+
+            return new EligibleQueuedRuns(runs, wholeNode);
         }
     }
 
@@ -1041,7 +1077,7 @@ public sealed class DispatchState
 
     /// <summary>Writes into <paramref name="gates"/> the gate each of one pool's queued runs meets when the pool's nodes
     /// have a free slot for every one of them: the runs are taken in hand-out order, and each one no gate holds back is
-    /// admitted, taking its pipeline and a place under its group's cap as <see cref="ReserveRuns"/> would. So a group under
+    /// admitted, taking its pipeline and a place under its group's cap as <see cref="ReserveRuns(string, IReadOnlyList{string}, int, int)"/> would. So a group under
     /// its cap admits only as many of the pool's members as the cap still has places, and a pipeline only the runs of the
     /// first family to reach it. Each pool is walked on its own: a run queued for another pool takes no place here, because
     /// nothing says that pool has a node to start it, so a group or a pipeline spanning pools never stops this pool asking
@@ -1486,6 +1522,9 @@ internal sealed class RunEntry
     /// <summary>The run's execution family: its fan-out root, or the run itself.</summary>
     public Guid Family => FanOutRoot ?? RunId;
 
+    /// <summary>Whether the run takes a node to itself (<see cref="DispatchRun.WholeNode"/>).</summary>
+    public bool WholeNode { get; init; }
+
     public required DateTime EnqueuedUtc { get; init; }
 
     public int Attempt { get; set; }
@@ -1512,6 +1551,7 @@ internal sealed class RunEntry
         Attempt = run.Attempt,
         CancelRequested = run.CancelRequested,
         FanOutRoot = run.FanOutRoot,
+        WholeNode = run.WholeNode,
     };
 }
 

@@ -557,6 +557,7 @@ public static class RunQueueStore
                     r.Payload,
                     r.ReferencesJson,
                     r.RequestedBy,
+                    r.WholeNode,
                     RepoName = repo != null ? repo.Name : null,
                     RepoRemoteUrl = repo != null ? repo.RemoteUrl : null,
                     RepoRootPath = repo != null ? repo.RootPath : null,
@@ -587,7 +588,7 @@ public static class RunQueueStore
                 Payload = row.Payload,
                 References = SuppliedReferences.FromJson(row.ReferencesJson),
             },
-            row.CredentialReference, row.CredentialUsername, row.RequestedBy);
+            row.CredentialReference, row.CredentialUsername, row.RequestedBy, row.WholeNode);
     }
 
     /// <summary>A trimmed value, or null for a blank one.</summary>
@@ -951,11 +952,11 @@ public static class RunQueueStore
     /// </summary>
     public static async Task<FanOutEnqueueRecord> EnqueueFanOutAsync(
         CatalogDbContext catalog, Guid rootRunId, string node, int attempt, IReadOnlyList<RunParameters> members,
-        DateTime nowUtc, Action<string, RunParameters>? validateMember = null, CancellationToken ct = default)
+        DateTime nowUtc, Action<string, RunParameters>? validateMember = null, bool wholeNode = false, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
-        new FanOutRequest(node, attempt, members).Validate();
+        new FanOutRequest(node, attempt, members, wholeNode).Validate();
         var operation = members[0].Operation;
 
         return await CatalogTransaction.InSerializableAsync(catalog, async () =>
@@ -1065,13 +1066,14 @@ public static class RunQueueStore
                     FanOutRoot = rootRunId,
                     FanOutSlot = i + 1,
                     FanOutCount = members.Count,
+                    WholeNode = wholeNode,
                     Status = RunStatuses.Queued,
                     EnqueuedUtc = nowUtc,
                     WrittenUtc = nowUtc,
                     Success = false,
                 });
                 placements.Add(new DispatchRun(
-                    runId, root.PipelineId, root.TargetPool, groupId, 0, null, nowUtc, 0, false, rootRunId));
+                    runId, root.PipelineId, root.TargetPool, groupId, 0, null, nowUtc, 0, false, rootRunId, wholeNode));
             }
 
             return new FanOutEnqueueRecord(true, groupId, ids, placements);
@@ -1426,18 +1428,18 @@ public static class RunQueueStore
     private sealed record PlacementRow(
         Guid RunId, Guid PipelineId, string? TargetPool, Guid? GroupId, int GroupWave, int? GroupMaxConcurrency,
         DateTime? EnqueuedUtc, DateTime WrittenUtc, int Attempt, DateTime? CancelRequestedUtc, string? ClaimedByNode,
-        Guid? FanOutRoot);
+        Guid? FanOutRoot, bool WholeNode);
 
     private static IQueryable<PlacementRow> PlacementQuery(IQueryable<CatalogRun> runs)
         => runs.Select(r => new PlacementRow(
             r.RunId, r.PipelineId, r.TargetPool, r.GroupId, r.GroupWave, r.GroupMaxConcurrency,
-            r.EnqueuedUtc, r.WrittenUtc, r.Attempt, r.CancelRequestedUtc, r.ClaimedByNode, r.FanOutRoot));
+            r.EnqueuedUtc, r.WrittenUtc, r.Attempt, r.CancelRequestedUtc, r.ClaimedByNode, r.FanOutRoot, r.WholeNode));
 
     private static IQueryable<PlacementRow> RunningQuery(IQueryable<CatalogRun> runs) => PlacementQuery(runs);
 
     private static DispatchRun ToDispatchRun(PlacementRow row) => new(
         row.RunId, row.PipelineId, row.TargetPool, row.GroupId, row.GroupWave, row.GroupMaxConcurrency,
-        row.EnqueuedUtc ?? row.WrittenUtc, row.Attempt, row.CancelRequestedUtc != null, row.FanOutRoot);
+        row.EnqueuedUtc ?? row.WrittenUtc, row.Attempt, row.CancelRequestedUtc != null, row.FanOutRoot, row.WholeNode);
 
     private static RunningRunRecord? ToRunningRecord(PlacementRow row)
         => string.IsNullOrWhiteSpace(row.ClaimedByNode) ? null : new RunningRunRecord(ToDispatchRun(row), row.ClaimedByNode);

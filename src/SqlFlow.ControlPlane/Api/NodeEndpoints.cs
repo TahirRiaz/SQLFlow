@@ -34,7 +34,7 @@ public sealed record WorkerPoolDto(
     string Pool, int MinReplicas, int ManualReplicas, DateTime? ManualUntilUtc, bool ManualActive,
     int QueuedRuns, int ReplicaTarget, int OnlineNodes, DateTime? UpdatedUtc, string? UpdatedBy,
     int EligibleQueuedRuns, int BusyNodes, int RunSlotsPerNode, string? ManagedBy = null, ManagedPoolStatus? Managed = null,
-    BuiltInNodeDto? BuiltInNode = null);
+    BuiltInNodeDto? BuiltInNode = null, int EligibleWholeNodeRuns = 0);
 
 /// <summary>The node a control plane runs in its own process (<c>ControlPlane:Worker</c>): the name it polls under and
 /// how many runs it executes at once. Nothing starts or stops it but the control plane itself.</summary>
@@ -222,7 +222,8 @@ public static class NodeEndpoints
             target.RunSlotsPerNode,
             managed?.LauncherName,
             managed?.Status().Pools.FirstOrDefault(p => string.Equals(p.Pool, key, StringComparison.Ordinal)),
-            builtInNode);
+            builtInNode,
+            target.EligibleWholeNodeRuns);
     }
 
     private static async Task<Results<Ok<WorkerPoolDto>, ProblemHttpResult>> ScalePoolAsync(

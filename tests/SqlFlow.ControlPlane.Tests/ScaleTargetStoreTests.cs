@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Core.Identity;
+using SqlFlow.Core.Runs;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
@@ -81,6 +82,44 @@ public sealed class ScaleTargetStoreTests
             await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
             await db.Nodes.Where(n => nodes.Contains(n.Name)).ExecuteDeleteAsync();
             await db.WorkerPools.Where(p => p.Pool == pool || p.Pool == nobody).ExecuteDeleteAsync();
+        }
+    }
+
+    [SkippableFact]
+    public async Task Resolve_CountsAFanOutMemberThatTakesANodeToItself_AsANodeOfItsOwn()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoId = FlowIdentity.FromName("stw_" + suffix);
+        var pool = "stw-" + suffix;
+        var node = $"stw-node-{suffix}";
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var now = DateTime.UtcNow;
+
+            // A root executes on a node of four slots and fans out over three members that take a node each.
+            var rootId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, $"stw_flow_{suffix}", "ing", pool), now)).RunId;
+            Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, rootId, 0, node, now));
+            var attempt = await db.Runs.AsNoTracking().Where(r => r.RunId == rootId).Select(r => r.Attempt).SingleAsync();
+            RunParameters[] members = [new() { Operation = "load" }, new() { Operation = "load" }, new() { Operation = "load" }];
+            var fanOut = await RunQueueStore.EnqueueFanOutAsync(db, rootId, node, attempt, members, now, wholeNode: true);
+            Assert.True(fanOut.Held);
+            Assert.All(await db.Runs.AsNoTracking().Where(r => r.FanOutRoot == rootId).ToListAsync(), r => Assert.True(r.WholeNode));
+            await NodeStore.HeartbeatAsync(db, node, "t", now, pool, busyRuns: 1, runSlots: 4);
+
+            var target = await ScaleTargetStore.ResolveAsync(db, pool, 4, now);
+            Assert.Equal((3, 3, 1), (target.EligibleQueuedRuns, target.EligibleWholeNodeRuns, target.BusyNodes));
+            Assert.Equal(4, target.Replicas); // one node for each member, and the busy node holding the root
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
+            await db.RunGroups.Where(g => g.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Nodes.Where(n => n.Name == node).ExecuteDeleteAsync();
         }
     }
 }

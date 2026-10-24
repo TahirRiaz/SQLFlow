@@ -198,7 +198,7 @@ public sealed partial class RunWorker : IDisposable
                 // Applying the answer sits inside the same guard as the poll: nothing that happens to one response
                 // (a signal for a run that finished in the meantime, a launch that fails) may ever end the loop,
                 // because on the control plane's own node this loop is a hosted service and its fault stops the host.
-                await ApplyAsync(response, gate, computeGate, inFlight, computeInFlight, abortCts.Token, stoppingToken)
+                await ApplyAsync(response, options.MaxConcurrentRuns, gate, computeGate, inFlight, computeInFlight, abortCts.Token, stoppingToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -288,7 +288,7 @@ public sealed partial class RunWorker : IDisposable
     /// <summary>Acts on a poll's answer: trips the cancellation of every run or task the operator asked to cancel and
     /// of every one whose lease was revoked, honors a restart request, and launches the handed-out work.</summary>
     private async Task ApplyAsync(
-        NodePollResponse response, SemaphoreSlim gate, SemaphoreSlim computeGate,
+        NodePollResponse response, int runSlots, SemaphoreSlim gate, SemaphoreSlim computeGate,
         ConcurrentDictionary<Guid, Task> inFlight, ConcurrentDictionary<Guid, Task> computeInFlight,
         CancellationToken abortCt, CancellationToken stoppingToken)
     {
@@ -349,8 +349,12 @@ public sealed partial class RunWorker : IDisposable
 
         foreach (var run in response.Runs)
         {
-            await gate.WaitAsync(abortCt).ConfigureAwait(false);
-            var execution = ExecuteHandedRunAsync(run, gate, abortCt);
+            // A run that takes the node to itself holds every slot, so the polls while it executes report none free and the
+            // dispatcher hands this node nothing beside it. It is handed out only when every slot was free, so these waits
+            // are satisfied at once as well.
+            var slots = run.Spec.WholeNode ? runSlots : 1;
+            await TakeSlotsAsync(gate, slots, abortCt).ConfigureAwait(false);
+            var execution = ExecuteHandedRunAsync(run, gate, slots, abortCt);
             inFlight[run.RunId] = execution;
             _ = execution.ContinueWith(
                 _ => inFlight.TryRemove(run.RunId, out Task? _),
@@ -612,7 +616,26 @@ public sealed partial class RunWorker : IDisposable
     /// reaches its end state. Never throws: an abort (the drain window expired) leaves the run for the dispatcher's
     /// lease expiry, and every other failure has already been reported (best-effort) by <see cref="RunHandedAsync"/>,
     /// so one run can never kill the loop or a sibling run.</summary>
-    private async Task ExecuteHandedRunAsync(RunHandout handout, SemaphoreSlim gate, CancellationToken abortCt)
+    /// <summary>Takes <paramref name="slots"/> run slots, giving back the ones it took when it is cancelled part way.</summary>
+    /// <remarks>Internal for the test suite.</remarks>
+    internal static async Task TakeSlotsAsync(SemaphoreSlim gate, int slots, CancellationToken ct)
+    {
+        var taken = 0;
+        try
+        {
+            for (; taken < slots; taken++)
+            {
+                await gate.WaitAsync(ct).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (taken > 0)
+        {
+            gate.Release(taken);
+            throw;
+        }
+    }
+
+    private async Task ExecuteHandedRunAsync(RunHandout handout, SemaphoreSlim gate, int slots, CancellationToken abortCt)
     {
         // A per-run source linked to the abort token: an operator cancel or a revoked lease trips only this one
         // (aborting just this run), while an expired drain trips every run through the link. Registered before
@@ -638,7 +661,7 @@ public sealed partial class RunWorker : IDisposable
         finally
         {
             _running.TryRemove(handout.RunId, out _);
-            gate.Release();
+            gate.Release(slots);
             SignalSlotFreed();
         }
     }

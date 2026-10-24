@@ -13,8 +13,17 @@ namespace SqlFlow.Orchestration;
 public interface IRunFanOut
 {
     /// <summary>Enqueues one member per parameter set (at least one, all performing the same operation, within the
-    /// dispatcher's bound) and returns the handle to read and cancel them by.</summary>
-    Task<RunFanOutHandle> EnqueueAsync(IReadOnlyList<RunParameters> members, CancellationToken ct);
+    /// dispatcher's bound) and returns the handle to read and cancel them by. The members share nodes with other runs as
+    /// any run does.</summary>
+    Task<RunFanOutHandle> EnqueueAsync(IReadOnlyList<RunParameters> members, CancellationToken ct)
+        => EnqueueAsync(members, wholeNode: false, ct);
+
+    /// <summary>Enqueues one member per parameter set, as <see cref="EnqueueAsync(IReadOnlyList{RunParameters}, CancellationToken)"/>
+    /// does. With <paramref name="wholeNode"/>, each member takes a node to itself: the dispatcher hands it only to a node of
+    /// the pool that executes nothing else, puts no other run beside it while it executes, and the node gives it all its run
+    /// slots; the pool's replica target counts each such member as a node of its own. A flow spreading heavy work over its
+    /// members asks for it, so the work is spread over as many nodes as it has members.</summary>
+    Task<RunFanOutHandle> EnqueueAsync(IReadOnlyList<RunParameters> members, bool wholeNode, CancellationToken ct);
 
     /// <summary>The members in slot order, as last journaled.</summary>
     Task<IReadOnlyList<RunFanOutMember>> MembersAsync(RunFanOutHandle handle, CancellationToken ct);

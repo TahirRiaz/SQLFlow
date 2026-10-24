@@ -258,7 +258,7 @@ public sealed partial class Dispatcher : IDisposable
             var cancelRuns = Queue.CancelRequestedRunsHeldBy(request.Node);
             var cancelTasks = Queue.CancelRequestedTasksHeldBy(request.Node);
             var tasks = await HandOutTasksAsync(request.Node, poolKeys, taskSlots, ct).ConfigureAwait(false);
-            var runs = await HandOutRunsAsync(request.Node, poolKeys, runSlots, ct).ConfigureAwait(false);
+            var runs = await HandOutRunsAsync(request.Node, poolKeys, runSlots, Math.Max(runSlots, request.RunSlots), ct).ConfigureAwait(false);
             if (runs.Count > 0 || tasks.Count > 0)
             {
                 Nodes.MarkHandedOut(request.Node, runs.Count, tasks.Count);
@@ -301,14 +301,14 @@ public sealed partial class Dispatcher : IDisposable
     }
 
     private async Task<IReadOnlyList<RunHandout>> HandOutRunsAsync(
-        string node, IReadOnlyList<string> poolKeys, int maxCount, CancellationToken ct)
+        string node, IReadOnlyList<string> poolKeys, int maxCount, int nodeSlots, CancellationToken ct)
     {
         if (maxCount <= 0)
         {
             return [];
         }
 
-        var reservations = Queue.ReserveRuns(node, poolKeys, maxCount);
+        var reservations = Queue.ReserveRuns(node, poolKeys, maxCount, nodeSlots);
         if (reservations.Count == 0)
         {
             return [];

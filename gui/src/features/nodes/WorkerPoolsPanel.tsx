@@ -171,7 +171,10 @@ function WorkerPoolRow({
           <TooltipContent className="max-w-xs">
             {pool.eligibleQueuedRuns} of the {pool.queuedRuns} queued runs are eligible: no gate holds them back. A run
             behind a busy pipeline, a lower wave or a full group cap asks for no worker. One worker here executes{" "}
-            {pool.runSlotsPerNode} at once.
+            {pool.runSlotsPerNode} at once
+            {pool.eligibleWholeNodeRuns > 0
+              ? `, and ${pool.eligibleWholeNodeRuns} of the eligible runs take a worker each to themselves.`
+              : "."}
           </TooltipContent>
         </Tooltip>
       </TableCell>

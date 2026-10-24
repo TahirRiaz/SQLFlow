@@ -694,4 +694,62 @@ public sealed class DispatchStateTests
         return lowestPendingWave == run.GroupWave
             && (run.GroupMaxConcurrency is not { } cap || held.Count(h => h.GroupId == group) < cap);
     }
+
+    [Fact]
+    public void Reserve_ARunThatTakesANodeToItself_GoesOnlyToAnIdleNode_AndAlone()
+    {
+        var state = new DispatchState();
+        var whole = Make.Run(At(0)) with { WholeNode = true };
+        var behind = Make.Run(At(1));
+        state.AddQueuedRun(whole);
+        state.AddQueuedRun(behind);
+
+        // A node with one of its four slots taken is no place for it: it is passed over, and the run behind it is not
+        // held back by it.
+        Assert.Equal([behind.RunId], state.ReserveRuns("n1", [], 3, nodeSlots: 4).Select(p => p.RunId));
+
+        // An idle node takes it, and nothing beside it in the same batch.
+        var later = Make.Run(At(2));
+        state.AddQueuedRun(later);
+        Assert.Equal([whole.RunId], state.ReserveRuns("n2", [], 4, nodeSlots: 4).Select(p => p.RunId));
+        Assert.Equal([later.RunId], state.ReserveRuns("n3", [], 4, nodeSlots: 4).Select(p => p.RunId));
+    }
+
+    [Fact]
+    public void Reserve_ARunThatTakesANodeToItself_IsNotAddedToABatchThatAlreadyPickedARun()
+    {
+        var state = new DispatchState();
+        var shared = Make.Run(At(0));
+        var whole = Make.Run(At(1)) with { WholeNode = true };
+        state.AddQueuedRun(shared);
+        state.AddQueuedRun(whole);
+
+        Assert.Equal([shared.RunId], state.ReserveRuns("n1", [], 4, nodeSlots: 4).Select(p => p.RunId));
+        Assert.Equal(new EligibleQueuedRuns(1, 1), state.CountEligible(string.Empty));
+    }
+
+    [Fact]
+    public void CountEligible_CountsTheRunsThatTakeANodeToThemselves_AsANodeEach()
+    {
+        var state = new DispatchState();
+        for (var i = 0; i < 5; i++)
+        {
+            state.AddQueuedRun(Make.Run(At(i)));
+        }
+
+        for (var i = 5; i < 8; i++)
+        {
+            state.AddQueuedRun(Make.Run(At(i)) with { WholeNode = true });
+        }
+
+        var eligible = state.CountEligible(string.Empty);
+        Assert.Equal(new EligibleQueuedRuns(8, 3), eligible);
+        Assert.Equal(8, state.CountEligibleQueuedRuns(string.Empty));
+
+        // Five shared runs at four to a node ask for two nodes, and the three that take a node each for three more.
+        Assert.Equal(5, eligible.Nodes(4));
+        Assert.Equal(8, eligible.Nodes(1));
+        Assert.Equal(0, default(EligibleQueuedRuns).Nodes(4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => eligible.Nodes(0));
+    }
 }

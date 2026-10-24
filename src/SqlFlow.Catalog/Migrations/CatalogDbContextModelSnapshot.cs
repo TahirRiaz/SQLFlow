@@ -18,7 +18,7 @@ namespace SqlFlow.Catalog.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("catalog")
-                .HasAnnotation("ProductVersion", "9.0.17")
+                .HasAnnotation("ProductVersion", "9.0.21")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -1617,6 +1617,9 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.Property<string>("ValuesJson")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("WholeNode")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime>("WrittenUtc")
                         .HasColumnType("datetime2");

@@ -117,6 +117,56 @@ public sealed class RunFanOutApiTests
         }
     }
 
+    /// <summary>
+    /// A fan-out that asks for a node per member: the members are journaled as taking a node each, a node already
+    /// executing a run is handed none of them, and an idle node is handed one, alone, told it takes the node to itself.
+    /// </summary>
+    [SkippableFact]
+    public async Task AFanOutAskingForANodePerMember_HandsEachMemberAloneToAnIdleNode()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+
+        try
+        {
+            using var factory = NewFactory(cs);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["node", "read", "operate"]);
+            using var transport = new HttpNodeTransport(factory.Server.BaseAddress, token, factory.Server.CreateHandler());
+            await WaitForActiveDispatcherAsync(client, token);
+
+            var rootId = await EnqueueAsync(factory, cs, repoId, flowName);
+            var root = Assert.Single((await transport.PollAsync(Poll(freeRuns: 4), CancellationToken.None)).Runs);
+            Assert.False(root.Spec.WholeNode);
+            var fanOut = await transport.EnqueueFanOutAsync(
+                rootId, new FanOutRequest(NodeName, root.Attempt, [Slice(1), Slice(2)], WholeNode: true), CancellationToken.None);
+            Assert.True(fanOut.Held);
+
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                var rows = await db.Runs.AsNoTracking().Where(r => r.FanOutRoot == rootId).ToListAsync();
+                Assert.Equal(2, rows.Count);
+                Assert.All(rows, r => Assert.True(r.WholeNode));
+            }
+
+            // The node executing the root has three slots free: no place for a member that takes a node.
+            var busy = await transport.PollAsync(Poll(freeRuns: 3, holding: [new HeldRun(rootId, root.Attempt)]), CancellationToken.None);
+            Assert.Empty(busy.Runs);
+
+            // Idle nodes are handed one member each, alone, and told to give it every slot.
+            var first = Assert.Single((await transport.PollAsync(PollAs(IdleNodes[0], freeRuns: 4), CancellationToken.None)).Runs);
+            var second = Assert.Single((await transport.PollAsync(PollAs(IdleNodes[1], freeRuns: 4), CancellationToken.None)).Runs);
+            Assert.Equal(fanOut.RunIds.Order(), new[] { first.RunId, second.RunId }.Order());
+            Assert.True(first.Spec.WholeNode);
+            Assert.True(second.Spec.WholeNode);
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId);
+        }
+    }
+
     [SkippableFact]
     public async Task AFanOutTheKindRefuses_OrOneAskedForByAMember_IsRefusedAsABadRequest()
     {
@@ -177,8 +227,13 @@ public sealed class RunFanOutApiTests
             .WithSetting("ControlPlane:Dispatch:ReconcileSeconds", "1")
             .WithServices(services => services.AddSingleton<IFlowDocumentKind, FanFlowKind>());
 
-    private static NodePollRequest Poll(int freeRuns, IReadOnlyList<HeldRun>? holding = null)
-        => new(NodeName, "test", [], 4, freeRuns, 2, 0, holding ?? [], [], DateTime.UtcNow.AddMinutes(-1), 0);
+    /// <summary>Nodes of the test besides <see cref="NodeName"/>, idle when they poll.</summary>
+    private static readonly string[] IdleNodes = ["fan-out-idle-node-1", "fan-out-idle-node-2"];
+
+    private static NodePollRequest Poll(int freeRuns, IReadOnlyList<HeldRun>? holding = null) => PollAs(NodeName, freeRuns, holding);
+
+    private static NodePollRequest PollAs(string node, int freeRuns, IReadOnlyList<HeldRun>? holding = null)
+        => new(node, "test", [], 4, freeRuns, 2, 0, holding ?? [], [], DateTime.UtcNow.AddMinutes(-1), 0);
 
     private static async Task<Guid> EnqueueAsync(ControlPlaneAppFactory factory, string cs, Guid repoId, string flowName)
     {
@@ -259,7 +314,7 @@ public sealed class RunFanOutApiTests
         await db.RunEvents.Where(e => e.RepoId == repoId).ExecuteDeleteAsync();
         await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
         await db.RunGroups.Where(g => g.RepoId == repoId).ExecuteDeleteAsync();
-        await db.Nodes.Where(n => n.Name == NodeName).ExecuteDeleteAsync();
+        await db.Nodes.Where(n => n.Name == NodeName || IdleNodes.Contains(n.Name)).ExecuteDeleteAsync();
     }
 
     /// <summary>A test-only kind with one operation whose payload must name a <c>slice</c>; its results are recorded on

@@ -75,7 +75,8 @@ public sealed class CatalogDispatchLedger : IDispatchLedger
             // Each member's parameters pass the root kind's own rule, exactly as a triggered run's do.
             var documents = services.GetRequiredService<YamlDocumentLoader>();
             return RunQueueStore.EnqueueFanOutAsync(
-                catalog, rootRunId, request.Node, request.Attempt, request.Members, nowUtc, documents.ValidateRunParameters, ct);
+                catalog, rootRunId, request.Node, request.Attempt, request.Members, nowUtc, documents.ValidateRunParameters,
+                request.WholeNode, ct);
         });
     }
 

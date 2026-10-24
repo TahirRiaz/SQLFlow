@@ -348,6 +348,11 @@ public class CatalogRun
     /// <summary>How many members the member's fan-out has; null for a run that is not a fan-out member.</summary>
     public int? FanOutCount { get; set; }
 
+    /// <summary>Whether the run takes a node to itself: a fan-out member whose root asked for it. The dispatcher hands
+    /// such a run only to a node executing nothing else and puts nothing beside it, and the replica target counts it as a
+    /// node of its own. False for every other run.</summary>
+    public bool WholeNode { get; set; }
+
     /// <summary>The run artifact's <c>result</c> object as compact JSON, recorded for runs of a flow kind a host
     /// registered: a fan-out root reads its members' outcomes from it, and the run page shows it. Null for built-in
     /// kinds (their results are projected into the typed columns), for an artifact without a result object, and for a

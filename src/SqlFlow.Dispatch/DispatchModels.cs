@@ -8,7 +8,23 @@ namespace SqlFlow.Dispatch;
 /// <see cref="FanOutRoot"/>: the pipeline gate admits it beside its root and the root's other members.</summary>
 public sealed record DispatchRun(
     Guid RunId, Guid PipelineId, string? TargetPool, Guid? GroupId, int GroupWave, int? GroupMaxConcurrency,
-    DateTime EnqueuedUtc, int Attempt, bool CancelRequested, Guid? FanOutRoot = null);
+    DateTime EnqueuedUtc, int Attempt, bool CancelRequested, Guid? FanOutRoot = null, bool WholeNode = false);
+
+/// <summary>
+/// The queued runs of a pool no gate holds back, the demand term of its replica target: <see cref="Runs"/> of them in all,
+/// <see cref="WholeNodeRuns"/> of which take a node to themselves.
+/// </summary>
+public readonly record struct EligibleQueuedRuns(int Runs, int WholeNodeRuns)
+{
+    /// <summary>The nodes they ask for when a node executes <paramref name="runSlotsPerNode"/> runs at once: one for each
+    /// run that takes a node to itself, and the others shared that many to a node, rounded up.</summary>
+    public int Nodes(int runSlotsPerNode)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(runSlotsPerNode, 1);
+        var shared = Math.Max(0, Runs - WholeNodeRuns);
+        return checked(WholeNodeRuns + ((shared + runSlotsPerNode - 1) / runSlotsPerNode));
+    }
+}
 
 /// <summary>A queued ad-hoc compute task as the dispatcher sees it: the id, its pool routing, and its age. Tasks have
 /// no ordering gates beyond the pool, so this is all placement needs.</summary>

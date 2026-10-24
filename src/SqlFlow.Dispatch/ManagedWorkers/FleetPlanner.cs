@@ -27,7 +27,8 @@ public sealed record FleetSnapshot(
     bool ListCurrent,
     IReadOnlyDictionary<string, DateTime> BlockedUntilUtc,
     TimeSpan? WorkerTimeLimit = null,
-    DateTime? ResumedUtc = null)
+    DateTime? ResumedUtc = null,
+    IReadOnlyDictionary<string, int>? EligibleWholeNodeRuns = null)
 {
     /// <summary>Since when this control plane has watched the fleet without a gap: the later of the takeover and the
     /// last resume. Silence, start and idle times count from here at the earliest.</summary>
@@ -375,9 +376,18 @@ public static class FleetPlanner
         // Capacity already there for the queued runs: free slots on every node that takes this pool's work now, and the
         // slots of the workers still starting. Only what that does not cover asks for a new worker, so a run an idle
         // worker is about to take never starts one.
+        // A run that takes a worker to itself (a fan-out member that asked for it) needs an idle worker, or one still
+        // starting: the free slots of a worker executing something else are no place for it. What those runs take is
+        // capacity the others cannot use, and the ones no idle worker covers ask for a worker each.
         var eligible = Math.Max(0, snapshot.EligibleRuns.GetValueOrDefault(key));
-        var capacity = serving.Sum(n => (long)FreeSlots(n)) + ((long)starting * slots) + inGrace.Sum(n => (long)FreeSlots(n));
-        var unserved = (int)Math.Min(int.MaxValue, Math.Max(0L, eligible - capacity));
+        var wholeNode = Math.Clamp(snapshot.EligibleWholeNodeRuns?.GetValueOrDefault(key) ?? 0, 0, eligible);
+        var idleWorkers = serving.Count(n => Slots(n) > 0 && FreeSlots(n) == Slots(n)) + (long)starting;
+        var wholeNodeServed = Math.Min(wholeNode, idleWorkers);
+        var capacity = serving.Sum(n => (long)FreeSlots(n)) + ((long)starting * slots) + inGrace.Sum(n => (long)FreeSlots(n))
+            - (wholeNodeServed * slots);
+        var unservedShared = Math.Max(0L, eligible - wholeNode - capacity);
+        var unservedWholeNode = wholeNode - wholeNodeServed;
+        var unserved = (int)Math.Min(int.MaxValue, unservedShared + unservedWholeNode);
 
         // Workers that take work and are staying (and the silent ones still in their grace), and replacements for the busy
         // workers being replaced that no idle Ready or starting worker can stand in for, so a recycle never leaves the load
@@ -387,7 +397,7 @@ public static class FleetPlanner
         var dueBusy = due.Count(w => IsBusy(nodes[w.Name]));
         var idleReady = ready.Count(w => !IsBusy(nodes[w.Name]));
         var replacements = Math.Max(0, dueBusy - idleReady - starting);
-        var forDemand = (long)present + Ceiling(unserved, slots) + replacements;
+        var forDemand = (long)present + unservedWholeNode + Ceiling(unservedShared, slots) + replacements;
         var target = (int)Math.Max(minimum, Math.Min(pool.MaxWorkers, forDemand));
         var blockedUntil = snapshot.BlockedUntilUtc.TryGetValue(key, out var until) && until > now ? until : (DateTime?)null;
 
@@ -424,7 +434,7 @@ public static class FleetPlanner
         if (due.Count > 0 && fresh >= minimum)
         {
             var busyTakers = ready.Concat(due).Count(w => IsBusy(nodes[w.Name]));
-            var wanted = Math.Max(minimum, (int)Math.Min(pool.MaxWorkers, (long)busyTakers + Ceiling(eligible, slots)));
+            var wanted = Math.Max(minimum, (int)Math.Min(pool.MaxWorkers, (long)busyTakers + wholeNode + Ceiling(eligible - wholeNode, slots)));
             var allowed = Math.Clamp(ready.Count + due.Count - wanted, 0, due.Count);
             foreach (var worker in due
                 .OrderBy(w => IsBusy(nodes[w.Name]))

@@ -140,4 +140,22 @@ public sealed class RunWorkerDrainTests
         Assert.True(abort.IsCancellationRequested);
         Assert.True(inFlight.IsCompleted);
     }
+
+    [Fact]
+    public async Task ARunThatTakesTheNodeToItself_HoldsEverySlot_AndGivesThemBackWhenCancelledPartWay()
+    {
+        using var gate = new SemaphoreSlim(4, 4);
+        await RunWorker.TakeSlotsAsync(gate, 4, CancellationToken.None);
+        Assert.Equal(0, gate.CurrentCount);
+        gate.Release(4);
+
+        // A run holds one slot; the run that takes the node finds three free, waits for the fourth, and is stopped: the
+        // three it took go back, so the node reports what it really has free.
+        await gate.WaitAsync();
+        using var stop = new CancellationTokenSource();
+        var taking = RunWorker.TakeSlotsAsync(gate, 4, stop.Token);
+        await stop.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => taking);
+        Assert.Equal(3, gate.CurrentCount);
+    }
 }

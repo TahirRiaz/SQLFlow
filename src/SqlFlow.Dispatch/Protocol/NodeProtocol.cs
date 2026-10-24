@@ -81,7 +81,9 @@ public sealed record NodePollRequest(
 /// substitution parameters, and the reference (never the value) of the git credential a pinned run may need.
 /// Fields that describe rows which may have left the catalog since the enqueue are nullable, and the node reports
 /// the precise reason when one is missing. <see cref="RequestedBy"/> is who asked for the run (the caller's subject,
-/// or <c>schedule:&lt;name&gt;</c> for a schedule's own fire), null for runs enqueued before it was recorded.</summary>
+/// or <c>schedule:&lt;name&gt;</c> for a schedule's own fire), null for runs enqueued before it was recorded.
+/// <see cref="WholeNode"/> says the run takes the node to itself (a fan-out member that asked for it): the node gives it
+/// every run slot it has, so it is handed nothing else until the run ends.</summary>
 public sealed record RunSpec(
     Guid? RepoId,
     Guid PipelineId,
@@ -95,7 +97,8 @@ public sealed record RunSpec(
     RunParameters Parameters,
     string? CredentialReference,
     string? CredentialUsername,
-    string? RequestedBy = null);
+    string? RequestedBy = null,
+    bool WholeNode = false);
 
 /// <summary>A run handed to the node: the id, the attempt this hand-out consumed (the fencing token the node
 /// presents on every later call for the run), and the execution spec.</summary>
@@ -209,7 +212,7 @@ public sealed record TaskOutcomeResponse(bool Recorded);
 /// member runs of the same flow executing beside it. Each member carries its own parameters, and every member performs
 /// the same operation. The members form one run group of mode fan-out under the root, and a root re-executed after an
 /// interruption that asks for the same operation again gets back the members it already has instead of new ones.</summary>
-public sealed record FanOutRequest(string Node, int Attempt, IReadOnlyList<RunParameters> Members)
+public sealed record FanOutRequest(string Node, int Attempt, IReadOnlyList<RunParameters> Members, bool WholeNode = false)
 {
     /// <summary>Refuses a request no dispatcher could honor, naming why: no members, more than
     /// <see cref="NodeProtocol.MaxFanOutMembers"/>, a member whose parameters are invalid on their own, or members that
