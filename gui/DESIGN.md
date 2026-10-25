@@ -488,8 +488,9 @@ rules take their place, and only on this page:
 ## 12. The home page
 
 The page a person lands on in the workbench (`src/features/dashboard/DashboardPage.tsx`, route `/`). It is a workbench
-page in every way but its opening, which carries the sign-in page's identity into the workbench so the two read as one
-product:
+page in every way but its hero, which carries the sign-in page's identity into the workbench so the two read as one
+product. The headline counts (7.7) open the page on their own, with no heading over them (the cards name themselves),
+so what the estate is doing now is the first thing read; the hero follows them:
 
 - **The hero.** A card set on the sign-in page's navy field (`BRAND_FIELD`) in both modes, rendered with the dark
   tokens, `rounded-lg` with a white/10 hairline: a greeting (24px semibold, white), the product's tagline (14px, white/60),
@@ -502,7 +503,7 @@ product:
   the questions (`HomeContribution.prompts`), SQLFlow's own standing in when none does. When the assistant is not
   configured, the box says so and asks nothing.
 - **Below it, the workbench.** Sections set in `HomeSection` (16px medium heading, what it is as of or the way into its
-  area on the right): the headline counts (7.7), then each section a module adds (`HomeContribution.sections`, each in a
+  area on the right): each section a module adds (`HomeContribution.sections`, each in a
   suspense boundary of its own), then the newest runs beside the run-state distribution. Status colors keep to 3.2.
 
 ## 13. Port checklist (apply to every feature page)

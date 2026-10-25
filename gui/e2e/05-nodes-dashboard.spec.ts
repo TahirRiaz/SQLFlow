@@ -21,7 +21,6 @@ test.describe("nodes and dashboard", () => {
     for (const kpi of ["kpi-repos", "kpi-pipelines", "kpi-nodes", "kpi-schedules", "kpi-repo-sources", "kpi-runs-24h"]) {
       await expect(adminPage.getByTestId(kpi)).toBeVisible();
     }
-    await expect(adminPage.getByTestId("dashboard-as-of")).toBeVisible();
 
     await adminPage.getByTestId("kpi-repos").click();
     await expect(adminPage.getByTestId("page-repos")).toBeVisible();

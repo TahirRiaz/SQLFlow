@@ -20,10 +20,8 @@ import { summaryApi } from "../../api/endpoints";
 import type { Dashboard } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
-import { HomeSection } from "../../components/HomeSection";
 import { KpiCard } from "../../components/KpiCard";
 import { Page } from "../../components/Page";
-import { RelativeTime } from "../../components/RelativeTime";
 import { pollingInterval } from "../../hooks/usePolling";
 import { moduleDashboardTiles, moduleHomeSections } from "../../modules/registry";
 import { useThemeMode } from "../../theme/ThemeModeContext";
@@ -103,8 +101,8 @@ function Glance({ dashboard }: { dashboard: Dashboard }) {
 }
 
 /**
- * The page a person lands on (DESIGN.md 12): the hero with the assistant's question box, the headline counts linking into
- * each area, the sections the modules add about their own product, and the newest runs beside the run-state
+ * The page a person lands on (DESIGN.md 12): the headline counts linking into each area, the hero with the assistant's
+ * question box, the sections the modules add about their own product, and the newest runs beside the run-state
  * distribution.
  */
 export default function DashboardPage() {
@@ -148,17 +146,8 @@ export default function DashboardPage() {
 
   return (
     <Page data-testid="page-dashboard">
-      <HomeHero />
-
-      <HomeSection
-        title="At a glance"
-        testId="home-glance"
-        aside={dashboard !== undefined && (
-          <span className="text-xs text-muted-foreground" data-testid="dashboard-as-of">
-            As of <RelativeTime value={dashboard.asOfUtc} />
-          </span>
-        )}
-      >
+      {/* The headline counts open the page on their own, without a heading: the cards name themselves. */}
+      <section data-testid="home-glance">
         {query.isError
           ? (isApiError(query.error)
             ? <CorrelationError error={query.error} />
@@ -172,7 +161,9 @@ export default function DashboardPage() {
               </div>
             )
             : <Glance dashboard={dashboard} />}
-      </HomeSection>
+      </section>
+
+      <HomeHero />
 
       {/* Each section loads on its own (a module may load it lazily), holding its place until it does. */}
       {moduleHomeSections().map(({ id, component: ModuleSection }) => (
