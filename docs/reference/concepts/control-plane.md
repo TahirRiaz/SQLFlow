@@ -14,6 +14,7 @@ keywords:
   - lineage api
 related:
   - cli-worker
+  - concept-run-inputs
   - concept-authentication-and-identity
   - concept-shadow-catalog
   - guide-deployment
@@ -101,6 +102,7 @@ Read surface (policy `read`):
 | `GET /repos`, `GET /repos/{id}` | Repository registry |
 | `GET /pipelines`, `GET /pipelines/{id}` | Pipeline registry (filters: `repoId`, `kind`, `active`, `name`) |
 | `GET /pipelines/{id}/definition` | The pipeline's parsed definition as JSON |
+| `GET /pipelines/{id}/parameters` | The run controls that apply to the flow and, for a registered kind's flow, what its document declares a run may be given: its parameters, their defaults, choices and lookups, and its run settings ([Run inputs](run-inputs.md)) |
 | `GET /pipelines/{id}/columns` | Declared and detected pre-ingestion transform columns |
 | `GET /pipelines/{id}/files`, `GET /pipelines/{id}/files/stats` | Every distinct file the pipeline has processed (deduplicated by name and path), and the size profile over them: average, median, standard deviation, extremes, totals, and a window over the newest files, so a caller can tell a normal delivery from an anomalous one |
 | `GET /runs`, `GET /runs/{runId}` | Run history and detail (filters include `repoId`, `pipelineId`, `flowKind`, `status`, `success`, `flowName`, `batch`, `latest`). A summary carries `startUtc` and `endUtc` beside `durationSeconds`, so how long a running run has been executing is known before it has a duration |
@@ -124,6 +126,7 @@ Read surface (policy `read`):
 | `GET /search/statements` | The SQL runs actually executed, grouped to one row per (flow, step) with an occurrence count and the newest sample; searches a 90-day window by default (`days=0` for all retained history) |
 | `GET /search/subscribers` | The consumers of the warehouse (dashboards, reports, workbooks, applications) by name, tool, owner, description, notes, location (the report URL or workbook path), or declaring file. Searching `Incomplete dataset` lists every consumer whose registered lineage is only partial |
 | `GET /schedules`, `GET /schedules/{id}` | Schedules |
+| `GET /schedules/{id}/parameters` | What each flow the schedule runs is given when it fires: the value of each parameter and where it comes from, and what would refuse its run ([Run inputs](run-inputs.md#what-a-schedule-gives-each-flow)) |
 | `GET /nodes` | Worker fleet with a derived online flag |
 | `GET /repos/sources` | Managed repo sources |
 | `GET /summary` | Estate summary |
@@ -135,6 +138,7 @@ Operate surface (policy `operate`):
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /runs` | Trigger a run or a run group (202 Accepted) |
+| `POST /pipelines/{id}/parameters/{name}/values`, `POST /pipelines/{id}/parameters/explain` | A parameter's values to pick from (its choices, or its kind's lookup), and what a run with a form's inputs would take and what would refuse it; nothing is queued ([Run inputs](run-inputs.md#the-routes)) |
 | `POST /runs/{runId}/cancel` | Cancel a run (200 `cancelled` from queued; 202 `cancelling` while running) |
 | `POST /runs/groups/{groupId}/cancel` | Cancel a whole run group (queued members cancelled, running members requested) |
 | `POST /schedules`, `POST /schedules/{id}/pause`, `POST /schedules/{id}/resume`, `DELETE /schedules/{id}` | Ad-hoc schedule management |
@@ -313,7 +317,7 @@ API:
 
 - `flowName` is required and must be non-blank (400 "A run trigger requires a non-blank flowName.").
 - `commitSha` must be a 4 to 64 character hexadecimal git object id, or the request is 400: "commitSha must be a 4- to 64-character hexadecimal git object id (or omitted to pin to the last synced commit)." When omitted, enqueueing pins the run to the repo's last synced commit (`LastSyncedSha`) when one is resolvable, so the executed version matches what the catalog shows and any node can materialize it; only a repo with no resolvable synced commit runs unpinned from the node's local copy (src/SqlFlow.Catalog/RunQueueStore.cs).
-- The per-run substitution parameters (`fullLoad`, `backfillFrom`/`backfillTo`, `filePattern`, `sourceFilter`) are validated at the trust boundary via `RunParameters.Validate()`, so an inverted window or a control-character glob is refused as 400 "Invalid run parameters" before anything is queued. They then pass the pipeline's kind through the loader's one rule (`YamlDocumentLoader.ValidateRunParameters`): a flow of a registered kind (one a host module adds) has its kind check every run, so an override the kind does not apply is refused 400 with the kind's own message rather than queued and ignored.
+- The per-run substitution parameters (`fullLoad`, `backfillFrom`/`backfillTo`, `filePattern`, `sourceFilter`) are validated at the trust boundary via `RunParameters.Validate()`, so an inverted window or a control-character glob is refused as 400 "Invalid run parameters" before anything is queued. They then pass the pipeline's kind through the loader's one rule (`YamlDocumentLoader.ValidateRunParameters`): a flow of a registered kind (one a host module adds) has its kind check every run, so an override the kind does not apply is refused 400 with the kind's own message rather than queued and ignored. A registered kind's `operation`, `values` and `payload` are checked the same way, by its kind; the values of the parameters a flow's document declares are resolved when the run starts, by the one rule a run form and a schedule's preview explain them with ([Run inputs](run-inputs.md#the-one-rule)), and a value the document refuses fails the run then.
 - An unknown or deactivated pipeline is 404: "No active pipeline '&lt;flow&gt;' in repo '&lt;repoId&gt;'." The pipeline's kind is carried onto the queued run.
 - `scope` selects how much to run: omitted or `flow` triggers the single flow (the default described above); `node` expands the named flow and all its lineage descendants into one wave-gated run group. Any other value is 400; a whole data source runs through its schedule (`POST /schedules/{id}/run`). A node run takes only a backfill window: its anchor reads the window, every relational (`ing`) descendant re-reads from the source minimum, and the rest run as defined, each member's parameters passing its own kind's check first (a refusal is 400 naming the member). `fullLoad`, `filePattern`, `sourceFilter`, `assertionsOnly` and kind arguments are single-flow concepts, so a node scope carrying one is refused 400 rather than run without it.
 - `assertionsOnly` (ingestion flows only) evaluates the flow's data-quality assertions, manual-mode ones included, against the current target without loading anything; on any other flow kind it is a 400.

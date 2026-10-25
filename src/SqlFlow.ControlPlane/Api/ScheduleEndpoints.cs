@@ -98,6 +98,30 @@ public sealed record SchedulePlanDto(
     int WaveCount, IReadOnlyList<SchedulePlanMemberDto> Members);
 
 /// <summary>
+/// What every flow a schedule runs is given when it fires: the operation, the value each parameter of its document takes and
+/// where it comes from (the schedule, or the flow's default), the settings its document gives a run, and what would refuse
+/// the run. Read the way a fire applies the schedule (<see cref="ScheduleFire.TakesKindArguments"/>) and the way the member's
+/// kind resolves a run's values (<see cref="RunValueResolution"/>), so the preview is what a fire does.
+/// <see cref="Values"/> is the schedule's own <c>values</c>; <see cref="Members"/> are in wave order, as they run.
+/// </summary>
+public sealed record ScheduleParametersDto(
+    Guid ScheduleId, string Name, string? Operation,
+    [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string> Values,
+    IReadOnlyList<ScheduleMemberParametersDto> Members);
+
+/// <summary>
+/// One flow a schedule runs, and what it is given when the schedule fires. <see cref="TakesScheduleArguments"/> is false for
+/// a built-in kind, and for a kind without the schedule's operation: it runs as routed, with its document's own values, and
+/// <see cref="Note"/> says so. <see cref="Values"/> is what the run takes for each declared parameter (with where each comes
+/// from), then the kind's own run values the schedule gives, then any value the flow does not declare.
+/// <see cref="Problems"/> lists what would refuse the run, each naming the parameter or argument; empty when it would start.
+/// </summary>
+public sealed record ScheduleMemberParametersDto(
+    string FlowName, string FlowKind, int Wave, Guid? PipelineId, bool TakesScheduleArguments, string? Operation,
+    IReadOnlyList<DeclaredRunParameter> Parameters, IReadOnlyList<ResolvedRunValue> Values, IReadOnlyList<RunSetting> Settings,
+    IReadOnlyList<KindRunValue> KindValues, string? Note, IReadOnlyList<string> Problems);
+
+/// <summary>
 /// The schedule surface over the catalog. The reads (list, detail) are mapped under the "read" scope; the mutations
 /// (create an ad-hoc schedule, pause/resume an operational override, delete) under "operate". A schedule fires by
 /// enqueuing onto the durable run queue, so this surface only manages WHEN; the run itself goes through the same
@@ -113,6 +137,7 @@ public static class ScheduleEndpoints
         schedules.MapGet("/{id:guid}", GetScheduleAsync).WithName("GetSchedule");
         schedules.MapGet("/{id:guid}/definition", GetScheduleDefinitionAsync).WithName("GetScheduleDefinition");
         schedules.MapGet("/{id:guid}/plan", GetSchedulePlanAsync).WithName("GetSchedulePlan");
+        schedules.MapGet("/{id:guid}/parameters", GetScheduleParametersAsync).WithName("GetScheduleParameters");
         return group;
     }
 
@@ -259,6 +284,66 @@ public static class ScheduleEndpoints
             schedule.IntervalSeconds, schedule.Timezone, schedule.Enabled, schedule.Paused, schedule.NextFireUtc,
             schedule.LastFireUtc, expansion.Anchor, members.Count,
             members.Select(m => m.Wave).Distinct().Count(), members));
+    }
+
+    /// <summary>
+    /// What each flow the schedule runs is given when it fires (<see cref="ScheduleParametersDto"/>): the members a fire
+    /// expands to, in wave order; for each, whether it takes the schedule's operation and values, the operation it runs,
+    /// the value each parameter of its document takes and where it comes from, its document's run settings, and what would
+    /// refuse the run, including the refusal the fire itself would meet. Reads the catalog's copy of each member's document;
+    /// nothing is enqueued.
+    /// </summary>
+    private static async Task<Results<Ok<ScheduleParametersDto>, ProblemHttpResult>> GetScheduleParametersAsync(
+        Guid id, CatalogDbContext db, SqlFlow.Yaml.YamlDocumentLoader documents, CancellationToken ct)
+    {
+        var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
+        if (schedule is null)
+        {
+            return TypedResults.Problem(detail: $"No schedule '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
+        }
+
+        var expansion = await RunScopeExpander
+            .ExpandScheduleAsync(db, schedule.RepoId, schedule.Id, schedule.Name, batchFilter: null, ct).ConfigureAwait(false);
+        var ids = expansion.Members.Where(m => m.PipelineId is not null).Select(m => m.PipelineId!.Value).ToList();
+        var documentsById = await db.Pipelines.AsNoTracking().Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Yaml, p.RelativePath })
+            .ToDictionaryAsync(p => p.Id, ct).ConfigureAwait(false);
+        var values = RunParameters.ValuesFromJson(schedule.ValuesJson);
+        var hasArguments = schedule.Operation is not null || values.Count > 0;
+        var none = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var members = new List<ScheduleMemberParametersDto>(expansion.Members.Count);
+        foreach (var member in expansion.Members)
+        {
+            var kind = documents.FindKind(member.FlowKind);
+            var takes = ScheduleFire.TakesKindArguments(documents, schedule, member.FlowKind);
+            var defaultOperation = kind is { Operations.Count: > 0 } ? kind.Operations[0].Name : null;
+            var operation = takes ? schedule.Operation ?? defaultOperation : defaultOperation;
+
+            // The run the fire queues: the schedule's operation and values for a member that takes them, none otherwise,
+            // explained as a run form explains its own and checked as the fire checks it.
+            var document = member.PipelineId is { } pipelineId && documentsById.TryGetValue(pipelineId, out var row) ? row : null;
+            var explained = RunExplanation.Explain(
+                documents, member.FlowKind, document?.Yaml ?? string.Empty, document?.RelativePath ?? member.FlowName,
+                takes ? schedule.Operation : null, takes ? values : none, payload: null);
+
+            string? note = null;
+            if (!takes && hasArguments)
+            {
+                note = kind is null
+                    ? "A built-in kind takes no operation or values: this flow runs as its document defines."
+                    : $"Its kind has no operation '{schedule.Operation}': this flow runs its default operation ({defaultOperation}) with its document's own values.";
+            }
+
+            var settings = explained.Inputs.Settings
+                .Where(s => s.Operations.Count == 0 || operation is null || s.Operations.Contains(operation, StringComparer.Ordinal))
+                .ToList();
+            members.Add(new ScheduleMemberParametersDto(
+                member.FlowName, member.FlowKind, member.Wave, member.PipelineId, takes, operation,
+                explained.Inputs.Parameters, explained.Values, settings, explained.Inputs.KindValues, note, explained.Problems));
+        }
+
+        return TypedResults.Ok(new ScheduleParametersDto(schedule.Id, schedule.Name, schedule.Operation, values, members));
     }
 
     private static async Task<Results<Created<ScheduleCreated>, ProblemHttpResult>> CreateScheduleAsync(

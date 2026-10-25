@@ -145,9 +145,7 @@ public static class ScheduleFire
         var map = memberParameters ?? new Dictionary<string, RunParameters>(StringComparer.Ordinal);
         foreach (var member in members)
         {
-            var kind = documents.FindKind(member.FlowKind);
-            if (kind is null
-                || (schedule.Operation is { } operation && !kind.Operations.Any(o => string.Equals(o.Name, operation, StringComparison.Ordinal))))
+            if (!TakesKindArguments(documents, schedule, member.FlowKind))
             {
                 continue;
             }
@@ -162,6 +160,21 @@ public static class ScheduleFire
         }
 
         return map;
+    }
+
+    /// <summary>
+    /// Whether a member of kind <paramref name="flowKind"/> is given the schedule's operation and values when it fires: a
+    /// registered kind that declares the schedule's operation, or any registered kind when the schedule names none. A
+    /// built-in member, or one whose kind lacks the operation, runs as routed, with its document's own values. The one
+    /// decision a fire (<see cref="EnqueueAsync"/>) and a schedule's preview of its members' values both take.
+    /// </summary>
+    public static bool TakesKindArguments(YamlDocumentLoader documents, CatalogSchedule schedule, string flowKind)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        ArgumentNullException.ThrowIfNull(schedule);
+        var kind = documents.FindKind(flowKind);
+        return kind is not null
+               && (schedule.Operation is not { } operation || kind.Operations.Any(o => string.Equals(o.Name, operation, StringComparison.Ordinal)));
     }
 
     /// <summary>The flow kinds a schedule backfill acts on, matching the three layers of an ingest source: the

@@ -327,6 +327,17 @@ public interface IFlowDocumentKind
     /// <see cref="YamlDocumentLoader.ValidateRunParameters"/>. A refusal is a <see cref="SqlFlow.Core.SqlFlowException"/>
     /// whose message names the offending argument.</summary>
     void ValidateParameters(RunParameters parameters);
+
+    /// <summary>
+    /// What a run of the flow <paramref name="yaml"/> declares may be given (<see cref="FlowRunInputs"/>): the parameters
+    /// it declares with their defaults and the values they may take, the settings of the document a run may change for
+    /// itself with the values the document gives them, and the run values the kind reads beside them. A client builds its
+    /// run form from it and a schedule's preview explains its values against it, so the kind resolves every run's values
+    /// with the same rules (<see cref="RunValueResolution"/>). <paramref name="source"/> labels errors, as for
+    /// <see cref="Parse"/>, and a document that does not parse throws as <see cref="Parse"/> does. A kind that declares
+    /// nothing a run may be given describes <see cref="FlowRunInputs.None"/>.
+    /// </summary>
+    FlowRunInputs DescribeRun(string yaml, string source) => FlowRunInputs.None;
 }
 
 /// <summary>

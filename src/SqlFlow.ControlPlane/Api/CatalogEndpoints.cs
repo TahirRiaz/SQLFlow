@@ -338,13 +338,14 @@ public static class CatalogEndpoints
     /// definition rather than showing every control for every kind. The applicable set comes from the shared
     /// <see cref="RunParameterApplicability"/> (the same per-kind rules the engine honors); for a relational
     /// ingestion the backfill window is offered only when the definition declares an incremental date column a window
-    /// can bound.
+    /// can bound. A registered kind's flow adds what its document declares a run may be given
+    /// (<see cref="PipelineRunInputs"/>): its parameters with the values the document gives them, and its run settings.
     /// </summary>
     private static async Task<Results<Ok<FlowParametersDto>, ProblemHttpResult>> GetPipelineParametersAsync(
-        Guid id, CatalogDbContext db, CancellationToken ct)
+        Guid id, CatalogDbContext db, SqlFlow.Yaml.YamlDocumentLoader documents, CancellationToken ct)
     {
         var row = await db.Pipelines.AsNoTracking().Where(x => x.Id == id)
-            .Select(x => new { x.Kind, x.DefinitionJson })
+            .Select(x => new { x.Kind, x.DefinitionJson, x.Yaml, x.RelativePath })
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (row is null)
         {
@@ -352,7 +353,8 @@ public static class CatalogEndpoints
         }
 
         var descriptors = RunParameterApplicability.For(row.Kind, HasIncrementalDateColumn(row.DefinitionJson));
-        return TypedResults.Ok(new FlowParametersDto(row.Kind, descriptors));
+        var (inputs, problem) = PipelineRunInputs.Describe(documents, row.Kind, row.Yaml, row.RelativePath);
+        return TypedResults.Ok(new FlowParametersDto(row.Kind, descriptors, inputs, problem));
     }
 
     /// <summary>Whether the flow definition declares a non-empty incremental date column anywhere (a tolerant probe

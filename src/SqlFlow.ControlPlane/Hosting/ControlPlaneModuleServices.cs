@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SqlFlow.Catalog.Modules;
+using SqlFlow.ControlPlane.Api;
 using SqlFlow.ControlPlane.Maintenance;
 
 namespace SqlFlow.ControlPlane.Hosting;
@@ -117,6 +118,15 @@ public sealed class ControlPlaneModuleServices
     public void AddStorageContributor<TContributor>()
         where TContributor : class, IStorageContributor
         => Services.AddScoped<IStorageContributor, TContributor>();
+
+    /// <summary>
+    /// Registers the lookup that reads the values a parameter of the module's flow kinds may take, so a run form offers them
+    /// to pick from (<c>POST /pipelines/{id}/parameters/{name}/values</c>). The lookup is resolved per request, so it may
+    /// depend on scoped services; the first one that serves a flow's kind answers for it.
+    /// </summary>
+    public void AddRunParameterLookup<TLookup>()
+        where TLookup : class, IRunParameterLookup
+        => Services.AddScoped<IRunParameterLookup, TLookup>();
 
     /// <summary>Registers a hosted service the control plane starts and stops with the host.</summary>
     public void AddHostedService<THostedService>()

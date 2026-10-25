@@ -3,7 +3,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { ChartGantt, CirclePlay, FileCode2, Link2, Loader2, Pause, Play, Plus, Trash2, X } from "lucide-react";
+import { ChartGantt, CirclePlay, FileCode2, Link2, Loader2, Pause, Play, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,8 @@ import { readLocalStorageState, useLocalStorageState } from "../../hooks/useLoca
 import { cronSummary, intervalSummary, shortZone } from "./cadence";
 import { RunScheduleDialog } from "./RunScheduleDialog";
 import { ScheduleDefinitionSheet } from "./ScheduleDefinitionSheet";
+import { scheduleValueAssignments } from "./scheduleValues";
+import { ScheduleValuesSheet } from "./ScheduleValuesSheet";
 
 /** The toast line for a failed mutation (DESIGN.md 8.1): the API's own message when it is one. */
 function errorMessage(error: unknown): string {
@@ -79,6 +81,44 @@ function instantDetail(utc: string): string {
   const date = parseUtc(utc);
   const iso = date.toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
   return `${format(date, "MMM d, HH:mm:ss")} · ${formatDistanceToNow(date, { addSuffix: true })} · ${iso}`;
+}
+
+/**
+ * What a schedule runs its flows with, in one cell: the operation and values it gives, the first of them in the cell and
+ * every one on hover, or that its flows run with their own defaults. A click opens what each flow is given, read as a
+ * fire applies the schedule.
+ */
+function RunsWithCell({ schedule, onOpen }: { schedule: Schedule; onOpen: () => void }) {
+  const parts = [
+    ...(schedule.operation !== null ? [`operation ${schedule.operation}`] : []),
+    ...scheduleValueAssignments(schedule.values),
+  ];
+  const label = parts.length === 0 ? "defaults" : parts[0];
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex max-w-[14rem] items-center gap-1 text-left"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          data-testid="schedule-runs-with"
+        >
+          <span className={cn("min-w-0 truncate font-mono text-[12px]", parts.length === 0 ? "text-muted-foreground" : "text-primary hover:underline")}>
+            {label}
+          </span>
+          {parts.length > 1 && <span className="shrink-0 text-[11px] text-muted-foreground">{`+${parts.length - 1}`}</span>}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="whitespace-pre-line">
+        {parts.length === 0
+          ? "The schedule gives no operation and no values: each flow runs with its own defaults. Click to see what each is given."
+          : `${parts.join("\n")}\nClick to see what each flow is given.`}
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 /**
@@ -401,6 +441,7 @@ export default function SchedulesPage() {
   // The schedule whose defining YAML is open: the cadence is declared in git, so the list can show the document
   // behind it rather than sending an operator to the repo to find out why a schedule fires when it does.
   const [definitionTarget, setDefinitionTarget] = useState<Schedule | null>(null);
+  const [valuesTarget, setValuesTarget] = useState<Schedule | null>(null);
   // Free-text search over the schedule name, remembered like every other list filter. An estate runs hundreds of
   // schedules, so typing a fragment of the name is the only practical way to reach one.
   const [searchInput, setSearchInput] = useLocalStorageState(SEARCH_KEY, "");
@@ -498,6 +539,11 @@ export default function SchedulesPage() {
           </TooltipContent>
         </Tooltip>
       )),
+    },
+    {
+      id: "runsWith",
+      header: "Runs with",
+      render: (row) => <RunsWithCell schedule={row} onOpen={() => setValuesTarget(row)} />,
     },
     {
       id: "trigger",
@@ -671,6 +717,23 @@ export default function SchedulesPage() {
                 <Button
                   variant="ghost"
                   size="icon-xs"
+                  aria-label="What each flow is given"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setValuesTarget(row);
+                  }}
+                  data-testid="schedule-values"
+                >
+                  <SlidersHorizontal />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>What each flow is given when this schedule fires</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   aria-label="View definition"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -793,6 +856,8 @@ export default function SchedulesPage() {
       {definitionTarget && (
         <ScheduleDefinitionSheet schedule={definitionTarget} onClose={() => setDefinitionTarget(null)} />
       )}
+
+      {valuesTarget && <ScheduleValuesSheet schedule={valuesTarget} onClose={() => setValuesTarget(null)} />}
 
       <ConfirmDialog
         open={deleteTarget !== null}

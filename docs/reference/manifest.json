@@ -801,6 +801,7 @@
       ],
       "related": [
         "cli-worker",
+        "concept-run-inputs",
         "concept-authentication-and-identity",
         "concept-shadow-catalog",
         "guide-deployment",
@@ -1468,6 +1469,52 @@
         "src/SqlFlow.HealthCheck/HealthCheckModelStore.cs",
         "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
         "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-run-inputs",
+      "corpus": "reference",
+      "path": "concepts/run-inputs.md",
+      "title": "Run inputs: what a run of a flow may be given, and what it takes",
+      "type": "concept",
+      "summary": "A registered kind's flow describes the parameters and settings a run may be given; one rule resolves every run's values, the run form offers choices and look...",
+      "keywords": [
+        "run inputs",
+        "run parameters",
+        "parameters",
+        "run settings",
+        "choices",
+        "lookup",
+        "several values",
+        "default",
+        "trigger dialog",
+        "schedule values",
+        "FlowRunInputs",
+        "RunValueResolution",
+        "DescribeRun",
+        "IRunParameterLookup"
+      ],
+      "related": [
+        "concept-control-plane",
+        "flow-schedule",
+        "concept-architecture-and-execution"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Runs/FlowRunInputs.cs",
+        "src/SqlFlow.Core/Runs/RunValuesJsonConverter.cs",
+        "src/SqlFlow.Yaml/FlowDocumentKinds.cs",
+        "src/SqlFlow.ControlPlane/Api/RunInputEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/CatalogEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ScheduleEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Background/ScheduleFire.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneModuleServices.cs",
+        "gui/src/features/runs/TriggerRunDialog.tsx",
+        "gui/src/features/runs/RunParameterFields.tsx",
+        "gui/src/features/runs/RunSettingFields.tsx",
+        "gui/src/features/runs/RunValuePicker.tsx",
+        "gui/src/features/runs/runInputs.ts",
+        "gui/src/features/schedules/ScheduleValuesSheet.tsx",
+        "gui/src/features/schedules/scheduleValues.ts"
       ]
     },
     {
@@ -2483,6 +2530,7 @@
       ],
       "yamlPath": "schedule",
       "related": [
+        "concept-run-inputs",
         "concept-control-plane",
         "cli-control-plane",
         "cli-db",

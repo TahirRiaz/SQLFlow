@@ -21,7 +21,15 @@ import { ComboBoxField } from "../../components/ComboBoxField";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DateRangeCalendar } from "../../components/DateRangeCalendar";
 import { contributedKinds, kindContribution, type TriggerBodyContribution } from "../../modules/registry";
+import { RunParameterFields } from "./RunParameterFields";
+import { RunSettingFields } from "./RunSettingFields";
 import { useRunDock } from "./RunDockContext";
+import {
+  parametersFor, parameterValuesToSend, settingsFor, settingsToPayload, type ParameterFieldValues, type SettingFieldValues,
+} from "./runInputs";
+import { usePipelineParameters, useRunExplanation } from "./useRunInputs";
+
+/** How long the form rests before the control plane is asked what a run with its inputs would take. */
 
 /** Prior-run values used to prefill the form on Re-run (ISO strings for the window; they are trimmed to the
  * minute for the datetime-local inputs). Absent fields default to empty/off. */
@@ -135,6 +143,10 @@ export function TriggerRunDialog({
   const [operation, setOperation] = useState<string | null>(null);
   const [kindBody, setKindBody] = useState<TriggerBodyContribution>({ error: null });
   const [fieldsKey, setFieldsKey] = useState(0);
+  // A registered kind's flow: the values the form holds for the parameters its document declares, and the text it holds
+  // for the settings of its document a run may change. Empty fields leave the document's own to the run.
+  const [parameterFields, setParameterFields] = useState<ParameterFieldValues>({});
+  const [settingFields, setSettingFields] = useState<SettingFieldValues>({});
 
   // A batch-locked launch (from the status board) carries no flow: force batch scope and keep it there.
   const batchLocked = batch !== undefined;
@@ -152,6 +164,14 @@ export function TriggerRunDialog({
       setOperation(initialOperation ?? null);
       setKindBody({ error: null });
       setFieldsKey((current) => current + 1);
+      // A Re-run opens with what the run being repeated gave; the fields keep only the flow's declared parameters and
+      // settings, and the rest of its values and payload stay the kind's fields' to carry.
+      setParameterFields({ ...(initialValues ?? {}) });
+      setSettingFields(Object.fromEntries(
+        Object.entries(initialPayload ?? {})
+          .filter(([, value]) => typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+          .map(([key, value]) => [key, String(value)]),
+      ));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -207,13 +227,17 @@ export function TriggerRunDialog({
   const KindFields = kindModule?.trigger?.Fields;
   const moduleKind = kindModule !== undefined || kindDescriptor !== undefined;
 
-  const flowParameters = useQuery({
-    queryKey: ["pipeline-parameters", effectiveFlowId],
-    queryFn: () => pipelineApi.parameters(effectiveFlowId!),
-    // A module kind's single-flow run takes the kind's operation and fields instead of SQLFlow's parameter form.
-    enabled: open && paramsScope !== "none" && Boolean(effectiveFlowId) && !(moduleKind && paramsScope === "flow"),
-  });
+  // A module kind's single-flow run takes the parameters and settings its document declares (inputs) beside the kind's
+  // operation and fields; a built-in kind's takes SQLFlow's parameter form.
+  const flowParameters = usePipelineParameters(effectiveFlowId ?? null, open && paramsScope !== "none");
   const applicable = useMemo(() => flowParameters.data?.parameters ?? [], [flowParameters.data]);
+  // The parameters of the operation picked: one that takes the values it is given as they are (one reading no rows they
+  // scope, say) asks for none.
+  const declared = useMemo(() => parametersFor(flowParameters.data?.inputs, effectiveOperation), [flowParameters.data, effectiveOperation]);
+  const settings = useMemo(
+    () => settingsFor(flowParameters.data?.inputs?.settings ?? [], effectiveOperation),
+    [flowParameters.data, effectiveOperation],
+  );
   const paramKeys = useMemo(() => new Set(applicable.map((p) => p.key)), [applicable]);
   // A node run exposes only the backfill window; full load, file pattern, and assertions-only are single-flow
   // concepts (a group always runs its members otherwise as defined).
@@ -329,8 +353,32 @@ export function TriggerRunDialog({
   // A module kind's single-flow run carries the kind's operation and fields, and waits on what the fields report.
   const kindForm = moduleKind && paramsScope === "flow";
   const kindError = kindForm && KindFields !== undefined ? kindBody.error : null;
+
+  // What the run is given: the kind's fields' values (the partition, say) and the flow's declared parameters the form holds,
+  // and the kind's fields' payload with the settings the form changes, a setting's own field deciding its payload property.
+  const runValues = useMemo<Record<string, RunValue>>(() => {
+    const fromKind = KindFields !== undefined ? kindBody.values ?? {} : {};
+    return { ...fromKind, ...parameterValuesToSend(declared, parameterFields) };
+  }, [KindFields, kindBody.values, declared, parameterFields]);
+  const runPayload = useMemo<Record<string, unknown>>(() => {
+    const merged: Record<string, unknown> = { ...(KindFields !== undefined ? kindBody.payload ?? {} : {}) };
+    for (const setting of settings) {
+      delete merged[setting.key];
+    }
+
+    return { ...merged, ...settingsToPayload(settings, settingFields) };
+  }, [KindFields, kindBody.payload, settings, settingFields]);
+
+  // What a run with the form's inputs would take, and what would refuse it, as the control plane checks a trigger: asked
+  // once the form rests, so the fields say what is wrong as the operator fills them in.
+  const explainsInputs = open && kindForm && effectiveFlowId !== null && flowParameters.data?.inputs !== undefined
+    && flowParameters.data.inputs !== null && (declared.length > 0 || settings.length > 0);
+  const {
+    explained, parameterProblems, inputProblems, refused: inputsRefused,
+  } = useRunExplanation(effectiveFlowId ?? null, effectiveOperation, runValues, runPayload, explainsInputs);
+
   const canSubmit = Boolean(effectiveRepoId) && hasTarget && windowError === null && kindError === null && groupReady
-    && !trigger.isPending;
+    && !inputsRefused && !trigger.isPending;
 
   const submit = () => {
     // A single flow sends every parameter its kind honors; a node run sends only the backfill window (the server
@@ -352,16 +400,13 @@ export function TriggerRunDialog({
       sourceFilter: applies("sourceFilter") && hasSourceFilter ? sourceFilter.trim() : null,
       assertionsOnly: applies("assertionsOnly") ? assertionsOnly : false,
       includeAll: selectedScope === "node" ? includeAll : false,
-      // A module kind's single-flow run: the operation in effect, and the values and payload its fields report.
+      // A module kind's single-flow run: the operation in effect, the values its fields and the flow's parameters hold, and
+      // the payload its fields and the flow's settings make.
       ...(kindForm
         ? {
           operation: effectiveOperation ?? undefined,
-          values: KindFields !== undefined && kindBody.values !== undefined && Object.keys(kindBody.values).length > 0
-            ? kindBody.values
-            : undefined,
-          payload: KindFields !== undefined && kindBody.payload !== undefined && Object.keys(kindBody.payload).length > 0
-            ? kindBody.payload
-            : undefined,
+          values: Object.keys(runValues).length > 0 ? runValues : undefined,
+          payload: Object.keys(runPayload).length > 0 ? runPayload : undefined,
         }
         : {}),
     });
@@ -642,6 +687,51 @@ export function TriggerRunDialog({
                     )}
                   </div>
                 )}
+                {flowParameters.isLoading && (
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading this flow's parameters...
+                  </div>
+                )}
+                {flowParameters.isError && (
+                  <Alert className="text-warning" data-testid="trigger-parameters-unavailable">
+                    <TriangleAlert />
+                    <AlertDescription className="text-warning/90">
+                      Could not load this flow's parameters. Triggering now runs it with the values its document gives them.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {flowParameters.data?.inputsProblem && (
+                  <Alert className="text-warning" data-testid="trigger-inputs-problem">
+                    <TriangleAlert />
+                    <AlertDescription className="text-warning/90">{flowParameters.data.inputsProblem}</AlertDescription>
+                  </Alert>
+                )}
+                {declared.length > 0 && (
+                  <div className="flex flex-col gap-2" data-testid="trigger-flow-parameters">
+                    <span className="text-[13px] font-medium">Flow parameters</span>
+                    <RunParameterFields
+                      pipelineId={effectiveFlowId}
+                      parameters={declared}
+                      values={parameterFields}
+                      onChange={(name, value) => setParameterFields((was) => ({ ...was, [name]: value }))}
+                      lookupValues={KindFields !== undefined ? kindBody.values : undefined}
+                      prefix="trigger"
+                      problems={parameterProblems}
+                    />
+                  </div>
+                )}
+                {settings.length > 0 && (
+                  <div className="flex flex-col gap-2" data-testid="trigger-run-settings">
+                    <span className="text-[13px] font-medium">Run settings</span>
+                    <RunSettingFields
+                      settings={settings}
+                      values={settingFields}
+                      onChange={(key, text) => setSettingFields((was) => ({ ...was, [key]: text }))}
+                      prefix="trigger"
+                    />
+                  </div>
+                )}
                 {KindFields !== undefined && selectedKind !== null && (
                   <KindFields
                     key={`${fieldsKey}:${selectedKind}`}
@@ -656,6 +746,18 @@ export function TriggerRunDialog({
                 {kindError !== null && (
                   <p className="text-xs font-medium text-destructive" data-testid="trigger-parameters-error">
                     {kindError}
+                  </p>
+                )}
+                {inputProblems.length > 0 && (
+                  <ul className="flex flex-col gap-1" data-testid="trigger-inputs-problems">
+                    {inputProblems.map((problem) => (
+                      <li key={problem} className="text-xs font-medium text-destructive">{problem}</li>
+                    ))}
+                  </ul>
+                )}
+                {explainsInputs && explained.isError && (
+                  <p className="text-xs text-warning" data-testid="trigger-inputs-unchecked">
+                    The run's inputs could not be checked; the control plane checks them again when the run is triggered.
                   </p>
                 )}
               </div>

@@ -65,7 +65,8 @@ public sealed class RunValuesJsonConverter : JsonConverter<IReadOnlyDictionary<s
         writer.WriteEndObject();
     }
 
-    private static List<string> ReadItems(ref Utf8JsonReader reader, string name)
+    /// <summary>The strings of the array the reader stands at the start of, up to its end; <paramref name="name"/> labels errors.</summary>
+    internal static List<string> ReadItems(ref Utf8JsonReader reader, string name)
     {
         var items = new List<string>();
         while (reader.Read())
@@ -83,5 +84,40 @@ public sealed class RunValuesJsonConverter : JsonConverter<IReadOnlyDictionary<s
         }
 
         throw new JsonException($"Parameter '{name}' ends before its array closes.");
+    }
+}
+
+/// <summary>
+/// The JSON form of one run value (<see cref="RunValueList"/>): a string, or an array of strings for a list of values, as
+/// <see cref="RunValuesJsonConverter"/> carries a run's whole map. Put on a single value that crosses a JSON boundary (a
+/// parameter's default, the value a run takes for it), so a client reads a list as the array it is.
+/// </summary>
+public sealed class RunValueJsonConverter : JsonConverter<string>
+{
+    public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.TokenType switch
+        {
+            JsonTokenType.String => reader.GetString()!,
+            JsonTokenType.StartArray => RunValueList.Of(RunValuesJsonConverter.ReadItems(ref reader, "value")),
+            _ => throw new JsonException("A run value must be a string or an array of strings."),
+        };
+
+    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+        ArgumentNullException.ThrowIfNull(value);
+        if (!RunValueList.IsList(value))
+        {
+            writer.WriteStringValue(value);
+            return;
+        }
+
+        writer.WriteStartArray();
+        foreach (var item in RunValueList.Items(value))
+        {
+            writer.WriteStringValue(item);
+        }
+
+        writer.WriteEndArray();
     }
 }

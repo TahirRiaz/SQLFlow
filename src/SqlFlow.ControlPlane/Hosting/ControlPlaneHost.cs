@@ -596,6 +596,8 @@ public static class ControlPlaneHost
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Operate)
             .MapCatalogWriteEndpoints()
             .MapRunTriggerEndpoints()
+            // A run form's looked-up parameter values read the flow's own data, as a run does.
+            .MapRunInputOperateEndpoints()
             .MapDatasourceComputeEndpoints()
             .MapQueryEndpoints()
             .MapQuestionExampleEndpoints()

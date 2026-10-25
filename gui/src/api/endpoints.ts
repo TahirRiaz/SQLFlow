@@ -3,6 +3,7 @@
 
 import { del, get, getAnonymous, getText, post, postAnonymous, postBinary, put, streamSse, type QueryParams, type SseFrame } from "./client";
 import type {
+  RunExplained, RunParameterValues, RunValue, ScheduleParameters,
   AccessToken, AllSearchResult, Attention, AuthProviders,
   ChatAskRequest, ChatCapabilities, ChatConversation, ChatConversationsPurged, ChatMessage, ChatTranscription,
   ColumnHit, ComputeTask, ComputeTaskAccepted, ComputeTaskRequest,
@@ -162,6 +163,13 @@ export const pipelineApi = {
   getById: (id: string) => get<PipelineDetail>(`/api/v1/pipelines/${id}`),
   /** The run parameters that apply to this flow (kind + definition driven), for the dynamic trigger form. */
   parameters: (id: string) => get<FlowParameters>(`/api/v1/pipelines/${id}/parameters`),
+  /** The values a parameter may take, from its document's choices or its kind's lookup; `values` are the run values the
+   *  form holds (the partition, say), for a lookup that depends on them. */
+  parameterValues: (id: string, name: string, body: { search?: string | null; values?: Record<string, RunValue> }) =>
+    post<RunParameterValues>(`/api/v1/pipelines/${id}/parameters/${encodeURIComponent(name)}/values`, body),
+  /** What a run of this flow with a form's operation, values and payload would take, and what would refuse it. */
+  explain: (id: string, body: { operation?: string | null; values?: Record<string, RunValue>; payload?: Record<string, unknown> }) =>
+    post<RunExplained>(`/api/v1/pipelines/${id}/parameters/explain`, body),
   columns: (id: string) => get<PipelineColumn[]>(`/api/v1/pipelines/${id}/columns`),
   files: (id: string, query: PipelineFilesQuery = {}) =>
     get<PagedResult<PipelineFile>>(`/api/v1/pipelines/${id}/files`, query as QueryParams),
@@ -308,6 +316,9 @@ export const scheduleApi = {
   plan: (id: string) => get<SchedulePlan>(`/api/v1/schedules/${id}/plan`),
   // The YAML that defines the cadence: the declaring flow's document, or the schedules.yaml library file.
   definition: (id: string) => get<ScheduleDefinition>(`/api/v1/schedules/${id}/definition`),
+  // What every flow a fire runs is given: its operation, each parameter's value and where it comes from, its document's
+  // run settings, and what would refuse its run, read as a fire applies the schedule.
+  parameters: (id: string) => get<ScheduleParameters>(`/api/v1/schedules/${id}/parameters`),
   create: (request: CreateScheduleRequest) => post<ScheduleCreated>("/api/v1/schedules", request),
   // Fire the schedule now, on demand (to test it): enqueues a run of its flow without moving the next scheduled fire.
   // Fire the schedule now. Optional batches narrow the fire to members carrying those batch: tags ("run the

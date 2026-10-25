@@ -145,8 +145,13 @@ public sealed record PipelineDetailDto(
 
 /// <summary>The run parameters that apply to a pipeline, driven by its flow kind and definition, so the GUI renders
 /// a trigger form of exactly the controls the engine will honor. <see cref="FlowKind"/> is the flow's kind (<c>cpy</c>,
-/// <c>file</c>, <c>ing</c>, ...); <see cref="Parameters"/> is empty for kinds with no selection surface.</summary>
-public sealed record FlowParametersDto(string FlowKind, IReadOnlyList<RunParameterDescriptor> Parameters);
+/// <c>file</c>, <c>ing</c>, ...); <see cref="Parameters"/> is empty for kinds with no selection surface.
+/// <see cref="Inputs"/> is what a registered kind's flow declares a run may be given (its parameters, with defaults and the
+/// values they may take, and the settings of its document a run may change), read from its document as the catalog holds
+/// it; <see cref="FlowRunInputs.None"/> for a built-in kind. <see cref="InputsProblem"/> says why a registered kind's
+/// document no longer reads, when it does not.</summary>
+public sealed record FlowParametersDto(
+    string FlowKind, IReadOnlyList<RunParameterDescriptor> Parameters, FlowRunInputs? Inputs = null, string? InputsProblem = null);
 
 /// <summary>One resolved column of a pipeline's pre-ingestion transformation view: <c>declared</c> rows come
 /// from the flow YAML (the source of truth), <c>detected</c> rows from the latest run's generated view.</summary>

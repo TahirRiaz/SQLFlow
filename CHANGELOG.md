@@ -47,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- A run form shows what a registered kind's flow declares a run may be given, read from its document: each parameter
+  with its description and default, a list to pick from for a parameter that lists `choices` or whose kind looks its
+  values up (with how often each is used, searched as you type), several values as chips, and the document's settings a
+  run may change for itself with the value the document gives them. The form checks the run as you fill it in, by the
+  one rule a kind resolves every run's values with, and starts nothing it would refuse. A kind describes its inputs with
+  `IFlowDocumentKind.DescribeRun` and resolves with `RunValueResolution`; a module registers its lookup with
+  `AddRunParameterLookup` ([Run inputs](docs/reference/concepts/run-inputs.md)).
+- Schedules show what every flow they run is given when they fire: the Schedules page's **Runs with** column and values
+  sheet, and Run now, list each parameter's value and where it comes from (the schedule, or the flow's default), the
+  flow's run settings, and what would refuse its run, read as a fire applies the schedule
+  (`GET /schedules/{id}/parameters`, [Run inputs](docs/reference/concepts/run-inputs.md#what-a-schedule-gives-each-flow)).
 - Settings > Maintenance accounts for every table of the catalog's database in storage areas, each marked keep, safe to
   remove or optional, with its size, how its data leaves and what removing it costs, grouped by verdict or by subject.
   **Clean up** is the safe purge: what is safe to remove starts ticked and what is optional never is, each area shows what

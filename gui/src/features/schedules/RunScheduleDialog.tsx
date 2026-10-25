@@ -40,6 +40,8 @@ import { RelativeTime } from "../../components/RelativeTime";
 import { seriesColor } from "../../theme/branding";
 import { useRunDock } from "../runs/RunDockContext";
 import { useRunGroupStream } from "../runs/useRunGroupStream";
+import { refusedMembers } from "./scheduleValues";
+import { ScheduleMemberValuesLine } from "./ScheduleValuesSheet";
 
 /** The status a plan member shows on the board: the live run status once a fire is underway, or "pending" before
  * Start (and for the brief window before the group's connect snapshot lands). */
@@ -153,6 +155,16 @@ export function RunScheduleDialog({ schedule, onClose }: RunScheduleDialogProps)
     queryKey: ["schedule-plan", schedule.id],
     queryFn: () => scheduleApi.plan(schedule.id),
   });
+  // What each member is given when the schedule fires, read as the fire applies it: shown on each member's row before Start.
+  const given = useQuery({
+    queryKey: ["schedules", "parameters", schedule.id],
+    queryFn: () => scheduleApi.parameters(schedule.id),
+  });
+  const givenByFlow = useMemo(
+    () => new Map((given.data?.members ?? []).map((member) => [member.flowName, member])),
+    [given.data],
+  );
+  const refused = given.data === undefined ? 0 : refusedMembers(given.data.members);
 
   const onEnded = useCallback(() => setEnded(true), []);
   const { members: liveMembers, connected } = useRunGroupStream(groupId ?? "", groupId !== null && !ended, onEnded);
@@ -573,6 +585,15 @@ export function RunScheduleDialog({ schedule, onClose }: RunScheduleDialogProps)
                 </div>
               )}
 
+              {phase === "preview" && refused > 0 && (
+                <Alert className="text-destructive" data-testid="run-schedule-refused">
+                  <TriangleAlert />
+                  <AlertDescription className="text-destructive/90">
+                    {`${refused} ${refused === 1 ? "flow" : "flows"} would be refused with what this schedule gives them; hover a flow's values below for why.`}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {nothingToRun ? (
                 <Alert data-testid="run-schedule-empty">
                   <TriangleAlert className="text-warning" />
@@ -657,6 +678,9 @@ export function RunScheduleDialog({ schedule, onClose }: RunScheduleDialogProps)
                                       {member.flowKind}
                                       {running && live?.lastAction ? ` · ${live.lastAction}` : ""}
                                     </div>
+                                    {!running && givenByFlow.has(member.flowName) && (
+                                      <ScheduleMemberValuesLine member={givenByFlow.get(member.flowName)!} />
+                                    )}
                                   </div>
                                   <MemberStatusChip status={statusOf(member.flowName)} />
                                   {openRun !== undefined && (

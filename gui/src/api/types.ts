@@ -542,6 +542,97 @@ export interface RunParameterDescriptor {
 export interface FlowParameters {
   flowKind: string;
   parameters: RunParameterDescriptor[];
+  /** What a registered kind's flow declares a run may be given, read from its document; empty for a built-in kind. Absent
+   *  from a control plane that predates it. */
+  inputs?: FlowRunInputs | null;
+  /** Why a registered kind's document no longer reads, when it does not. */
+  inputsProblem?: string | null;
+}
+
+/** One parameter a flow's document declares: whether a run must give it, its default, and the values it may take. */
+export interface DeclaredRunParameter {
+  name: string;
+  required: boolean;
+  /** The value a run without one takes, as the document declares it (a list as an array); null when it declares none. */
+  default?: RunValue | null;
+  description?: string | null;
+  /** Whether a run may give it several values, which the kind applies together. */
+  takesSeveral: boolean;
+  /** The values it may take, as the document lists them: a run giving another is refused. Empty when it lists none. */
+  choices: string[];
+  /** Where its kind looks its values up, in words, when it does; null when it does not. Looked-up values are offered, not enforced. */
+  lookup?: string | null;
+}
+
+export type RunSettingInput = "WholeNumber" | "Toggle" | "Text" | "Choice";
+
+/** One setting of a flow's document a run may change for itself, with the value the document gives it. */
+export interface RunSetting {
+  /** The run payload property a run gives it in. */
+  key: string;
+  label: string;
+  input: RunSettingInput;
+  help: string;
+  /** Where the document writes it (`source.record.maxRecords`); null for one no key writes. */
+  documentKey?: string | null;
+  /** The value the document gives it; null when the document leaves it out. */
+  documentValue?: string | null;
+  /** What a run does when neither the document nor the run gives it a value. */
+  whenUnset?: string | null;
+  minimum?: number | null;
+  maximum?: number | null;
+  choices: string[];
+  /** The operations a run may change it on; empty for every operation. */
+  operations: string[];
+}
+
+/** A run value a kind reads beside a document's parameters (`partition`, say), and what it does. */
+export interface KindRunValue {
+  name: string;
+  description: string;
+}
+
+/** What a registered kind's flow declares a run may be given (FlowRunInputs on the control plane). */
+export interface FlowRunInputs {
+  parameters: DeclaredRunParameter[];
+  /** The operations whose runs resolve the parameters; empty when every operation does. */
+  parameterOperations?: string[];
+  settings: RunSetting[];
+  kindValues: KindRunValue[];
+  severalValuesRule?: string | null;
+}
+
+/** Where the value a run takes for a parameter comes from. */
+export type RunValueOrigin = "Given" | "Default" | "Unset" | "Missing" | "NotDeclared" | "Kind";
+
+/** What a run takes for one parameter (or one value it was given), and why a run with it is refused, when it is. */
+export interface ResolvedRunValue {
+  name: string;
+  value: RunValue | null;
+  origin: RunValueOrigin;
+  problem: string | null;
+}
+
+/** What a run of a flow with a form's inputs would take for each parameter, and what would refuse it. */
+export interface RunExplained {
+  values: ResolvedRunValue[];
+  problems: string[];
+}
+
+/** One value a parameter may take, and how many rows or records hold it when its lookup counts them. */
+export interface RunParameterValueOption {
+  value: string;
+  count?: number | null;
+}
+
+/** The values a parameter may take, as its choices list them or its kind's lookup reads them. */
+export interface RunParameterValues {
+  parameter: string;
+  /** Where the values were read, in words. */
+  source: string;
+  values: RunParameterValueOption[];
+  /** True when the source holds more matching values than were listed. */
+  more: boolean;
 }
 
 export interface RunTriggerRequest {
@@ -757,6 +848,40 @@ export interface ScheduleDefinition {
   /** That flow's pipeline id, so the definition can link to the flow it lives on. */
   pipelineId: string | null;
   yaml: string | null;
+}
+
+/** One flow a schedule runs, and what it is given when the schedule fires (ScheduleMemberParametersDto). */
+export interface ScheduleMemberParameters {
+  flowName: string;
+  flowKind: string;
+  wave: number;
+  pipelineId: string | null;
+  /** False for a built-in kind, and for a kind without the schedule's operation: it runs with its document's own values. */
+  takesScheduleArguments: boolean;
+  /** The operation it runs: the schedule's, or its kind's default; null for a built-in kind. */
+  operation: string | null;
+  /** The parameters its document declares, with their defaults, choices and descriptions. */
+  parameters: DeclaredRunParameter[];
+  /** What its run takes for each declared parameter and where each comes from, then the kind's own values given, then any value it does not declare. */
+  values: ResolvedRunValue[];
+  /** The settings of its document its run takes, with the values the document gives them. */
+  settings: RunSetting[];
+  kindValues: KindRunValue[];
+  /** Why it does not take the schedule's operation and values, when it does not. */
+  note: string | null;
+  /** What would refuse its run, each naming the parameter or argument; empty when it would start. */
+  problems: string[];
+}
+
+/** What every flow a schedule runs is given when it fires: read as a fire applies it, so it is what a fire does. */
+export interface ScheduleParameters {
+  scheduleId: string;
+  name: string;
+  operation: string | null;
+  /** The schedule's own values. */
+  values: Record<string, RunValue>;
+  /** The flows it runs, in wave order. */
+  members: ScheduleMemberParameters[];
 }
 
 export interface CreateScheduleRequest {

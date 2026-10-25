@@ -103,6 +103,22 @@ public sealed class ControlPlaneModuleTests
     }
 
     [Fact]
+    public async Task AModuleRunParameterLookup_IsResolvedPerRequest_ForTheKindsItServes()
+    {
+        await using var factory = new ControlPlaneAppFactory()
+            .WithModules(new NamedModule("lookups", services => services.AddRunParameterLookup<ProbeLookup>()));
+        using var client = factory.CreateClient();
+
+        await using var first = factory.Services.CreateAsyncScope();
+        await using var second = factory.Services.CreateAsyncScope();
+        var lookup = Assert.Single(first.ServiceProvider.GetServices<IRunParameterLookup>());
+
+        Assert.IsType<ProbeLookup>(lookup);
+        Assert.True(lookup.Serves("probe"));
+        Assert.NotSame(lookup, Assert.Single(second.ServiceProvider.GetServices<IRunParameterLookup>()));
+    }
+
+    [Fact]
     public async Task AModuleWithInvalidOptions_StopsTheHostFromStarting_NamingTheModuleAndSection()
     {
         await using var factory = new ControlPlaneAppFactory().WithModules(new ProbeModule());
@@ -313,6 +329,14 @@ public sealed class ControlPlaneModuleTests
         public void MapEndpoints(ControlPlaneModuleEndpoints endpoints)
         {
         }
+    }
+
+    private sealed class ProbeLookup : IRunParameterLookup
+    {
+        public bool Serves(string flowKind) => flowKind == "probe";
+
+        public Task<RunParameterValues> LookUpAsync(RunParameterLookupRequest request, CancellationToken ct)
+            => Task.FromResult(new RunParameterValues(request.Parameter, "the probe", [new RunParameterValue("one", 1)], More: false));
     }
 
     private sealed class LimitModule(long bytes) : IControlPlaneModule

@@ -30,6 +30,7 @@ keywords:
   - schedule plan
 yamlPath: schedule
 related:
+  - concept-run-inputs
   - concept-control-plane
   - cli-control-plane
   - cli-db
@@ -174,6 +175,10 @@ A schedule fire, automatic or on demand, never includes an inactive, `mode: manu
 
 `GET /api/v1/schedules/{id}/plan` returns the cadence together with the resolved members in wave order, from the same expander the fire uses: `{scheduleId, repoId, name, cron, intervalSeconds, timezone, enabled, paused, nextFireUtc, lastFireUtc, anchor, memberCount, waveCount, members: [{flowName, flowKind, wave, batch, pipelineId}]}`. `anchor` is the schedule name, waves start at 0, and `batch` is `default` for a flow that declares none. A chained schedule's plan has a null `nextFireUtc`; its parents are on the schedule itself (`afterSchedules`). It is the authoritative answer to "when does this source next update, and what runs in which order", and is exposed to the MCP server as `get_schedule_plan`.
 
+### Reading what a schedule gives each flow
+
+`GET /api/v1/schedules/{id}/parameters` answers, for every member in wave order, whether it takes the schedule's `operation` and `values`, the operation it runs, the value each parameter of its document takes and where that value comes from (the schedule, or the flow's default), the settings its document gives the run, and what would refuse the run. It decides which members take the schedule's arguments by the same test the fire applies, and nothing is enqueued. The Schedules page shows it as **Runs with** and the values sheet, and Run now shows each member's line before it fires ([Run inputs](../concepts/run-inputs.md#what-a-schedule-gives-each-flow)).
+
 ### Reading the YAML behind a schedule
 
 `GET /api/v1/schedules/{id}/definition` returns where git declares the schedule and the text of that declaration, `{scheduleId, name, source, path, flowName, pipelineId, yaml}`, so a schedule can be read where it is operated instead of only in the repo. Every sync records the provenance on the schedule row (`DefinitionPath`, `DefinitionFlow`, `DefinitionYaml`):
@@ -317,7 +322,7 @@ apply. The CLI gives a parameter several values by repeating `--set` (`--set reg
 detail answers each value as a string or an array of strings, as it was given. A sequence holding anything but strings, or a
 mapping, is refused: `<file>: schedule: values.region must be a value, or a list of values.`
 
-At fire time they are merged into the parameters of each member whose registered kind declares the operation (or of every registered-kind member when no operation is named); built-in members, and members of a kind without that operation, run as defined. Each member's kind validates the merged parameters, and a refusal fails the whole fire: an automatic fire is logged as `Schedule {ScheduleId} ('{ScheduleName}') failed to fire: {Error}` and its occurrence is not retried, and a run-now request answers 400 with nothing enqueued.
+At fire time they are merged into the parameters of each member whose registered kind declares the operation (or of every registered-kind member when no operation is named); built-in members, and members of a kind without that operation, run as defined. Each member's kind validates the merged parameters, and a refusal fails the whole fire: an automatic fire is logged as `Schedule {ScheduleId} ('{ScheduleName}') failed to fire: {Error}` and its occurrence is not retried, and a run-now request answers 400 with nothing enqueued. A value a member's own document refuses (a parameter it requires and the schedule does not give, a value outside its `choices`) fails that member's run when it starts; the schedule's values preview names both before the schedule fires ([Reading what a schedule gives each flow](#reading-what-a-schedule-gives-each-flow)).
 
 ## From YAML to the catalog: sync semantics
 
@@ -357,6 +362,7 @@ The control plane also manages schedules directly (src/SqlFlow.ControlPlane/Api/
 | `GET /schedules/{id}` | One schedule; 404 when unknown. |
 | `GET /schedules/{id}/plan` | The resolved members in wave order (see [Reading a schedule's plan](#reading-a-schedules-plan)); 404 when unknown. |
 | `GET /schedules/{id}/definition` | The YAML behind the schedule (see [Reading the YAML behind a schedule](#reading-the-yaml-behind-a-schedule)); 404 when unknown. |
+| `GET /schedules/{id}/parameters` | What each member is given when the schedule fires (see [Reading what a schedule gives each flow](#reading-what-a-schedule-gives-each-flow)); 404 when unknown. |
 | `POST /schedules` | Create an `api` schedule from `{repoId, members: [flow names], cron or intervalSeconds, timezone?, enabled?, catchup?, name?, maxConcurrency?, operation?, values?}`; `name` defaults to the first member, and an API schedule cannot chain. Answers 201 with `{id, nextFireUtc}`. 400 when `members` is empty, on invalid timing, or when `operation`/`values` are invalid or no member's registered kind takes them; 404 naming every member that is not an active pipeline; 409 when the repo already has a schedule with that name (checked and inserted as one step under the repo's schedule-name lock, which a sync takes too); 503 when another writer of the repo's schedules held that lock for two minutes (nothing was written; try again). |
 | `POST /schedules/{id}/run` | Fire the schedule now: enqueues its member set through the same path a scheduled fire uses, records the run (or group) and the fire time on the schedule, and leaves the next scheduled fire unchanged. It also fires disabled and paused schedules, and records the caller as the requester. Optional query parameters: `batch` (repeatable) narrows the fire to members whose `batch:` matches one of the values (a flow without one matches `default`); `from` and `to` make the fire a backfill (below); `chain=false` keeps the schedules chained directly behind this one from following. 202 with `{runId, groupId, memberCount}`; 400 for an invalid backfill window or when a member's kind refuses the schedule's operation or values; 404 when unknown; 409 when no member is runnable (or none carries the requested batches). |
 | `POST /schedules/{id}/pause` | Set the operational `paused` flag; the next fire is left as it was. 200 with the schedule; 404 when unknown. |
