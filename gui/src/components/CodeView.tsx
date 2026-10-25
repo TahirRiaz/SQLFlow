@@ -12,6 +12,9 @@ import { useThemeMode } from "../theme/ThemeModeContext";
 import type { Monaco } from "../lib/monacoSetup";
 import "../lib/monacoSetup";
 import { markFlowModel, refreshDiagnostics, registerSqlflowYamlProviders } from "../lib/lsp/sqlflowLsp";
+import { useExplain } from "../features/chat/ExplainContext";
+import { ExplainIcon } from "../features/chat/ExplainIcon";
+import type { ExplainCode } from "../features/chat/explain";
 
 interface CodeViewProps {
   value: string;
@@ -44,7 +47,35 @@ interface CodeViewProps {
   /** Extra buttons in the same toolbar row as the label, to the left of the built-in format/copy
    * buttons (a chat "Run" affordance is the first caller). Every other CodeView surface omits it. */
   extraActions?: ReactNode;
+  /**
+   * "Explain": the assistant explains the selected lines, or the whole document when nothing is selected, from the
+   * toolbar or the editor's context menu. On by default wherever the assistant is configured; the chat's own code
+   * blocks pass false, since they are the assistant's answer already.
+   */
+  explain?: boolean;
   "data-testid"?: string;
+}
+
+/** The code an explanation is asked about: the selected lines of the editor, or its whole document. */
+function explainedCode(
+  editorInstance: editor.IStandaloneCodeEditor | null, fallback: string, language: string,
+): ExplainCode {
+  const model = editorInstance?.getModel() ?? null;
+  if (model === null) {
+    return { code: fallback, language, lines: null, totalLines: fallback.split("\n").length };
+  }
+
+  const totalLines = model.getLineCount();
+  const selection = editorInstance?.getSelection() ?? null;
+  if (selection === null || selection.isEmpty()) {
+    return { code: model.getValue(), language, lines: null, totalLines };
+  }
+
+  // A selection dragged to the start of the next line ends on the line above it.
+  const end = selection.endColumn === 1 && selection.endLineNumber > selection.startLineNumber
+    ? selection.endLineNumber - 1
+    : selection.endLineNumber;
+  return { code: model.getValueInRange(selection), language, lines: { start: selection.startLineNumber, end }, totalLines };
 }
 
 /**
@@ -57,14 +88,22 @@ interface CodeViewProps {
  */
 export function CodeView({
   value, language, height = 480, fill = false, lsp = true, readOnly = true, onChange, label, extraActions,
-  "data-testid": testId,
+  explain = true, "data-testid": testId,
 }: CodeViewProps) {
   const { mode } = useThemeMode();
   const monacoRef = useRef<Monaco | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const isSql = language === "sql";
   const lspOn = lsp && language === "yaml";
   const [formatSqlOn, setFormatSqlOn] = useState(true);
+  const explainer = useExplain();
+  const canExplain = explain && explainer !== null;
+  // The context menu's action is registered once, when the editor mounts, so it calls through this ref, and its
+  // context key shows it only while explaining is offered.
+  const explainRef = useRef<() => void>(() => undefined);
+  const canExplainRef = useRef(canExplain);
+  const explainKeyRef = useRef<editor.IContextKey<boolean> | null>(null);
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monacoRef.current = monaco;
@@ -76,6 +115,15 @@ export function CodeView({
 
   const handleMount = useCallback((editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editorInstance;
+    explainKeyRef.current = editorInstance.createContextKey("sqlflowExplain", canExplainRef.current);
+    editorInstance.addAction({
+      id: "sqlflow.explain",
+      label: "Explain this",
+      precondition: "sqlflowExplain",
+      contextMenuGroupId: "navigation",
+      contextMenuOrder: 0,
+      run: () => explainRef.current(),
+    });
     if (!lspOn) {
       return;
     }
@@ -122,8 +170,21 @@ export function CodeView({
       .catch(() => toast.error("Could not copy to clipboard"));
   }, [displayValue]);
 
+  const handleExplain = useCallback(() => {
+    if (explainer !== null) {
+      explainer.explainCode(explainedCode(editorRef.current, displayValue, language), rootRef.current);
+    }
+  }, [explainer, displayValue, language]);
+
+  useEffect(() => {
+    explainRef.current = handleExplain;
+    canExplainRef.current = canExplain;
+    explainKeyRef.current?.set(canExplain);
+  }, [handleExplain, canExplain]);
+
   return (
     <div
+      ref={rootRef}
       data-testid={testId ?? "code-view"}
       className={cn("overflow-hidden rounded-lg border border-border", fill && "flex min-h-80 flex-1 flex-col")}
     >
@@ -138,6 +199,23 @@ export function CodeView({
         )}
         <div className="flex items-center gap-0.5">
           {extraActions}
+          {canExplain && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={handleExplain}
+                  data-testid="code-view-explain"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ExplainIcon />
+                  Explain
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>The assistant explains the selected lines, or all of it when nothing is selected</TooltipContent>
+            </Tooltip>
+          )}
           {isSql && (
             <Tooltip>
               <TooltipTrigger asChild>

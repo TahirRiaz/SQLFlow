@@ -58,7 +58,7 @@ function makeCodeViewHighlighter(language: "sql" | "yaml" | "json"): FC<SyntaxHi
     return (
       <div className="aui-md-codeview mb-3">
         {/* Chat YAML is illustrative, not necessarily a flow document; the flow LSP stays off. */}
-        <CodeView value={trimmed} language={language} height={height} lsp={false} label={language} />
+        <CodeView value={trimmed} language={language} height={height} lsp={false} label={language} explain={false} />
       </div>
     );
   };
@@ -88,7 +88,7 @@ const SqlCodeViewHighlighter: FC<SyntaxHighlighterProps> = ({ components, code }
   const height = Math.min(400, Math.max(60, trimmed.split("\n").length * 18 + 26));
   return (
     <div className="aui-md-codeview mb-3 flex flex-col gap-2">
-      <CodeView value={trimmed} language="sql" height={height} lsp={false} label="sql" extraActions={button} />
+      <CodeView value={trimmed} language="sql" height={height} lsp={false} label="sql" extraActions={button} explain={false} />
       {panel}
     </div>
   );

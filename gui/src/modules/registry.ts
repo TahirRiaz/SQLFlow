@@ -67,6 +67,8 @@ export interface ModuleNavItem {
   to: string;
   icon: LucideIcon;
   testId: string;
+  /** What the page is for, in one or two plain sentences; "Explain this page" hands it to the assistant. */
+  description: string;
   /** The `to` of the entry this one follows within its group; omitted, it is appended to the group. */
   after?: string;
   /** The id of a section its group declares; omitted, the entry is listed before the group's first section. */

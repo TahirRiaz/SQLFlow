@@ -2965,7 +2965,10 @@
         "data mode",
         "estate mode",
         "!exit",
-        "sql layout"
+        "sql layout",
+        "explain",
+        "explain this page",
+        "explain code"
       ],
       "related": [
         "guide-slack-assistant",
@@ -2983,6 +2986,11 @@
         "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "gui/src/features/chat/ChatPage.tsx",
+        "gui/src/features/chat/ChatThread.tsx",
+        "gui/src/features/chat/ExplainContext.tsx",
+        "gui/src/features/chat/explain.ts",
+        "gui/src/components/CodeView.tsx",
+        "gui/src/layout/nav.ts",
         "gui/src/features/chat/chatAdapters.ts",
         "gui/src/features/chat/AnswerConfirmation.tsx",
         "src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs",

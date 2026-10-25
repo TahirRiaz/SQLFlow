@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { RunDock } from "../features/runs/RunDock";
+import { ExplainDrawer, ExplainProvider } from "../features/chat/ExplainContext";
 import { RunDockProvider } from "../features/runs/RunDockContext";
 import { sideBarClosedOnFirstVisit } from "../modules/registry";
 import { groupForPath, type NavGroup } from "./nav";
@@ -120,13 +121,16 @@ function WorkbenchFrame() {
               >
                 <ResizablePanel id="editor-content" minSize="20">
                   <div className="relative h-full">
-                    <main className="h-full overflow-y-auto bg-background">
+                    <main className="h-full overflow-y-auto bg-background" data-explain-scope>
                       <div className="mx-auto max-w-[1600px] p-4 md:p-6">
                         <SideBarRoomContext.Provider value={room}>
                           <Outlet />
                         </SideBarRoomContext.Provider>
                       </div>
                     </main>
+                    {/* An explanation slides in over the page from its left edge; maximized, it covers all but the title
+                        and status bars. */}
+                    <ExplainDrawer maximizedClassName="inset-x-0 top-9 bottom-[22px]" />
                     {/* While a panel is open, the page fades into a shade along its bottom edge, so the panel below reads
                         as raised over the page rather than as more of it. Drawn over the content, which a shadow on the
                         scrolling element would be painted under. */}
@@ -164,9 +168,11 @@ export default function AppShell() {
   return (
     <TabsProvider>
       <PanelProvider>
-        <RunDockProvider>
-          <WorkbenchFrame />
-        </RunDockProvider>
+        <ExplainProvider>
+          <RunDockProvider>
+            <WorkbenchFrame />
+          </RunDockProvider>
+        </ExplainProvider>
       </PanelProvider>
     </TabsProvider>
   );

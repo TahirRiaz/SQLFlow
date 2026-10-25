@@ -11,6 +11,8 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { useThemeMode } from "../theme/ThemeModeContext";
 import type { Monaco } from "../lib/monacoSetup";
 import "../lib/monacoSetup";
+import { useExplain } from "../features/chat/ExplainContext";
+import { ExplainIcon } from "../features/chat/ExplainIcon";
 
 interface DiffViewProps {
   /** The earlier text: the left pane side by side, the removed lines inline. */
@@ -87,6 +89,13 @@ export function DiffView({
     }
   }, [mode]);
 
+  // "Explain": the assistant explains what changed between the two versions, wherever the assistant is configured.
+  const explainer = useExplain();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const handleExplain = useCallback(() => {
+    explainer?.explainChange({ original, modified, language }, rootRef.current);
+  }, [explainer, original, modified, language]);
+
   const handleCopy = useCallback(() => {
     void navigator.clipboard
       .writeText(modified)
@@ -96,12 +105,30 @@ export function DiffView({
 
   return (
     <div
+      ref={rootRef}
       data-testid={rootTestId}
       className="overflow-hidden rounded-lg border border-border"
     >
       <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-2 py-0.5">
         {caption !== undefined && <div className="min-w-0 flex-1 truncate text-xs">{caption}</div>}
         <div className={cn("flex items-center gap-0.5", caption === undefined && "ml-auto")}>
+          {explainer !== null && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={handleExplain}
+                  data-testid="diff-view-explain"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ExplainIcon />
+                  Explain
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>The assistant explains what changed between the two versions</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

@@ -85,6 +85,8 @@ export type ThreadComponents = {
    * instead of a second provider.
    */
   runQuery?: boolean;
+  /** What the empty composer invites; a question about the data unless the host says otherwise. */
+  composerPlaceholder?: string | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?:
     | ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>>
@@ -243,6 +245,7 @@ const ThreadSuggestionItem: FC = () => {
 };
 
 const Composer: FC = () => {
+  const { composerPlaceholder = "Ask a question about your data..." } = useContext(ThreadComponentsContext);
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
@@ -252,7 +255,7 @@ const Composer: FC = () => {
         >
           <ComposerAttachments />
           <ComposerPrimitive.Input
-            placeholder="Ask a question about your data..."
+            placeholder={composerPlaceholder}
             className="aui-composer-input caret-primary placeholder:text-muted-foreground/60 max-h-48 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-[13px] leading-6 outline-none"
             rows={1}
             autoFocus
@@ -525,7 +528,7 @@ const UserMessage: FC = () => {
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content bg-muted text-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
           <MessagePrimitive.Parts
-            components={{ File: UserFilePart, Image: UserImagePart }}
+            components={{ Text: MarkdownText, File: UserFilePart, Image: UserImagePart }}
           />
         </div>
       </div>

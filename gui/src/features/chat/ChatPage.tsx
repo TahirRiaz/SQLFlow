@@ -1,19 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AssistantRuntimeProvider,
-  CompositeAttachmentAdapter,
-  SimpleImageAttachmentAdapter,
-  useLocalRuntime,
-  WebSpeechDictationAdapter,
-  type DictationAdapter,
-  type ThreadMessageLike,
-} from "@assistant-ui/react";
+import type { ThreadMessageLike } from "@assistant-ui/react";
 import { formatDistanceToNow } from "date-fns";
 import { Bot, Check, Eraser, MessageSquarePlus, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { Thread } from "@/components/assistant-ui/thread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,14 +17,9 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
 import { parseUtc } from "../../lib/time";
-import { AnswerConfirmation } from "./AnswerConfirmation";
 import { handedOver } from "./chatHandoff";
-import {
-  canRecordAudio,
-  createChatModelAdapter,
-  createTranscribeDictationAdapter,
-  toThreadMessages,
-} from "./chatAdapters";
+import { toThreadMessages } from "./chatAdapters";
+import { ChatThread } from "./ChatThread";
 
 /**
  * The SQLFlow assistant chat (DESIGN.md 6: a full-bleed editor surface like the lineage graph):
@@ -167,76 +153,6 @@ function ChatWorkbench({ capabilities, ask }: { capabilities: ChatCapabilities; 
           )}
       </div>
     </div>
-  );
-}
-
-function ChatThread({
-  conversationId,
-  initialMessages,
-  ask,
-  capabilities,
-  onConversationMinted,
-  onTurnCompleted,
-}: {
-  conversationId: string | null;
-  initialMessages: ThreadMessageLike[];
-  /** A question handed over to ask as this fresh thread's first message, or null. */
-  ask: string | null;
-  capabilities: ChatCapabilities;
-  onConversationMinted: (conversation: ChatStreamConversation) => void;
-  onTurnCompleted: () => void;
-}) {
-  // The adapter reads the live conversation id from this ref, so the first answer of a fresh chat
-  // can bind the runtime to its minted conversation without a remount.
-  const conversationRef = useRef<string | null>(conversationId);
-
-  const adapter = useMemo(() => createChatModelAdapter({
-    getConversationId: () => conversationRef.current,
-    onConversation: (conversation) => {
-      if (conversationRef.current === null) {
-        conversationRef.current = conversation.id;
-        onConversationMinted(conversation);
-      }
-    },
-    onTurnCompleted,
-  }), [onConversationMinted, onTurnCompleted]);
-
-  const adapters = useMemo(() => {
-    const dictation: DictationAdapter | undefined = capabilities.transcription && canRecordAudio()
-      ? createTranscribeDictationAdapter()
-      : WebSpeechDictationAdapter.isSupported()
-        ? new WebSpeechDictationAdapter()
-        : undefined;
-    return {
-      ...(capabilities.images
-        ? { attachments: new CompositeAttachmentAdapter([new SimpleImageAttachmentAdapter()]) }
-        : {}),
-      ...(dictation ? { dictation } : {}),
-    };
-  }, [capabilities]);
-
-  const runtime = useLocalRuntime(adapter, { initialMessages, adapters });
-
-  // The handed-over question is sent once the thread is up, and once only (an effect runs twice in development).
-  const asked = useRef(false);
-  useEffect(() => {
-    if (ask !== null && !asked.current) {
-      asked.current = true;
-      runtime.thread.append(ask);
-    }
-  }, [ask, runtime]);
-
-  // The learning loop's confirmation moment hangs under every answer. It is a stable identity per
-  // capability flag, so the thread is not handed a new component type on each render.
-  const components = useMemo(() => ({
-    AnswerFooter: () => <AnswerConfirmation enabled={capabilities.questionConfirmation} />,
-    runQuery: capabilities.runQuery,
-  }), [capabilities.questionConfirmation, capabilities.runQuery]);
-
-  return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <Thread components={components} />
-    </AssistantRuntimeProvider>
   );
 }
 

@@ -37,6 +37,11 @@ export interface NavItem {
   to: string;
   icon: LucideIcon;
   testId: string;
+  /**
+   * What the page is for, in one or two plain sentences: what it shows and what a person does there. "Explain this page"
+   * hands it to the assistant, and the pages the entry owns share it.
+   */
+  description: string;
   /** The id of the group's section the entry is listed under; none, it is listed before the group's first section. */
   section?: string;
   /**
@@ -73,12 +78,18 @@ export const navGroups: NavGroup[] = [
     label: "Operate",
     icon: Activity,
     items: [
-      { label: "Home", to: "/", icon: House, testId: "nav-dashboard" },
-      { label: "Assistant", to: "/chat", icon: BotMessageSquare, testId: "nav-chat" },
-      { label: "Insights", to: "/insights", icon: Gauge, testId: "nav-insights" },
-      { label: "Data streams", to: "/datastreams", icon: HeartPulse, testId: "nav-datastreams" },
-      { label: "Runs", to: "/runs", icon: CirclePlay, testId: "nav-runs" },
-      { label: "Nodes", to: "/nodes", icon: Server, testId: "nav-nodes" },
+      { label: "Home", to: "/", icon: House, testId: "nav-dashboard",
+        description: "Headline counts for repositories, pipelines, nodes, schedules and runs, the newest runs and how they ended, and a box to ask the assistant a question." },
+      { label: "Assistant", to: "/chat", icon: BotMessageSquare, testId: "nav-chat",
+        description: "Ask the assistant about your pipelines and data, in conversations kept for you to reopen; it sees only what you may see." },
+      { label: "Insights", to: "/insights", icon: Gauge, testId: "nav-insights",
+        description: "Processing time, failure rate and rows loaded per flow over 24 hours, 7 or 30 days, a ranked list of what needs attention, and index and query checks of the SQL Server warehouse." },
+      { label: "Data streams", to: "/datastreams", icon: HeartPulse, testId: "nav-datastreams",
+        description: "Which tables have stopped receiving data or got less than usual, grouped by schedule and split into vendor delivery and own processing; open one to see the evidence." },
+      { label: "Runs", to: "/runs", icon: CirclePlay, testId: "nav-runs",
+        description: "Every run with its status, duration and rows loaded, grouped by schedule and batch; filter, start a run, or open one to follow its trace, cancel it or run it again." },
+      { label: "Nodes", to: "/nodes", icon: Server, testId: "nav-nodes",
+        description: "The workers that execute runs: which are online and how busy, pool sizes and scaling, and what is queued and why it waits; restart or remove a worker here." },
     ],
   },
   {
@@ -86,11 +97,16 @@ export const navGroups: NavGroup[] = [
     label: "Workspace",
     icon: FolderGit2,
     items: [
-      { label: "Repos", to: "/repos", icon: FolderGit2, testId: "nav-repos" },
-      { label: "Pipelines", to: "/pipelines", icon: Workflow, testId: "nav-pipelines" },
-      { label: "Schedules", to: "/schedules", icon: CalendarClock, testId: "nav-schedules" },
-      { label: "Timeline", to: "/schedules/timeline", icon: CalendarRange, testId: "nav-schedule-timeline" },
-      { label: "Subscribers", to: "/subscribers", icon: MonitorPlay, testId: "nav-subscribers" },
+      { label: "Repos", to: "/repos", icon: FolderGit2, testId: "nav-repos",
+        description: "The git repositories the flows are loaded from: register one with its credential, sync it now, or open one for its pipelines and lineage." },
+      { label: "Pipelines", to: "/pipelines", icon: Workflow, testId: "nav-pipelines",
+        description: "Every pipeline across the repositories, laid out by repository, project and folder; filter by repository, kind or state, and open one for its details and runs." },
+      { label: "Schedules", to: "/schedules", icon: CalendarClock, testId: "nav-schedules",
+        description: "Every schedule with its cadence, next fire and last result; run one now, read the YAML behind it, pause, resume or delete it, or create a new one." },
+      { label: "Timeline", to: "/schedules/timeline", icon: CalendarRange, testId: "nav-schedule-timeline",
+        description: "A day-by-day chart of when each schedule's flows ran and how they ended, with totals such as the success rate, the busiest hour and the best window." },
+      { label: "Subscribers", to: "/subscribers", icon: MonitorPlay, testId: "nav-subscribers",
+        description: "Reports, workbooks, notebooks and apps declared as reading the warehouse; open one to see which objects it reads and through which query." },
     ],
   },
   {
@@ -98,10 +114,14 @@ export const navGroups: NavGroup[] = [
     label: "Tools",
     icon: Wrench,
     items: [
-      { label: "Datasources", to: "/datasources", icon: Database, testId: "nav-datasources" },
-      { label: "Discover", to: "/discover", icon: Radar, testId: "nav-discover" },
-      { label: "Integrations", to: "/integrations", icon: Cable, testId: "nav-integrations" },
-      { label: "Key detection", to: "/key-detection", icon: KeyRound, testId: "nav-key-detection" },
+      { label: "Datasources", to: "/datasources", icon: Database, testId: "nav-datasources",
+        description: "The database connections the pipelines declare and the flows that use them; test a connection, or browse its databases, schemas and tables live through a worker." },
+      { label: "Discover", to: "/discover", icon: Radar, testId: "nav-discover",
+        description: "Point at a file or folder (JSON, XML, CSV, Excel, Parquet) to detect its format and columns from a sample, then download the ingestion YAML it generates." },
+      { label: "Integrations", to: "/integrations", icon: Cable, testId: "nav-integrations",
+        description: "The acquisition flows that pull from HTTP APIs, SFTP, S3 or storage tables; read their YAML, or edit and test one in a debugger that shows each request and response." },
+      { label: "Key detection", to: "/key-detection", icon: KeyRound, testId: "nav-key-detection",
+        description: "Pick a table or view and find the smallest set of columns that identifies each of its rows; the check runs on a worker, and past results can be reopened." },
     ],
   },
   {
@@ -109,10 +129,14 @@ export const navGroups: NavGroup[] = [
     label: "Explore",
     icon: Compass,
     items: [
-      { label: "Catalog", to: "/catalog", icon: BookOpen, testId: "nav-catalog" },
-      { label: "Schema changes", to: "/schema-changes", icon: GitCompare, testId: "nav-schema-changes" },
-      { label: "Lineage", to: "/lineage", icon: Network, testId: "nav-lineage" },
-      { label: "Search", to: "/search", icon: Search, testId: "nav-search" },
+      { label: "Catalog", to: "/catalog", icon: BookOpen, testId: "nav-catalog",
+        description: "A tree of every table, file, dataset and flow the platform knows; select one for its columns, code, joins and consumers, or a flow's YAML and dependencies." },
+      { label: "Schema changes", to: "/schema-changes", icon: GitCompare, testId: "nav-schema-changes",
+        description: "Objects whose definition changed in the tracked databases over a chosen window, by database and schema; open one to compare its definition before and after." },
+      { label: "Lineage", to: "/lineage", icon: Network, testId: "nav-lineage",
+        description: "A graph of how data moves through a project, pipelines and the tables they read and write; click a node to light up what is upstream and downstream of it." },
+      { label: "Search", to: "/search", icon: Search, testId: "nav-search",
+        description: "Search the whole catalog at once: objects, columns, code, processed files, flows, executed SQL and subscribers, a tab per kind, with a jump to lineage." },
     ],
   },
   {
@@ -121,8 +145,10 @@ export const navGroups: NavGroup[] = [
     icon: ShieldCheck,
     requiresScope: "admin",
     items: [
-      { label: "Users", to: "/users", icon: Users, testId: "nav-users" },
-      { label: "AI context", to: "/semantic-layer", icon: Sparkles, testId: "nav-semantic-layer" },
+      { label: "Users", to: "/users", icon: Users, testId: "nav-users",
+        description: "The user accounts with their role, sign-in provider and last sign-in; create local users, change roles or passwords, and deactivate or delete accounts." },
+      { label: "AI context", to: "/semantic-layer", icon: Sparkles, testId: "nav-semantic-layer",
+        description: "What the assistant may use to answer business questions: the AI context files to approve or revoke, the tables and columns they open, saved answers and Power BI reports." },
     ],
   },
   {
@@ -131,9 +157,12 @@ export const navGroups: NavGroup[] = [
     icon: Settings,
     bottom: true,
     items: [
-      { label: "Access tokens", to: "/settings/tokens", icon: KeySquare, testId: "nav-settings-tokens" },
-      { label: "Notifications", to: "/settings/notifications", icon: Bell, testId: "nav-settings-notifications" },
-      { label: "Maintenance", to: "/settings/maintenance", icon: Wrench, testId: "nav-settings-maintenance" },
+      { label: "Access tokens", to: "/settings/tokens", icon: KeySquare, testId: "nav-settings-tokens",
+        description: "Create and revoke your personal access tokens, which sign in the CLI, the VS Code extension or a script without a browser." },
+      { label: "Notifications", to: "/settings/notifications", icon: Bell, testId: "nav-settings-notifications",
+        description: "Get an email or Slack message when your flows fail, are cancelled or are skipped, at once or as a digest, and read the estate digests and recent deliveries." },
+      { label: "Maintenance", to: "/settings/maintenance", icon: Wrench, testId: "nav-settings-maintenance",
+        description: "How much room each area of the database takes, and whether its data is kept, safe to remove or optional; an admin sets how long an area's data stays and cleans it up." },
     ],
   },
 ];
@@ -183,6 +212,12 @@ export function selectedNavPath(pathname: string): string {
   }
 
   return selected;
+}
+
+/** The entry a page belongs to: its own, or the one owning its path; null for a page no entry owns (e.g. /login). */
+export function navEntryFor(pathname: string): NavItem | null {
+  const selected = selectedNavPath(pathname);
+  return allNavItems().find((item) => item.to === selected) ?? null;
 }
 
 /** The group owning the current location (via the longest-prefix item), defaulting to Operate. */
@@ -295,6 +330,7 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
         to: item.to,
         icon: item.icon,
         testId: item.testId,
+        description: item.description,
         section: item.section,
         owns: owns.length > 0 ? owns : undefined,
       };

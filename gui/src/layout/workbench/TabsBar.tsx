@@ -16,7 +16,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { CHAT_PATH } from "../../features/chat/chatHandoff";
+import { useExplain } from "../../features/chat/ExplainContext";
+import { ExplainIcon } from "../../features/chat/ExplainIcon";
 import { flowKindIdentity, flowKindToneClasses } from "../../modules/flowKinds";
 import { routeTitle } from "../nav";
 import { useWorkbenchTabs, type WorkbenchTab } from "./TabsContext";
@@ -47,10 +51,14 @@ function TabIcon({ tab }: { tab: WorkbenchTab }) {
  * The VS Code-style tab strip over the router (DESIGN.md section 6): one tab per visited route, the
  * active tab wearing the editor surface and a top accent line. Middle-click or the X closes a tab,
  * right-click opens the tab menu (close, close others, close to the left/right, close all), and the strip
- * ends in an overflow menu that lists every open tab so a long strip stays navigable.
+ * ends in "Explain", which has the assistant explain the page in view, and an overflow menu that lists every open tab
+ * so a long strip stays navigable.
  */
 export function TabsBar() {
   const { tabs, activePath, activate, close, closeOthers, closeToLeft, closeToRight, closeAll } = useWorkbenchTabs();
+  const explainer = useExplain();
+  // The assistant's own page is the conversation already.
+  const canExplain = explainer !== null && activePath !== CHAT_PATH;
   const activeTabRef = useRef<HTMLDivElement | null>(null);
 
   // Tabs keep their natural width and the strip scrolls, so the routed page's tab is pulled into view
@@ -139,6 +147,22 @@ export function TabsBar() {
           );
         })}
       </div>
+      {canExplain && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => explainer.explainPage()}
+              className="flex shrink-0 items-center gap-1.5 border-l border-border/60 px-2.5 text-xs text-muted-foreground hover:bg-tab-active/50 hover:text-foreground"
+              data-testid="explain-page"
+            >
+              <ExplainIcon className="size-3.5" />
+              Explain
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>The assistant explains this page: what it is for and what you do here</TooltipContent>
+        </Tooltip>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label="Open pages menu"

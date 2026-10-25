@@ -221,6 +221,12 @@ export function useWorkbenchTabs(): TabsValue {
   return context;
 }
 
+/** The title of the page in view, as its tab shows it; null outside the workbench (a page in a window of its own). */
+export function useActiveTabTitle(): string | null {
+  const context = useContext(TabsContext);
+  return context?.tabs.find((tab) => tab.path === context.activePath)?.title ?? null;
+}
+
 /** Reported by detail pages once their data loads, so the tab reads "orders_ods" instead of "Pipeline". */
 export function useTabTitle(title: string | undefined): void {
   const { setTitle } = useWorkbenchTabs();

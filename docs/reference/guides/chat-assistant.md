@@ -30,6 +30,9 @@ keywords:
   - estate mode
   - "!exit"
   - sql layout
+  - explain
+  - explain this page
+  - explain code
 related:
   - guide-slack-assistant
   - guide-deployment
@@ -45,6 +48,11 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - gui/src/features/chat/ChatPage.tsx
+  - gui/src/features/chat/ChatThread.tsx
+  - gui/src/features/chat/ExplainContext.tsx
+  - gui/src/features/chat/explain.ts
+  - gui/src/components/CodeView.tsx
+  - gui/src/layout/nav.ts
   - gui/src/features/chat/chatAdapters.ts
   - gui/src/features/chat/AnswerConfirmation.tsx
   - src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs
@@ -88,6 +96,34 @@ travels in the navigation's state rather than the address, so it is asked once: 
 it, finds the conversation it started. The questions offered are a host module's (`HomeContribution.prompts` in the GUI
 module contract), about what the module adds; SQLFlow offers its own when no module does. When the assistant is not
 configured (`enabled` false from `GET /api/v1/chat/capabilities`), the box says so and asks nothing.
+
+## Explain
+
+Every page and every piece of code the workbench shows can be explained by the assistant, for someone new to the
+product, in a conversation followed up like any other. Explain wears one icon wherever it is offered:
+
+- **A code window** (YAML, JSON, SQL or text, read-only or editable): the Explain button in its toolbar, or "Explain
+  this" in the editor's right-click menu, explains the selected lines, or the whole document when nothing is selected.
+  The question carries the code, its language, which lines of how many, and the page it is on; the code is its own
+  context.
+- **A comparison** of two versions of a document: Explain in its toolbar explains what changed and what the change does,
+  with both versions in the question.
+- **A page**: Explain at the end of the tab strip explains what the page is for, what it shows and what a person does
+  there. The question carries the page's title and route, what its navigation entry says the page is for (every entry
+  of the menu, SQLFlow's and a module's, carries that description, and a page reached from an entry, a pipeline from
+  Pipelines, is described by its entry's), and the page's headings, tabs and column names.
+
+Every question is asked in the person's own words, so the conversation reads as theirs, and asks the assistant to check
+the reference documentation rather than guess. A question is at most 30,000 characters (the chat takes 32,000): a longer
+document is cut at a line, and the question says how much of it is shown.
+
+The explanation slides in from the left over the page, which stays in view beside it; its right edge is dragged to make
+it wider or narrower (the width is kept in the browser; double-click the edge for the default, or move it with the arrow
+keys). Maximize hides the page and everything around it but the title and status bars, for the conversation alone;
+restore, or close, and the page is as it was left. Asked from inside a dialog, whose overlay holds the page out of
+reach, it slides in over the dialog, and closing it returns to the dialog. Every explanation is a new conversation, kept
+with the others on the Assistant page. The chat's own code blocks offer no Explain, and nothing offers it while the
+assistant is not configured.
 
 ## Per-user authority (the difference from Slack)
 
