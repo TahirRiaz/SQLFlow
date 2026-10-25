@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, RefreshCw, TrendingUp } from "lucide-react";
+import { BrushCleaning, Loader2, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -12,6 +12,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable, type Column, type TableGrouping } from "../../components/DataTable";
 import { ExplainMark } from "../../components/ExplainTip";
+import { IconAction } from "../../components/IconAction";
 import { KpiCard } from "../../components/KpiCard";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
@@ -21,6 +22,7 @@ import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { pollingInterval } from "../../hooks/usePolling";
 import { tableContainer, useScrollFit } from "../../hooks/useScrollFit";
 import { STORAGE_KEY } from "./storageQueries";
+import { CleanupSheet } from "./CleanupSheet";
 import { StorageAreaSheet } from "./StorageAreaSheet";
 import { VerdictGlyph, VerdictMark, dateTimeText, shortDateTimeText } from "./storagePresentation";
 import {
@@ -227,6 +229,12 @@ export default function MaintenancePage() {
   const [groupBy, setGroupBy] = useLocalStorageState<GroupBy>("maintenance.groupBy", "verdict");
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  // The cleanup panel, opened from the page (every area safe to remove ticked) or for one area (that area alone).
+  const [cleanup, setCleanup] = useState<{ open: boolean; openedFor: string | null }>({ open: false, openedFor: null });
+  const openCleanup = useCallback((openedFor: string | null) => {
+    setOpenId(null);
+    setCleanup({ open: true, openedFor });
+  }, []);
   const grid = useRef<HTMLDivElement | null>(null);
   useScrollFit(grid, FIT_BELOW, FIT_MIN, tableContainer);
 
@@ -344,14 +352,33 @@ export default function MaintenancePage() {
         width: 124,
         render: (row) => (row.kind === "area" ? <LastCleanupCell area={row.area} /> : null),
       },
+      {
+        id: "act",
+        header: "",
+        width: 40,
+        align: "center",
+        render: (row) => row.kind === "area" && row.area.retention !== null
+          ? (
+            <IconAction
+              label={`Clean up ${row.area.title.toLowerCase()}`}
+              icon={<BrushCleaning />}
+              onClick={(event) => { event.stopPropagation(); openCleanup(row.area.id); }}
+              data-testid={`maintenance-row-cleanup-${row.area.id}`}
+            />
+          )
+          : null,
+      },
     );
     return list;
-  }, [groupLargest, grouping, storedBytes]);
+  }, [groupLargest, grouping, storedBytes, openCleanup]);
 
   const tableGrouping = useMemo<TableGrouping<Row>>(() => ({
     levels: [{ key: (row) => groupOf(row, grouping), renderHeader: (group) => <GroupHeader group={groupOf(group[0], grouping)} groupBy={grouping} rows={group} /> }],
   }), [grouping]);
 
+  // What is safe to remove but goes by a rule of its own, not by Clean up: the summary says so, so its size is not read as
+  // something a person has to remove.
+  const selfCleaningBytes = report?.areas.filter((a) => a.verdict === "safe" && a.retention === null).reduce((sum, a) => sum + a.bytes, 0) ?? 0;
   const limited = report?.areas.filter((a) => a.retention?.days != null).length ?? 0;
   const error = query.isError
     ? isApiError(query.error) ? query.error : new ApiError(0, "Could not measure the database", String(query.error), null)
@@ -363,16 +390,22 @@ export default function MaintenancePage() {
         title="Maintenance"
         subtitle="What the database holds, what is kept and why, and what may be removed."
         actions={(
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => void queryClient.invalidateQueries({ queryKey: STORAGE_KEY })}
-            disabled={query.isFetching}
-            data-testid="maintenance-refresh"
-          >
-            <RefreshCw className={cn("size-3.5", query.isFetching && "animate-spin")} />
-            Measure again
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void queryClient.invalidateQueries({ queryKey: STORAGE_KEY })}
+              disabled={query.isFetching}
+              data-testid="maintenance-refresh"
+            >
+              <RefreshCw className={cn("size-3.5", query.isFetching && "animate-spin")} />
+              Measure again
+            </Button>
+            <Button size="sm" onClick={() => openCleanup(null)} disabled={report === undefined} data-testid="maintenance-cleanup">
+              <BrushCleaning className="size-3.5" />
+              Clean up
+            </Button>
+          </div>
         )}
       />
 
@@ -394,7 +427,8 @@ export default function MaintenancePage() {
                 : (
                   <>
                     <span className="font-mono">{sizeText(totals.safe.bytes + totals.optional.bytes)}</span> of it may be removed:{" "}
-                    <span className="font-mono">{sizeText(totals.safe.bytes)}</span> at no loss and{" "}
+                    <span className="font-mono">{sizeText(totals.safe.bytes)}</span> at no loss
+                    {selfCleaningBytes > 0 && <> (<span className="font-mono">{sizeText(selfCleaningBytes)}</span> of it cleans itself)</>} and{" "}
                     <span className="font-mono">{sizeText(totals.optional.bytes)}</span> at a cost you weigh. The rest is kept.
                   </>
                 )}
@@ -482,6 +516,15 @@ export default function MaintenancePage() {
         cleanupIntervalSeconds={report?.cleanupIntervalSeconds ?? 3600}
         admin={admin}
         onClose={() => setOpenId(null)}
+        onCleanUp={(areaId) => openCleanup(areaId)}
+      />
+
+      <CleanupSheet
+        open={cleanup.open}
+        openedFor={cleanup.openedFor}
+        report={report}
+        admin={admin}
+        onClose={() => setCleanup({ open: false, openedFor: null })}
       />
     </Page>
   );

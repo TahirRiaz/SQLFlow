@@ -206,7 +206,10 @@ public sealed class MaintenanceApiTests
             using (var response = await AiContextTestKit.SendAsync(client, admin, HttpMethod.Put, $"{area}/retention", new StorageDaysDto(30)))
             {
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                Assert.Equal(30, (await response.Content.ReadFromJsonAsync<StorageRetentionDto>(Web))!.Days);
+                var stored = (await response.Content.ReadFromJsonAsync<StorageRetentionDto>(Web))!;
+                Assert.Equal(30, stored.Days);
+                // Who set it is on record, by the token's subject.
+                Assert.False(string.IsNullOrWhiteSpace(stored.UpdatedBy));
             }
 
             using (var response = await AiContextTestKit.SendAsync(client, read, HttpMethod.Get, "/api/v1/maintenance/storage"))
@@ -224,6 +227,7 @@ public sealed class MaintenanceApiTests
                 Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
                 started = (await response.Content.ReadFromJsonAsync<CleanupDto>(Web))!;
                 Assert.Equal(CleanupTriggers.Manual, started.Trigger);
+                Assert.False(string.IsNullOrWhiteSpace(started.Actor));
                 Assert.Equal(10, started.Days);
             }
 

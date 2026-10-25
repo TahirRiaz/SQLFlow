@@ -118,7 +118,7 @@ public static class MaintenanceEndpoints
             return DaysOutOfRange(found.Area, retention);
         }
 
-        var stored = await MaintenanceStore.SetRetentionAsync(db, areaId, request.Days, user.Identity?.Name, clock.GetUtcNow().UtcDateTime, ct)
+        var stored = await MaintenanceStore.SetRetentionAsync(db, areaId, request.Days, RequestActor.Of(user), clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
         return TypedResults.Ok(new StorageRetentionDto(
             retention.Keeps, retention.Unit, retention.MinDays, retention.MaxDays, stored.Days, stored.UpdatedUtc, stored.UpdatedBy, null, null));
@@ -135,7 +135,7 @@ public static class MaintenanceEndpoints
                 statusCode: StatusCodes.Status400BadRequest, title: "No days");
         }
 
-        var start = await runner.StartAsync(areaId, days, user.Identity?.Name, ct).ConfigureAwait(false);
+        var start = await runner.StartAsync(areaId, days, RequestActor.Of(user), ct).ConfigureAwait(false);
         if (start.Entry is { } entry)
         {
             return TypedResults.Accepted(

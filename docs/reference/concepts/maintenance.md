@@ -1,6 +1,6 @@
 ---
 id: concept-maintenance
-title: "Maintenance: what the catalog's database holds, what is kept, and what may be removed"
+title: "Maintenance: what the catalog's database holds, what is kept, and the safe purge"
 type: concept
 summary: "Every table of the catalog's database in storage areas, each with a verdict (keep, safe to remove, optional) and its size; admins set limits and clean up."
 keywords:
@@ -12,6 +12,8 @@ keywords:
   - safe to remove
   - optional
   - keep
+  - purge
+  - clean up
   - run statements
   - run events
   - IStorageContributor
@@ -36,10 +38,11 @@ sourceRefs:
   - src/SqlFlow.Catalog/Migrations/20261024215740_MaintenanceStorageAreas.cs
   - gui/src/features/maintenance/MaintenancePage.tsx
   - gui/src/features/maintenance/StorageAreaSheet.tsx
+  - gui/src/features/maintenance/CleanupSheet.tsx
   - gui/src/features/maintenance/storageText.ts
 ---
 
-# Maintenance: what the catalog's database holds, what is kept, and what may be removed
+# Maintenance: what the catalog's database holds, what is kept, and the safe purge
 
 **Settings > Maintenance** answers three questions about the catalog's database for the person who runs the estate:
 what takes the space, what is safe to remove, and what has to stay. Every table of the database belongs to a **storage
@@ -77,8 +80,11 @@ statements or events never touches what Data streams and run history read.
   cleanup. The grid fits the window and scrolls under a sticky header.
 - **An area's sheet**, opened from its row: what it holds; its verdict and the reason (why it is kept, why removing it
   is safe, or what removing it costs); what a cleanup always keeps; how its data leaves the database; for an area that
-  takes a limit, its **Retention**; its cleanups; and its tables with their rows and sizes. A link opens the page where
-  the data is managed (Runs, Insights, the Nodes page).
+  takes a limit, its **Retention** (the limit in force, who set it and when, and **Remove limit**); its cleanups; and its
+  tables with their rows and sizes. Its buttons open **Clean up** on that area alone, and the page where the data is
+  managed (Runs, Insights, the Nodes page).
+- **Clean up**, the safe purge, opened from the page's header (and from each row and sheet of an area a cleanup can take,
+  on that area alone); see below.
 
 Sizes come from SQL Server's own metadata (`sys.partitions` and `sys.allocation_units`), so measuring a table of a
 billion rows costs what measuring an empty one does. A table's size includes its indexes and the internal tables built
@@ -89,21 +95,31 @@ that column's values, and the area holding its table is measured without them, s
 A cleanup frees space inside the database, which new rows then reuse. It does not shrink the database's files on disk;
 that stays a database administrator's decision.
 
-## Retention: a limit, a preview, a cleanup
+## Clean up: the safe purge
 
-An area that may be cleaned up takes a **limit**: how many days its data stays, between the least and the most the area
-takes (0 to 36,500 for the run trace). An admin sets it from the area's sheet by choosing days (typed, or one click on
-30 days, 90 days, 1 year or 2 years), **Preview**ing what a cleanup at those days would remove (a count, in the area's
-own unit, with the cut-off date, changing nothing), and then either:
+**Clean up**, in the page's header, opens a panel that lists every area a cleanup can take, in two parts: what is safe
+to remove, ticked from the start, and what is optional, not ticked, each saying what removing it costs. It names the
+areas that clean themselves too, so nobody looks for a way to purge them. One age applies to all (30 days, 90 days,
+1 year, 2 years, or any number of days), and as soon as it is chosen every area shows how many of its unit (statements,
+events, attempts, logs, runs) are older, and about how much space that frees, or that nothing is that old; nothing has
+to be pressed to see it, and nothing changes. Opened from an area's row or sheet, only that area is ticked, at its limit
+when it has one.
 
-- **Clean up now**, once, after confirming the count; or
-- **Keep N days as the limit**, which the automatic cleanup then applies. **Remove limit** takes it off again.
+**Clean up** at the panel's foot, after a confirmation that lists each area and its count, says what every area always
+keeps and warns when an optional area is ticked, starts a cleanup of each ticked area; each row then follows its cleanup
+to its end ("40 removed"), and a toast says how the whole cleanup ended. Ticking **Keep doing this** first sets the age
+as the limit of the ticked areas, so the automatic cleanup removes what grows older from then on.
 
-What an area always keeps is said beside its limit and in the confirmation (each flow's latest run, each record's latest
-attempt). A preview is anyone's who is signed in; setting a limit and cleaning up are an admin's.
+Anyone signed in may open the panel and see the counts; cleaning up and setting a limit are an admin's, since what a
+cleanup removes cannot be brought back. Without the admin role the panel says so, and its button stays disabled.
+
+A limit, once set, shows on the area's sheet with who set it and when; **Remove limit** there takes it off. Its days lie
+between the least and the most the area takes (0 to 36,500 for the run trace), and what the area always keeps (each
+flow's latest run, each record's latest attempt) is kept whatever the days. Every cleanup, asked for or automatic, is
+logged with who asked (the signed-in account, by its subject) or who set the limit an automatic one applied.
 
 A cleanup asked for runs in the background on the control plane that received it, so a large backlog never meets a
-request timeout, and its entry in the area's history stays open while it runs; the sheet follows it and says how it
+request timeout, and its entry in the area's history stays open while it runs; the panel follows it and says how it
 ended. Only one cleanup of an area runs at a time on a control plane (a second is refused with `409`). A cleanup stopped
 with its control plane is closed as interrupted when that host next cleans up or runs the automatic pass, or by any
 host once it has been open for 12 hours; what it removed stays removed, and cleaning up again finishes it. Every deletion

@@ -1315,7 +1315,7 @@
       "id": "concept-maintenance",
       "corpus": "reference",
       "path": "concepts/maintenance.md",
-      "title": "Maintenance: what the catalog's database holds, what is kept, and what may be removed",
+      "title": "Maintenance: what the catalog's database holds, what is kept, and the safe purge",
       "type": "concept",
       "summary": "Every table of the catalog's database in storage areas, each with a verdict (keep, safe to remove, optional) and its size; admins set limits and clean up.",
       "keywords": [
@@ -1327,6 +1327,8 @@
         "safe to remove",
         "optional",
         "keep",
+        "purge",
+        "clean up",
         "run statements",
         "run events",
         "IStorageContributor",
@@ -1353,6 +1355,7 @@
         "src/SqlFlow.Catalog/Migrations/20261024215740_MaintenanceStorageAreas.cs",
         "gui/src/features/maintenance/MaintenancePage.tsx",
         "gui/src/features/maintenance/StorageAreaSheet.tsx",
+        "gui/src/features/maintenance/CleanupSheet.tsx",
         "gui/src/features/maintenance/storageText.ts"
       ]
     },

@@ -49,8 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Settings > Maintenance accounts for every table of the catalog's database in storage areas, each marked keep, safe to
   remove or optional, with its size, how its data leaves and what removing it costs, grouped by verdict or by subject.
-  An admin sets a limit per area after a preview, or cleans up once; the automatic cleanup applies the limits and logs
-  every cleanup. A host module describes its own schema the same way (`IStorageContributor`,
+  **Clean up** is the safe purge: what is safe to remove starts ticked and what is optional never is, each area shows what
+  would go at the age chosen, and an admin cleans up or keeps the age as a limit; the automatic cleanup applies the limits
+  and every cleanup is logged with who asked. A host module describes its own schema the same way (`IStorageContributor`,
   `AddStorageContributor`) ([Maintenance](docs/reference/concepts/maintenance.md)).
 - How long things take, at every level. A schedule's list row shows how long its last fire took, and a run group's
   page when it started and ended and how long it took, both from the first flow's start to the last flow's end rather

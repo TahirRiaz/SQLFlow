@@ -4,7 +4,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { StorageArea } from "../src/api/types.ts";
-import { cleanupSummary, daysText, holdingText, matchesSearch, verdictOrder } from "../src/features/maintenance/storageText.ts";
+import {
+  cleanableAreas, cleanupSummary, daysFit, daysText, estimateFreed, holdingText, initialSelection, matchesSearch, verdictOrder,
+} from "../src/features/maintenance/storageText.ts";
 
 function area(overrides: Partial<StorageArea>): StorageArea {
   return {
@@ -93,5 +95,41 @@ describe("words", () => {
     assert.equal(daysText(1), "1 day");
     assert.equal(daysText(365), "365 days");
     assert.deepEqual(verdictOrder, ["safe", "optional", "keep"]);
+  });
+});
+
+describe("the cleanup panel", () => {
+  const statements = area({ retention });
+  const attempts = area({
+    id: "mod.attempts", verdict: "optional", title: "Attempts", bytes: 10_000, rows: 100,
+    tables: [{ schema: "mod", name: "Attempt", rows: 100, bytes: 10_000 }], retention: { ...retention, unit: "attempts", minDays: 1 },
+  });
+  const runs = area({ id: "mod.runs", verdict: "optional", tables: [], claims: ["mod.Run", "mod.Result"], retention: { ...retention, unit: "runs" } });
+  const kept = area({ id: "mod.records", verdict: "keep", retention: null });
+
+  it("lists only what a cleanup can take, safe first, the largest first", () => {
+    const big = area({ id: "mod.big", verdict: "optional", bytes: 99_999, retention: { ...retention, unit: "rows" } });
+    assert.deepEqual(cleanableAreas([kept, attempts, statements, big]).map((a) => a.id), [statements.id, big.id, attempts.id]);
+  });
+
+  it("starts with what is safe ticked, or only the area it was opened for", () => {
+    const cleanable = cleanableAreas([statements, attempts, runs]);
+    assert.deepEqual([...initialSelection(cleanable, null)], [statements.id]);
+    assert.deepEqual([...initialSelection(cleanable, attempts.id)], [attempts.id]);
+    assert.deepEqual([...initialSelection(cleanable, "mod.unknown")], []);
+  });
+
+  it("estimates what a cleanup frees from the share of the area's rows, and not where the unit is not a row", () => {
+    assert.equal(estimateFreed(attempts, 25), 2_500);
+    assert.equal(estimateFreed(attempts, 0), 0);
+    assert.equal(estimateFreed(attempts, 500), 10_000);
+    assert.equal(estimateFreed(runs, 3), null);
+  });
+
+  it("takes only the days an area's limit takes", () => {
+    assert.ok(daysFit(statements, 0));
+    assert.ok(!daysFit(attempts, 0));
+    assert.ok(daysFit(attempts, 30));
+    assert.ok(!daysFit(kept, 30));
   });
 });

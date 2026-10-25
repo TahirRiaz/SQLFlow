@@ -105,3 +105,47 @@ export function matchesSearch(area: StorageArea, search: string): boolean {
   ].join("\n").toLowerCase();
   return needle.split(/\s+/).every((word) => haystack.includes(word));
 }
+
+/**
+ * The areas a cleanup can take, in the order the cleanup panel lists them: what is safe to remove first, then what is
+ * optional, the largest first within each.
+ */
+export function cleanableAreas(areas: StorageArea[]): StorageArea[] {
+  return areas
+    .filter((area) => area.retention !== null)
+    .sort((a, b) => verdictOrder.indexOf(a.verdict) - verdictOrder.indexOf(b.verdict) || b.bytes - a.bytes);
+}
+
+/**
+ * The areas the cleanup panel starts with ticked: the one it was opened for, or, opened from the page, every area that is
+ * safe to remove. An optional area is never ticked unless a person asked for it, since removing it costs something.
+ */
+export function initialSelection(cleanable: StorageArea[], openedFor: string | null): Set<string> {
+  if (openedFor !== null) {
+    return new Set(cleanable.some((area) => area.id === openedFor) ? [openedFor] : []);
+  }
+
+  return new Set(cleanable.filter((area) => area.verdict === "safe").map((area) => area.id));
+}
+
+/**
+ * About how many bytes a cleanup removing `count` of an area's unit frees: its share of the area's rows (or, for an area of
+ * one column, of its values) applied to the area's size. Null where the unit is not the area's rows (an area of several
+ * tables counted in runs, say), since the share would mislead.
+ */
+export function estimateFreed(area: StorageArea, count: number): number | null {
+  if (area.rows <= 0 || count <= 0) {
+    return count <= 0 ? 0 : null;
+  }
+
+  if (area.column === null && area.tables.length !== 1) {
+    return null;
+  }
+
+  return Math.round(area.bytes * Math.min(1, count / area.rows));
+}
+
+/** Whether `days` lie within what the area's limit takes. */
+export function daysFit(area: StorageArea, days: number): boolean {
+  return area.retention !== null && days >= area.retention.minDays && days <= area.retention.maxDays;
+}
