@@ -137,7 +137,7 @@ function FileLabel({ file }: { file: RepoTreeEntry }) {
  * `defaultOpen` keys the collapsible so it remounts (and springs back open) when a search starts or clears, surfacing a
  * matching flow in a project the user had collapsed. */
 export function ProjectGroup({
-  project, rows, files = [], folders = [], repoId, filtered, defaultOpen = false, onOpen, onRunBatch,
+  project, rows, files = [], folders = [], repoId, filtered, defaultOpen = false, onOpen, onOpenFile, onRunBatch,
 }: {
   project: string;
   rows: PipelineSummary[];
@@ -154,7 +154,10 @@ export function ProjectGroup({
   /** Whether the tree starts expanded. Projects stay collapsed so a repo with dozens of them reads as a folder
    * outline the user opens one at a time; a search passes true so every matching project springs open. */
   defaultOpen?: boolean;
+  /** Opens a flow, on a click or Enter on its row. */
   onOpen: (pipelineId: string) => void;
+  /** Opens a file that is not a flow, on a click or Enter on its row; absent, a file's row only takes the selection. */
+  onOpenFile?: (file: RepoTreeEntry) => void;
   onRunBatch: (repoId: string, flowName: string) => void;
 }) {
   // What the user has explicitly opened or closed, by folder path; every other folder is shut unless the rows are a
@@ -169,6 +172,7 @@ export function ProjectGroup({
   const batch = rows.find((r) => r.kind === "batch" && r.active);
   const tree = buildFolderTree(project, rows, files, folders);
   const byId = new Map(rows.map((p) => [p.id, p]));
+  const filesById = new Map(files.map((f) => [`file:${f.path}`, f]));
 
   const setOpen = (id: string, open: boolean) => setOverrides((current) => ({ ...current, [id]: open }));
 
@@ -177,11 +181,15 @@ export function ProjectGroup({
     setOpen,
     toggle: (id) => setOverrides((current) => ({ ...current, [id]: !opensFolder(current, id, filtered) })),
     selectedId,
-    // Selecting a flow opens it; selecting a folder only moves the selection, because its own click already toggled it.
+    // Selecting a flow or a file opens it; selecting a folder only moves the selection, because its own click already
+    // toggled it.
     select: (id) => {
       setSelectedId(id);
+      const file = filesById.get(id);
       if (byId.has(id)) {
         onOpen(id);
+      } else if (file !== undefined) {
+        onOpenFile?.(file);
       }
     },
   };

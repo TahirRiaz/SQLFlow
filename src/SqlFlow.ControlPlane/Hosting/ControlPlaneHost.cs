@@ -591,6 +591,11 @@ public static class ControlPlaneHost
             // The GUI chat assistant: per-user conversations, streamed answers, each run under its own delegated token.
             .MapChatEndpoints();
 
+        // A repository file's text, for the repo page's code window. Read scope like the content listing, but closed to an
+        // assistant run's delegated token, which reads metadata: a file's text is the repository's own content.
+        v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Read)
+            .MapRepoFileEndpoints();
+
         // The operate surface: triggering/cancelling a run and managing schedules are privileged operations, so they live
         // under the "operate" scope rather than the read group.
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Operate)

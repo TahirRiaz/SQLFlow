@@ -117,6 +117,12 @@ public sealed record RepoTreeEntryDto(string Path, bool IsFolder, long SizeBytes
 /// <c>disk</c>; <c>Truncated</c> says the listing hit its cap and is partial.</summary>
 public sealed record RepoTreeDto(string ReadFrom, IReadOnlyList<RepoTreeEntryDto> Entries, bool Truncated);
 
+/// <summary>One file of a repository as the repo page's code window shows it: its repo-relative path, where it was read
+/// (<c>git</c>, with the branch and the commit it was read at, or <c>disk</c>), and its size in bytes. <c>Text</c> is
+/// its content decoded as text, the first <c>MaxTextBytes</c> of it when <c>Truncated</c>; a binary file has no text.</summary>
+public sealed record RepoFileDto(
+    string Path, string ReadFrom, string? Branch, string? CommitSha, long SizeBytes, bool Binary, bool Truncated, string? Text);
+
 /// <summary>A pipeline (flow) as it appears in lists: the hot dimensions, without the heavy YAML/definition body.
 /// <c>ExecutionMode</c> is <c>auto</c> or <c>manual</c> (the flow's YAML <c>mode:</c>); manual flows are excluded
 /// from schedules and group runs and execute only when triggered directly. <c>Lifecycle</c> is <c>production</c>

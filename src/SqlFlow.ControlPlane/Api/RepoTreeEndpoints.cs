@@ -16,16 +16,16 @@ namespace SqlFlow.ControlPlane.Api;
 /// import is invisible to every catalog-derived listing. This endpoint reads the repository itself, so the repo view
 /// can show its real folder outline rather than only the folders that happen to hold a registered pipeline.
 ///
-/// The read is bounded and content-free: paths, folder-or-file, and blob sizes. No file body is served here (a flow's
-/// YAML is read through the pipeline detail, an scm snapshot through the schema-change diff), and no client ever
-/// holds a git credential: the repo's registered source supplies the remote and its credential REFERENCE, resolved
-/// through the same <see cref="GitMaterializer.ResolveCredentialAsync(ISecretResolver, string?, string?, string?, GitAccess, CancellationToken)"/> path the managed sync uses.
+/// The read is bounded and content-free: paths, folder-or-file, and blob sizes. No file body is served here (one file's
+/// text is read through <see cref="RepoFileEndpoints"/>, a flow's YAML through the pipeline detail, an scm snapshot
+/// through the schema-change diff), and no client ever holds a git credential: the repo's registered source supplies the
+/// remote and its credential REFERENCE, resolved through the same <see cref="GitMaterializer.ResolveCredentialAsync(ISecretResolver, string?, string?, string?, GitAccess, CancellationToken)"/> path the managed sync uses.
 /// </summary>
 public static class RepoTreeEndpoints
 {
     /// <summary>How stale the read-only clone may be before a listing refreshes it. Matches the history surface, so
     /// a folder pushed moments ago shows up while a burst of browsing costs one fetch at most.</summary>
-    private static readonly TimeSpan TreeFreshness = TimeSpan.FromMinutes(1);
+    internal static readonly TimeSpan TreeFreshness = TimeSpan.FromMinutes(1);
 
     /// <summary>The most entries one listing returns. A repo of flows runs to a few thousand files; the cap keeps a
     /// repository that also carries a data dump from turning a folder outline into a megabyte response, and the
@@ -36,7 +36,7 @@ public static class RepoTreeEndpoints
     /// checkout), its ignore, attribute and submodule lists, and the placeholder that keeps an empty folder tracked.
     /// They are machinery rather than repository content, so neither walk lists them, at any depth. Other dot-named
     /// entries (an editor config, a CI folder) are content the repository chose to hold and stay listed.</summary>
-    private static readonly HashSet<string> GitMachinery = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> GitMachinery = new(StringComparer.OrdinalIgnoreCase)
     {
         ".git", ".gitignore", ".gitattributes", ".gitmodules", ".gitkeep",
     };
@@ -61,38 +61,62 @@ public static class RepoTreeEndpoints
     private static async Task<Results<Ok<RepoTreeDto>, ProblemHttpResult>> GetRepoTreeAsync(
         Guid id, CatalogDbContext db, ISecretResolver secrets, CancellationToken ct)
     {
+        var (location, problem) = await LocateAsync(id, db, "listed", ct).ConfigureAwait(false);
+        if (problem is not null)
+        {
+            return problem;
+        }
+
+        if (location!.GitSource is { } source)
+        {
+            return await ReadFromGitAsync(secrets, source, ct).ConfigureAwait(false);
+        }
+
+        var rootPath = location.RootPath!;
+        var entries = await Task.Run(() => ReadFromDisk(rootPath, ct), ct).ConfigureAwait(false);
+        return TypedResults.Ok(Listing("disk", entries));
+    }
+
+    /// <summary>
+    /// Where one repository's content is read from: the registered git source that tracks it, else the local path it
+    /// was synced from, which the control-plane host must be able to see. A repo with neither, or a path the host cannot
+    /// see, is a 400 saying which, and an unknown repo a 404. <paramref name="what"/> says what the caller does with the
+    /// content ("listed", "read"), for the message.
+    /// </summary>
+    internal static async Task<(RepoContentLocation? Location, ProblemHttpResult? Problem)> LocateAsync(
+        Guid id, CatalogDbContext db, string what, CancellationToken ct)
+    {
         var repo = await db.Repos.AsNoTracking().Where(r => r.Id == id)
             .Select(r => new { r.Name, r.RootPath })
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (repo is null)
         {
-            return NotFound("repository", id);
+            return (null, NotFound("repository", id));
         }
 
         var source = await db.RepoSources.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Name == repo.Name, ct).ConfigureAwait(false);
         if (source is { RemoteUrl: { Length: > 0 } })
         {
-            return await ReadFromGitAsync(secrets, source, ct).ConfigureAwait(false);
+            return (new RepoContentLocation(source, null), null);
         }
 
         var rootPath = source?.LocalPath ?? repo.RootPath;
         if (string.IsNullOrWhiteSpace(rootPath))
         {
-            return BadRequest(
+            return (null, BadRequest(
                 "Contents unavailable",
-                $"Repo '{repo.Name}' has no registered git source and no recorded root path, so its files cannot be listed.");
+                $"Repo '{repo.Name}' has no registered git source and no recorded root path, so its files cannot be {what}."));
         }
 
         if (!Directory.Exists(rootPath))
         {
-            return BadRequest(
+            return (null, BadRequest(
                 "Contents unavailable",
-                $"The control-plane host cannot see the repo's root path '{rootPath}', so its files cannot be listed. A repo synced from a local path is browsable only where the flow files live.");
+                $"The control-plane host cannot see the repo's root path '{rootPath}', so its files cannot be {what}. A repo synced from a local path is browsable only where the flow files live."));
         }
 
-        var entries = await Task.Run(() => ReadFromDisk(rootPath, ct), ct).ConfigureAwait(false);
-        return TypedResults.Ok(Listing("disk", entries));
+        return (new RepoContentLocation(null, rootPath), null);
     }
 
     /// <summary>The branch tip's tree of a repo tracked by a git source, read from the shared read-only clone.</summary>
@@ -251,6 +275,10 @@ public static class RepoTreeEndpoints
             statusCode: StatusCodes.Status404NotFound,
             title: "Not found");
 
-    private static ProblemHttpResult BadRequest(string title, string detail)
+    internal static ProblemHttpResult BadRequest(string title, string detail)
         => TypedResults.Problem(detail: detail, statusCode: StatusCodes.Status400BadRequest, title: title);
 }
+
+/// <summary>Where a repository's content is read from: the git source that tracks it (its branch tip, through the shared
+/// read-only clone), or the folder on the control-plane host it was synced from. Exactly one is set.</summary>
+internal sealed record RepoContentLocation(CatalogRepoSource? GitSource, string? RootPath);

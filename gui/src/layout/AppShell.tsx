@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { RunDock } from "../features/runs/RunDock";
 import { ExplainDrawer, ExplainProvider } from "../features/chat/ExplainContext";
+import { RepoFileDrawer, RepoFileWindowProvider } from "../features/repos/RepoFileWindow";
 import { RunDockProvider } from "../features/runs/RunDockContext";
 import { sideBarClosedOnFirstVisit } from "../modules/registry";
 import { groupForPath, type NavGroup } from "./nav";
@@ -128,8 +129,9 @@ function WorkbenchFrame() {
                         </SideBarRoomContext.Provider>
                       </div>
                     </main>
-                    {/* An explanation slides in over the page from its left edge; maximized, it covers all but the title
-                        and status bars. */}
+                    {/* A repository file's code and an explanation slide in over the page from its left edge, an explanation
+                        over the code it explains; maximized, either covers all but the title and status bars. */}
+                    <RepoFileDrawer maximizedClassName="inset-x-0 top-9 bottom-[22px]" />
                     <ExplainDrawer maximizedClassName="inset-x-0 top-9 bottom-[22px]" />
                     {/* While a panel is open, the page fades into a shade along its bottom edge, so the panel below reads
                         as raised over the page rather than as more of it. Drawn over the content, which a shadow on the
@@ -169,9 +171,11 @@ export default function AppShell() {
     <TabsProvider>
       <PanelProvider>
         <ExplainProvider>
-          <RunDockProvider>
-            <WorkbenchFrame />
-          </RunDockProvider>
+          <RepoFileWindowProvider>
+            <RunDockProvider>
+              <WorkbenchFrame />
+            </RunDockProvider>
+          </RepoFileWindowProvider>
         </ExplainProvider>
       </PanelProvider>
     </TabsProvider>

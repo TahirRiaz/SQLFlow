@@ -297,9 +297,24 @@ API:
 
 ### What a repository holds, and its page
 
-`GET /repos/{id}/tree` (read, src/SqlFlow.ControlPlane/Api/RepoTreeEndpoints.cs) lists every folder and file a repository holds, not only the flow files a sync imported: repo-relative, forward-slashed paths sorted by path, whether each is a folder, and each file's size, with `readFrom` (`git` or `disk`) and `truncated`. No file's content is served. A repo tracked by a git source is read at its branch tip through the shared read-only clone, refreshed at most once a minute. A repo synced by the CLI from a local path is read from that folder on disk, every file in it, when the control plane's host can see it. A repo with neither answers 400 saying why. Git's own files (`.git`, `.gitignore`, `.gitattributes`, `.gitmodules`, `.gitkeep`) are left out at any depth, and a listing stops at 20,000 entries with `truncated` set.
+`GET /repos/{id}/tree` (read, src/SqlFlow.ControlPlane/Api/RepoTreeEndpoints.cs) lists every folder and file a repository holds, not only the flow files a sync imported: repo-relative, forward-slashed paths sorted by path, whether each is a folder, and each file's size, with `readFrom` (`git` or `disk`) and `truncated`. No file's content is served here. A repo tracked by a git source is read at its branch tip through the shared read-only clone, refreshed at most once a minute. A repo synced by the CLI from a local path is read from that folder on disk, every file in it, when the control plane's host can see it. A repo with neither answers 400 saying why. Git's own files (`.git`, `.gitignore`, `.gitattributes`, `.gitmodules`, `.gitkeep`) are left out at any depth, and a listing stops at 20,000 entries with `truncated` set.
 
 A repo's page in the GUI lists its projects (its top-level folders) from this listing, merged with the pipelines the catalog imported. A project starts collapsed, and opening it shows its top-level folders and the rows directly in it, every folder shut: a folder opens one level at a time, so a repository that keeps thousands of files beside its flows (a data drop, a folder per well) never unfolds them on arrival. A search opens each project it matched onto the folders on the way to the rows it matched; a project matched by its own name is kept whole, its folders shut. The Pipelines page lays out a repo's flows the same way, and a filter there opens the folders on the way to its matches.
+
+`GET /repos/{id}/file?path=<path>` (read, src/SqlFlow.ControlPlane/Api/RepoFileEndpoints.cs) is one file of the repository, read where the listing reads it: its `path`, `readFrom` (with the `branch` and `commitSha` it was read at, for a git source), `sizeBytes`, and its `text`. A text file is decoded as UTF-8 unless a byte order mark says otherwise, and past its first megabyte (1,048,576 bytes) only that much is returned, with `truncated` set. A file with a NUL byte among its first 8,000 bytes is `binary`, and has no text. The route shows what a repository is for, and refuses the rest, saying why:
+
+| Asked for | Answer |
+| --- | --- |
+| A path that is not repo-relative and forward-slashed, names a folder by `.`, `..` or an empty name, or names git's own files | 400 `Not a repository file` |
+| A file in a local-path repo reached through a link (the file or a folder on the way), which may lead out of the repository | 400 `Not a repository file` |
+| A folder, or a submodule | 400 `Not a file` |
+| A credential store by its name: an environment file (`.env`, `.env.*`), a login or key file (`.npmrc`, `.pypirc`, `.netrc`, `.pgpass`, `.git-credentials`, `id_rsa` and the other SSH keys), or a key or certificate store (`.pem`, `.key`, `.pfx`, `.p12`, `.jks`, `.keystore`, `.kdbx`) | 403 `Content not shown` |
+| An untracked file git ignores in a local-path repo that is a git working tree: it never reaches the repository, and is where credentials, data drops and build output sit | 403 `Content not shown` |
+| A file the repository does not hold, or an unknown repo | 404 `Not found` |
+
+The route is closed to an assistant run's delegated token, which reads the estate's metadata: a file's text is the repository's own content.
+
+On a repo's page a click on a flow or a file, or Enter on its row, opens the **code window**: the file's code as the repository holds it, coloured by its kind (YAML, JSON, SQL, Markdown, scripts and configuration; anything else as text), with what it is, its size and where it was read above it. A flow document or a module's document (a YAML file declaring `flowType` or `documentType`) gets the YAML editor's documentation, colouring and checks. The window slides in from the left over the page, as Explain does: its right edge is dragged (or moved with the arrow keys) to make it wider or narrower, the width is kept for the next time, and it maximizes to read the code alone. A flow's file offers **Open pipeline**, the flow's page; a file that is not shown says why. The window belongs to the page it was opened on, and Explain, asked of its code, opens over it.
 
 ## Triggering, backfilling, and cancelling runs
 

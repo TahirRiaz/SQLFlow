@@ -39,7 +39,12 @@ export interface ExplainCode {
   totalLines: number;
 }
 
-const LANGUAGE_NAMES: Record<string, string> = { yaml: "YAML", json: "JSON", sql: "SQL", plaintext: "text" };
+/** Every language a code view colours (codeLanguage.ts), as a sentence says it ("this YAML", "this shell script"). */
+const LANGUAGE_NAMES: Record<string, string> = {
+  yaml: "YAML", json: "JSON", sql: "SQL", markdown: "Markdown", xml: "XML", html: "HTML", css: "CSS", python: "Python",
+  powershell: "PowerShell", shell: "shell script", bat: "batch file", javascript: "JavaScript", typescript: "TypeScript",
+  csharp: "C#", ini: "configuration", dockerfile: "Dockerfile", plaintext: "text",
+};
 
 /** The language's name as a sentence says it. */
 export function languageName(language: string): string {

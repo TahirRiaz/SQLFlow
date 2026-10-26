@@ -33,6 +33,7 @@
     "src/features/repos/project.ts",
     "src/api/types.ts",
     "src/layout/workbench/sideBarStart.ts",
+    "src/lib/codeLanguage.ts",
     "src/lib/runTiming.ts",
     "src/lib/runValues.ts",
     "src/features/runs/runInputs.ts",

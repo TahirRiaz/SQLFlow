@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { CodeLanguage } from "@/lib/codeLanguage";
 import { prettyPrintSql } from "@/lib/sql";
 import { defineSqlflowTheme, sqlflowEditorTheme } from "@/lib/monacoTheme";
 import { useThemeMode } from "../theme/ThemeModeContext";
@@ -18,7 +19,7 @@ import type { ExplainCode } from "../features/chat/explain";
 
 interface CodeViewProps {
   value: string;
-  language: "yaml" | "json" | "sql" | "plaintext";
+  language: CodeLanguage;
   height?: number | string;
   /**
    * Fill mode: the view grows to the free space of a flex column parent (a sheet body, a panel) instead of taking

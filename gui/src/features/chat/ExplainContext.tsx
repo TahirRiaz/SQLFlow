@@ -1,15 +1,9 @@
-import {
-  createContext, lazy, Suspense, useCallback, useContext, useMemo, useRef, useState,
-  type KeyboardEvent, type PointerEvent, type ReactNode,
-} from "react";
+import { createContext, lazy, Suspense, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Maximize2, Minimize2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { DrawerHeader, LeftDrawer } from "@/components/LeftDrawer";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { cn } from "@/lib/utils";
 import { chatApi } from "../../api/endpoints";
 import { navEntryFor, routeTitle } from "../../layout/nav";
@@ -28,9 +22,6 @@ const ExplainConversation = lazy(() => import("./ExplainConversation"));
 const DEFAULT_WIDTH = 480;
 /** The narrowest the drawer is dragged to; the widest is most of its frame, so the page always shows beside it. */
 const MIN_WIDTH = 360;
-const MAX_SHARE = 0.85;
-/** How far an arrow key moves the drawer's edge. */
-const KEY_STEP = 32;
 const WIDTH_KEY = "sqlflow.explain.width";
 
 /** The content of the dialogs whose overlay holds the page, and so the drawer, out of reach. */
@@ -168,70 +159,21 @@ function capitalized(text: string): string {
  */
 export function ExplainDrawer({ maximizedClassName }: { maximizedClassName: string }) {
   const state = useContext(ExplainContext);
-  const [storedWidth, setStoredWidth] = useLocalStorageState(WIDTH_KEY, DEFAULT_WIDTH);
-  const [dragWidth, setDragWidth] = useState<number | null>(null);
-  const asideRef = useRef<HTMLElement | null>(null);
-
-  // The widest the drawer may be in the frame it is in now: most of it, never below the narrowest.
-  const clamp = useCallback((width: number): number => {
-    const frame = asideRef.current?.parentElement?.clientWidth ?? window.innerWidth;
-    return Math.round(Math.max(MIN_WIDTH, Math.min(width, Math.max(MIN_WIDTH, frame * MAX_SHARE))));
-  }, []);
-
-  const onPointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) {
-      return;
-    }
-
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDragWidth(asideRef.current?.getBoundingClientRect().width ?? storedWidth);
-  }, [storedWidth]);
-
-  const onPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    if (dragWidth === null || asideRef.current === null) {
-      return;
-    }
-
-    setDragWidth(clamp(event.clientX - asideRef.current.getBoundingClientRect().left));
-  }, [dragWidth, clamp]);
-
-  const onPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    if (dragWidth !== null) {
-      setStoredWidth(dragWidth);
-      setDragWidth(null);
-    }
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }, [dragWidth, setStoredWidth]);
-
-  const onKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    const step = event.key === "ArrowRight" ? KEY_STEP : event.key === "ArrowLeft" ? -KEY_STEP : 0;
-    if (step !== 0) {
-      event.preventDefault();
-      setStoredWidth(clamp(storedWidth + step));
-    }
-  }, [clamp, storedWidth, setStoredWidth]);
-
   if (state === null || !state.open || state.asked === null || state.asked.overDialog) {
     return null;
   }
 
   const { asked, maximized, setMaximized, close } = state;
-  const width = dragWidth ?? storedWidth;
   return (
-    <aside
-      ref={asideRef}
-      className={cn(
-        "z-30 flex flex-col bg-card shadow-lg duration-200 animate-in fade-in-0 slide-in-from-left-8",
-        maximized ? cn("fixed", maximizedClassName) : "absolute inset-y-0 left-0 max-w-[85%] border-r",
-      )}
-      style={maximized ? undefined : { width, minWidth: Math.min(MIN_WIDTH, width) }}
-      aria-label="Explain"
-      data-maximized={maximized || undefined}
-      data-testid="explain-drawer"
+    <LeftDrawer
+      label="Explain"
+      widthKey={WIDTH_KEY}
+      defaultWidth={DEFAULT_WIDTH}
+      minWidth={MIN_WIDTH}
+      maximized={maximized}
+      maximizedClassName={maximizedClassName}
+      layerClassName="z-30"
+      testId="explain-drawer"
     >
       <ExplainSurface
         asked={asked}
@@ -240,33 +182,7 @@ export function ExplainDrawer({ maximizedClassName }: { maximizedClassName: stri
         onClose={close}
         title={<h2 className="text-[13px] leading-5 font-semibold">Explain</h2>}
       />
-      {!maximized && (
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Drawer width"
-          aria-valuenow={width}
-          aria-valuemin={MIN_WIDTH}
-          tabIndex={0}
-          title="Drag to resize; double-click for the default width"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onDoubleClick={() => setStoredWidth(clamp(DEFAULT_WIDTH))}
-          onKeyDown={onKeyDown}
-          className="group absolute inset-y-0 -right-1.5 z-10 flex w-3 cursor-col-resize justify-center outline-none"
-          data-testid="explain-drawer-resize"
-        >
-          <span
-            className={cn(
-              "h-full w-0.5 transition-colors group-hover:bg-primary/60 group-focus-visible:bg-primary",
-              dragWidth !== null && "bg-primary",
-            )}
-          />
-        </div>
-      )}
-    </aside>
+    </LeftDrawer>
   );
 }
 
@@ -281,49 +197,20 @@ function ExplainSurface({ asked, maximized, onMaximizedChange, onClose, title }:
   onClose: () => void;
   title: ReactNode;
 }) {
-  const toggle = maximized ? "Restore: show the page again" : "Maximize: hide the page and keep the conversation";
   return (
     <>
-      <header
-        className="flex shrink-0 items-center gap-2.5 border-b px-3 py-2"
-        onDoubleClick={(event) => {
-          if (!(event.target as Element).closest("button")) {
-            onMaximizedChange(!maximized);
-          }
-        }}
-        data-testid="explain-header"
-      >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <ExplainIcon className="size-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          {title}
-          <p className="truncate text-[11.5px] leading-4 text-muted-foreground" title={asked.subject}>{asked.subject}</p>
-        </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onMaximizedChange(!maximized)}
-              aria-label={maximized ? "Restore" : "Maximize"}
-              aria-pressed={maximized}
-              data-testid="explain-maximize"
-            >
-              {maximized ? <Minimize2 /> : <Maximize2 />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{toggle}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-xs" onClick={onClose} aria-label="Close" data-testid="explain-close">
-              <X />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Close: the conversation stays on the Assistant page</TooltipContent>
-        </Tooltip>
-      </header>
+      <DrawerHeader
+        icon={<ExplainIcon className="size-4" />}
+        title={title}
+        subtitle={asked.subject}
+        maximized={maximized}
+        onMaximizedChange={onMaximizedChange}
+        onClose={onClose}
+        maximizeHint="Maximize: hide the page and keep the conversation"
+        restoreHint="Restore: show the page again"
+        closeHint="Close: the conversation stays on the Assistant page"
+        testIdPrefix="explain"
+      />
       <div className="min-h-0 flex-1">
         <Conversation key={asked.id} question={asked.question} />
       </div>

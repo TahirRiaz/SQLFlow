@@ -26,7 +26,7 @@ import type {
   SemanticReportCapabilities, SemanticReportSpec, SemanticReportSpecDetail, SemanticReportSubscriber,
   PrepareQueryRequest, PreparedQuery,
   FlowParameters,
-  PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineRunDurations, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
+  PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineRunDurations, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoFile, RepoSyncResult, RepoTree, Role,
   RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry,
   RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
   RunTriggerAccepted, RunTriggerRequest, Schedule, ScheduleCreated, ScheduleDefinition, SchedulePlan, ScheduleRunAccepted, SessionResponse, TokenResponse,
@@ -132,6 +132,9 @@ export const repoApi = {
   // Everything the repository holds on its synced branch, not only the flows the catalog imported: the folder outline
   // the repo view lists its projects from. 400s for a repo with no git source and no reachable root path.
   tree: (id: string) => get<RepoTree>(`/api/v1/repos/${id}/tree`),
+  // One file's text as the repository holds it, for the code window: refused (403) for a credential store or a file git
+  // ignores, and a binary file comes back without its text.
+  file: (id: string, path: string) => get<RepoFile>(`/api/v1/repos/${id}/file`, { path }),
   // Re-sync a CLI/local-path repo from its recorded root path (connected: reads the live database for the derived
   // lineage tier). Refused server-side for a git-source-managed repo, which syncs via its source instead.
   syncLocal: (id: string) => post<RepoSyncResult>(`/api/v1/repos/${id}/sync`),

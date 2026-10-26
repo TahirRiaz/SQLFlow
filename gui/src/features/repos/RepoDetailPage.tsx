@@ -28,6 +28,7 @@ import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { useSyncTracePanel } from "./useSyncTracePanel";
 import { GitCredentialChip } from "./GitCredentialChip";
 import { useRepoAccessCheck } from "./useRepoAccessCheck";
+import { useRepoFileWindow } from "./RepoFileWindow";
 import { announceSyncOutcome, repoSourcesRefetchInterval } from "./syncOutcome";
 
 /** The most repos/sources a single control plane realistically holds; one page covers the by-name lookup. */
@@ -142,17 +143,19 @@ function matchingFolders(folders: RepoFolder[], needle: string): RepoFolder[] {
     .filter((folder) => folder.pipelines.length > 0 || folder.files.length > 0);
 }
 
-/** The repo's folders, each a collapsible card of its pipelines and its other files. A project that contains a batch
- * flow (flowType: batch) can be run as a unit: the batch executes its members in lineage wave order, so "Run project"
- * triggers that ordered run. */
+/** The repo's folders, each a collapsible card of its pipelines and its other files. A click on a flow or a file shows
+ * its code in the code window, which opens a flow's page from there. A project that contains a batch flow (flowType:
+ * batch) can be run as a unit: the batch executes its members in lineage wave order, so "Run project" triggers that
+ * ordered run. */
 function RepoProjects({
-  repoId, filter, onOpen, onRunBatch,
+  repoId, filter, onRunBatch,
 }: {
   repoId: string;
   filter: string;
-  onOpen: (pipelineId: string) => void;
   onRunBatch: (repoId: string, flowName: string) => void;
 }) {
+  const codeWindow = useRepoFileWindow();
+
   // Every page of the repo's flows, not just the first: the API clamps a page at 200 rows, so a single request drops
   // whole project folders off the end of the alphabet with nothing on screen to say so.
   const query = useQuery({
@@ -184,6 +187,15 @@ function RepoProjects({
   // left out, so a rename in flight never draws the same flow twice, once stale and once as the file replacing it.
   const { live: pipelines, gone } = onBranch(result.items, treeQuery.data);
   const folders = foldersOf(pipelines, treeQuery.data);
+
+  // A flow's file is shown as a file is, with the flow's page a click away in the window.
+  const openPipeline = (pipelineId: string) => {
+    const pipeline = pipelines.find((p) => p.id === pipelineId);
+    if (pipeline !== undefined) {
+      codeWindow.open({ repoId, path: pipeline.relativePath, pipeline: { id: pipeline.id, name: pipeline.name } });
+    }
+  };
+  const openFile = (file: RepoTreeEntry) => codeWindow.open({ repoId, path: file.path, pipeline: null });
 
   // Left out rather than silently dropped: a reader whose flow is missing from the outline is told the catalog has
   // not caught up with the branch yet, instead of being left to wonder where the pipeline went.
@@ -267,7 +279,8 @@ function RepoProjects({
           repoId={repoId}
           filtered={folder.narrowed}
           defaultOpen={needle !== ""}
-          onOpen={onOpen}
+          onOpen={openPipeline}
+          onOpenFile={openFile}
           onRunBatch={onRunBatch}
         />
       ))}
@@ -525,7 +538,6 @@ export default function RepoDetailPage() {
         <RepoProjects
           repoId={repoId}
           filter={pipelineFilter}
-          onOpen={(id) => navigate(`/pipelines/${id}`)}
           onRunBatch={(_repoId, flowName) => setRunBatchFlow(flowName)}
         />
       </div>

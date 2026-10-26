@@ -93,6 +93,20 @@ export interface RepoTree {
   truncated: boolean;
 }
 
+/** One file of a repository as the repo page's code window shows it: where it was read (`git`, with the branch and the
+ * commit it was read at, or `disk`) and its size in bytes. `text` is its content, the first megabyte of it when
+ * `truncated`; a binary file has no text. */
+export interface RepoFile {
+  path: string;
+  readFrom: string;
+  branch: string | null;
+  commitSha: string | null;
+  sizeBytes: number;
+  binary: boolean;
+  truncated: boolean;
+  text: string | null;
+}
+
 /** The outcome of a manual local-path repo sync: the pipeline reconciliation counts and lineage tallies, whether the
  * derived tier connected to the live database, and any warnings the pass surfaced (bounded). */
 export interface RepoSyncResult {

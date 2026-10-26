@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- A repo's page shows a file's code. A click on a flow or any other file opens it in a code window that slides in from
+  the left over the page, coloured by its kind (YAML, JSON, SQL, Markdown, scripts and configuration), resized by
+  dragging its edge and maximized to read the code alone; a flow's file offers Open pipeline. It reads
+  `GET /repos/{id}/file?path=`, which returns one file's text (its first megabyte; a binary file has none) and refuses a
+  credential store, a file git ignores in a local-path repo, and anything outside the repository
+  ([What a repository holds, and its page](docs/reference/concepts/control-plane.md#what-a-repository-holds-and-its-page)).
 - A run form shows what a registered kind's flow declares a run may be given, read from its document: each parameter
   with its description and default, a list to pick from for a parameter that lists `choices` or whose kind looks its
   values up (with how often each is used, searched as you type), several values as chips, and the document's settings a

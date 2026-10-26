@@ -63,6 +63,7 @@ public sealed class AssistantDelegationTests : IClassFixture<ControlPlaneAppFact
     [InlineData("POST", "/api/v1/repos/sources/" + SomeGuid + "/proposals")]
     [InlineData("PUT", "/api/v1/nodes/pools/scale")]
     [InlineData("POST", "/api/v1/repos/" + SomeGuid + "/sync")]
+    [InlineData("GET", "/api/v1/repos/" + SomeGuid + "/file?path=README.md")]
     public async Task DelegatedToken_IsRefused_EverywhereItHasNotBeenOpenedTo(string method, string path)
     {
         using var client = _factory.CreateClient();
