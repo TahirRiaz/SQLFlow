@@ -25,13 +25,18 @@ export function downloadFileName(
   return `${stem === "" ? fallback : stem}.${extension}`;
 }
 
-/**
- * Saves `text` as a UTF-8 file named `fileName` through the browser's download, the way a link with a `download`
- * attribute does. The object URL is released once the click has been handled, on the next tick rather than during
- * it, so the download has taken hold of the blob first.
- */
+/** Saves `text` as a UTF-8 file named `fileName` through the browser's download (see `downloadBlob`). */
 export function downloadText(fileName: string, text: string, type = "text/plain"): void {
-  const url = URL.createObjectURL(new Blob([text], { type: `${type};charset=utf-8` }));
+  downloadBlob(fileName, new Blob([text], { type: `${type};charset=utf-8` }));
+}
+
+/**
+ * Saves `blob` (a file the API served, a document the GUI built) as a file named `fileName` through the browser's
+ * download, the way a link with a `download` attribute does. The object URL is released once the click has been
+ * handled, on the next tick rather than during it, so the download has taken hold of the blob first.
+ */
+export function downloadBlob(fileName: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = fileName;

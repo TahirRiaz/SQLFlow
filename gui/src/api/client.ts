@@ -215,9 +215,30 @@ export function get<T>(path: string, query?: QueryParams, signal?: AbortSignal):
 
 /** GET for a text/plain endpoint (the rendered run trace): same auth and error shaping, raw string body. */
 export async function getText(path: string, signal?: AbortSignal): Promise<string> {
+  return (await getRaw(path, "text/plain", undefined, signal)).text();
+}
+
+/**
+ * GET for an endpoint that serves a file (a workbook, an archive): same auth and error shaping, the body as a Blob of the
+ * type the server named. A refusal is an ApiError, as from every other call, never a file holding the problem.
+ */
+export async function getBlob(path: string, query?: QueryParams, signal?: AbortSignal): Promise<Blob> {
+  return (await getRaw(path, "*/*", query, signal)).blob();
+}
+
+/** A GET whose body is not JSON, answered: the module headers, the token, the session and rate-limit handling, and a refusal as an ApiError. */
+async function getRaw(path: string, accept: string, query: QueryParams | undefined, signal: AbortSignal | undefined): Promise<Response> {
   const base = runtimeConfig().apiBaseUrl;
   const url = new URL(`${base}${path}`);
-  const headers: Record<string, string> = { Accept: "text/plain" };
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== null && value !== undefined && value !== "") {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+
+  const headers: Record<string, string> = { Accept: accept };
   addModuleHeaders(headers);
   if (currentToken) {
     headers.Authorization = `Bearer ${currentToken}`;
@@ -237,7 +258,7 @@ export async function getText(path: string, signal?: AbortSignal): Promise<strin
     throw await toApiError(response);
   }
 
-  return response.text();
+  return response;
 }
 
 // ---- Server-Sent Events ---------------------------------------------------------------------------------------------
