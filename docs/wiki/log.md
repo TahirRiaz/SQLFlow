@@ -404,3 +404,11 @@ session dedicated mode."): only `!data`, a bare `!`, `!exit` and `!estate` move 
 control plane, the MCP server and the GUI share; every session answers only its mode's tools; the assistant no longer
 switches in words or ends data mode itself, and the run that was asked again in the other mode is gone. The surfaces
 are documented in `guide-chat-assistant`, `guide-slack-assistant` and `concept-semantic-layer`.
+
+## [2026-10-26] ingest | External triggers prove who they are and make requests
+
+Added [An external trigger proves who it is and makes a request it then follows](decisions/external-triggers-prove-and-request.md)
+from the code of the external triggers (the GitHub Actions token validator, the trigger credential and its fence, the
+durable trigger requests and their processor, the commit containment check, and the sync-and-fire action) and from
+SQLFlow v2's Event Grid webhook, read at its tag for what it taught. What was built is documented in
+`concept-external-triggers` and `guide-github-actions`.

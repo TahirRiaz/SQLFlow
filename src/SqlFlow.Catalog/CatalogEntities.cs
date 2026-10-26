@@ -2019,6 +2019,11 @@ public class CatalogRepoSource
     /// outcome clears it.</summary>
     public DateTime? SyncStartedUtc { get; set; }
 
+    /// <summary>The activity trace of the attempt that recorded the last outcome (<see cref="CatalogActivityEvent.ActivityId"/>),
+    /// so whatever waited for that attempt (a trigger request) can read exactly its lines. Null until an attempt records
+    /// one.</summary>
+    public Guid? LastSyncActivityId { get; set; }
+
     public DateTime CreatedUtc { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
@@ -2432,6 +2437,372 @@ public class CatalogAccessToken
     /// configured secret changes or stops being configured, and the API refuses to revoke it, naming this setting, since the
     /// next start would only issue it again.</summary>
     public string? ConfiguredBy { get; set; }
+}
+
+/// <summary>How an <see cref="CatalogExternalTrigger"/> proves who it is, stored as a short lowercase string.</summary>
+public static class ExternalTriggerKinds
+{
+    /// <summary>A GitHub Actions workflow, by the OpenID Connect token GitHub mints for each job: nothing is stored on
+    /// either side, and the trigger names the repository, branch, workflow and environment the token must state.</summary>
+    public const string GitHub = "github";
+
+    /// <summary>A caller that presents a key the control plane minted (or the configuration names), for a system that
+    /// cannot present an OpenID Connect token. Only the key's hash is stored.</summary>
+    public const string Key = "key";
+
+    /// <summary>Every kind, in display order.</summary>
+    public static readonly IReadOnlyList<string> All = [GitHub, Key];
+
+    public static bool IsKnown(string? kind) => kind is GitHub or Key;
+}
+
+/// <summary>
+/// A caller outside SQLFlow that may sync one repository and fire the schedules it is allowed: a GitHub Actions workflow
+/// after a merge, or another system holding a key. A trigger is not a person and holds no role: it exchanges its proof
+/// (<see cref="Kind"/>) for a short-lived credential that may create trigger requests for <see cref="RepoName"/> and read
+/// the requests it made, and nothing else. An administrator manages triggers; the configuration may name some
+/// (<see cref="ConfiguredBy"/>), which the API then refuses to change.
+/// </summary>
+public class CatalogExternalTrigger
+{
+    public Guid Id { get; set; }
+
+    /// <summary>The trigger's name, unique: what an administrator calls it, what a caller may name when several triggers
+    /// trust it, and what its runs record as the one that asked for them (<c>trigger:&lt;name&gt;</c>).</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>What the trigger is for, in a person's words; optional.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>How the trigger proves who it is (<see cref="ExternalTriggerKinds"/>).</summary>
+    public string Kind { get; set; } = ExternalTriggerKinds.GitHub;
+
+    /// <summary>The repository it acts on: the name of its repo source, which is also the catalog repo's name. A request
+    /// always syncs this repository, and may fire only its schedules.</summary>
+    public string RepoName { get; set; } = string.Empty;
+
+    /// <summary>Whether the trigger may fire every schedule of <see cref="RepoName"/>, present and future. False limits it
+    /// to <see cref="Schedules"/>.</summary>
+    public bool AllSchedules { get; set; }
+
+    /// <summary>The schedules it may fire, by name, as a JSON array; ignored when <see cref="AllSchedules"/> is set. Names,
+    /// not ids, because git is the source of truth for schedules and a sync rewrites their rows: a name survives that, and
+    /// it is what a workflow writes. A name no schedule carries is allowed (a merge may add it); a request naming it is
+    /// told so once its sync has run.</summary>
+    public string? Schedules { get; set; }
+
+    /// <summary>For a GitHub trigger, the repository whose workflows it trusts, <c>owner/name</c>, compared without regard
+    /// to case as GitHub compares it.</summary>
+    public string? GitHubRepository { get; set; }
+
+    /// <summary>For a GitHub trigger, the repository's numeric id when it is pinned: a token must then carry exactly this
+    /// <c>repository_id</c>, so a repository deleted and recreated under the same name by someone else is not trusted.
+    /// Null trusts the name alone.</summary>
+    public string? GitHubRepositoryId { get; set; }
+
+    /// <summary>For a GitHub trigger, the git ref the workflow must run on (the token's <c>ref</c> claim), for example
+    /// <c>refs/heads/main</c>; <c>*</c> matches any run of characters, so <c>refs/heads/release/*</c> trusts every release
+    /// branch and <c>*</c> any ref.</summary>
+    public string? GitHubRef { get; set; }
+
+    /// <summary>For a GitHub trigger, the workflow file it trusts, as a repository-relative path such as
+    /// <c>.github/workflows/deliver.yml</c>, matched against the token's <c>workflow_ref</c>. Null trusts every workflow
+    /// of the repository.</summary>
+    public string? GitHubWorkflow { get; set; }
+
+    /// <summary>For a GitHub trigger, the deployment environment the job must run in (the token's <c>environment</c>
+    /// claim), so the environment's protection rules (required reviewers, branch rules) apply before the job gets a token
+    /// this trigger accepts. Null does not ask for one.</summary>
+    public string? GitHubEnvironment { get; set; }
+
+    /// <summary>For a key trigger, the lowercase-hex SHA-256 of the key, the only form of it stored. The key carries 256
+    /// bits of randomness, so a plain hash is safe and keeps the exchange one indexed lookup.</summary>
+    public string? KeyHash { get; set; }
+
+    /// <summary>For a key trigger, the key's leading, non-secret characters, so an administrator can tell which key a
+    /// caller holds without the key itself.</summary>
+    public string? KeyPrefix { get; set; }
+
+    /// <summary>For a key trigger, when the key stops being accepted; null for a key that does not expire.</summary>
+    public DateTime? KeyExpiresUtc { get; set; }
+
+    /// <summary>Whether the trigger is accepted. A disabled trigger keeps its history and is refused at its next
+    /// exchange and its next request.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>The control-plane setting that names this trigger (<c>ControlPlane:Bootstrap:ExternalTriggers:&lt;name&gt;</c>),
+    /// or null for one an administrator created. The control plane writes a configured trigger at every start, and the API
+    /// refuses to change or remove it, naming this setting instead. A trigger the configuration stops naming is disabled
+    /// and released (this goes null), never deleted, so its requests stay attributable.</summary>
+    public string? ConfiguredBy { get; set; }
+
+    /// <summary>Who created the trigger: the administrator's name, or the setting for a configured one.</summary>
+    public string? CreatedBy { get; set; }
+
+    public DateTime CreatedUtc { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>When the trigger last exchanged its proof for a credential; null until it first does.</summary>
+    public DateTime? LastUsedUtc { get; set; }
+
+    /// <summary>Who used it last, as the proof stated it: for GitHub the repository (and its id), the workflow, the ref,
+    /// the run and the actor, so an administrator can pin the repository id or see which run is calling.</summary>
+    public string? LastUsedDetail { get; set; }
+}
+
+/// <summary>Where a <see cref="CatalogTriggerRequest"/> stands, stored as a short lowercase string.</summary>
+public static class TriggerRequestStates
+{
+    /// <summary>Waiting for the repository sync that answers the request (or deciding it needs none).</summary>
+    public const string Syncing = "syncing";
+
+    /// <summary>The sync is done; the requested schedules are being fired.</summary>
+    public const string Firing = "firing";
+
+    /// <summary>Every requested schedule has fired or been refused; waiting for the fired runs to finish.</summary>
+    public const string Running = "running";
+
+    /// <summary>The sync succeeded, every requested schedule fired, and every run they started succeeded.</summary>
+    public const string Succeeded = "succeeded";
+
+    /// <summary>The sync failed or timed out, a requested schedule could not fire, or a run it started did not succeed.</summary>
+    public const string Failed = "failed";
+
+    /// <summary>Someone cancelled the request before it finished.</summary>
+    public const string Cancelled = "cancelled";
+
+    /// <summary>Every state, in the order a request moves through them.</summary>
+    public static readonly IReadOnlyList<string> All = [Syncing, Firing, Running, Succeeded, Failed, Cancelled];
+
+    /// <summary>The states a request ends in; a request in one of them changes no more.</summary>
+    public static bool IsTerminal(string? state) => state is Succeeded or Failed or Cancelled;
+}
+
+/// <summary>Where one requested schedule of a <see cref="CatalogTriggerRequest"/> stands, stored as a short lowercase string.</summary>
+public static class TriggerScheduleStates
+{
+    /// <summary>Waiting for the request's sync.</summary>
+    public const string Pending = "pending";
+
+    /// <summary>Being fired right now; a control plane that stopped part way looks for the runs it may have queued
+    /// before it fires again.</summary>
+    public const string Firing = "firing";
+
+    /// <summary>Fired; its runs are queued or running.</summary>
+    public const string Running = "running";
+
+    /// <summary>Every run the fire started succeeded.</summary>
+    public const string Succeeded = "succeeded";
+
+    /// <summary>A run the fire started failed, was skipped, or was cancelled.</summary>
+    public const string Failed = "failed";
+
+    /// <summary>The request was cancelled; its runs were cancelled with it.</summary>
+    public const string Cancelled = "cancelled";
+
+    /// <summary>The schedule did not fire: it does not exist after the sync, is disabled or paused, has nothing to run,
+    /// or the request's sync failed. <see cref="CatalogTriggerRequestSchedule.Detail"/> says which.</summary>
+    public const string NotFired = "not-fired";
+
+    /// <summary>The states a requested schedule ends in.</summary>
+    public static bool IsTerminal(string? state) => state is Succeeded or Failed or Cancelled or NotFired;
+}
+
+/// <summary>How the sync of a <see cref="CatalogTriggerRequest"/> went, stored as a short lowercase string.</summary>
+public static class TriggerSyncOutcomes
+{
+    /// <summary>The repository was already synced at the requested commit, so no sync was needed.</summary>
+    public const string Current = "current";
+
+    /// <summary>A sync that started after the request succeeded.</summary>
+    public const string Succeeded = "succeeded";
+
+    /// <summary>The sync that answered the request failed; the request records its error.</summary>
+    public const string Failed = "failed";
+
+    /// <summary>No sync answered the request within the configured wait.</summary>
+    public const string TimedOut = "timed-out";
+
+    /// <summary>The request asked for no sync: it fires on the commit the repository is already synced at.</summary>
+    public const string Skipped = "skipped";
+}
+
+/// <summary>
+/// One request to sync a repository and, optionally, fire a selection of its schedules: what a GitHub workflow sends
+/// after a merge, what a system holding a trigger key sends, or what a person asks for. The request is durable, so a
+/// control plane that restarts while the sync runs carries on where it was, and it is the record of what happened: who
+/// asked (and from which workflow run), the commit asked for and the commit synced, the sync's own trace, each schedule's
+/// fire and the runs it started, and its own trace (<see cref="ActivityId"/>), which a caller streams into its job log.
+/// </summary>
+public class CatalogTriggerRequest
+{
+    public Guid Id { get; set; }
+
+    /// <summary>The repository the request syncs and whose schedules it fires (its repo source's name).</summary>
+    public string RepoName { get; set; } = string.Empty;
+
+    /// <summary>The repo source synced, as it was found when the request was made.</summary>
+    public Guid? RepoSourceId { get; set; }
+
+    /// <summary>The external trigger that made the request; null when a person did.</summary>
+    public Guid? TriggerId { get; set; }
+
+    /// <summary>The trigger's name when the request was made, kept so the request reads on its own after a rename.</summary>
+    public string? TriggerName { get; set; }
+
+    /// <summary>Who asked: <c>trigger:&lt;name&gt;</c> for an external trigger, the person's name otherwise. The runs the
+    /// request fires record the same.</summary>
+    public string RequestedBy { get; set; } = string.Empty;
+
+    /// <summary>The caller's own key for the request, unique per <see cref="RequestedBy"/>: asking again with the same key
+    /// answers with the request already made instead of making another, so a retried call or a re-run job never fires a
+    /// schedule twice. Null when the caller gave none.</summary>
+    public string? RequestKey { get; set; }
+
+    /// <summary>Where the request came from, as its proof stated it: for GitHub the repository, workflow, ref, commit,
+    /// run, attempt and actor. Null for a person or a key, whose name says it.</summary>
+    public string? Origin { get; set; }
+
+    /// <summary>A link back to the job that made the request (the GitHub workflow run), so the request and the job each
+    /// lead to the other. Null when there is none.</summary>
+    public string? OriginUrl { get; set; }
+
+    /// <summary>The commit the caller expects the repository to be synced at: the merge it is reporting. The request
+    /// fires its schedules only once the repository is synced at this commit or one that contains it. Null takes
+    /// whatever the sync pulls.</summary>
+    public string? ExpectedCommit { get; set; }
+
+    /// <summary>Whether the request syncs the repository before it fires. False fires on the commit already synced.</summary>
+    public bool Sync { get; set; } = true;
+
+    /// <summary>The <c>batch:</c> tags every fire is narrowed to, as a JSON array; null fires every member.</summary>
+    public string? Batch { get; set; }
+
+    /// <summary>Whether each fire carries the schedules chained behind it, as a fire of the schedule's own clock does.</summary>
+    public bool Chain { get; set; } = true;
+
+    /// <summary>Where the request stands (<see cref="TriggerRequestStates"/>).</summary>
+    public string State { get; set; } = TriggerRequestStates.Syncing;
+
+    /// <summary>Why the request ended as it did, in one sentence a person can act on; null while it runs.</summary>
+    public string? Detail { get; set; }
+
+    /// <summary>When the request asked for its sync; null until it does, and for a request that needed none.</summary>
+    public DateTime? SyncRequestedUtc { get; set; }
+
+    /// <summary>How the sync went (<see cref="TriggerSyncOutcomes"/>); null until it is known.</summary>
+    public string? SyncOutcome { get; set; }
+
+    /// <summary>The commit the repository was synced at when the request fired its schedules.</summary>
+    public string? SyncedCommit { get; set; }
+
+    /// <summary>The sync's error, secret-redacted, when it failed.</summary>
+    public string? SyncError { get; set; }
+
+    /// <summary>The activity trace of the sync attempt that answered the request, whose lines the request's own trace
+    /// copies, so they outlive the sync trace's short scrollback.</summary>
+    public Guid? SyncActivityId { get; set; }
+
+    /// <summary>The last line of the sync attempt's trace already copied into the request's own
+    /// (<see cref="CatalogActivityEvent.Id"/>), so the attempt's lines reach the request's trace while the sync runs, each
+    /// exactly once.</summary>
+    public long? SyncCopiedThroughId { get; set; }
+
+    /// <summary>The request's own trace (<see cref="CatalogActivityEvent"/>, kind <c>trigger-request</c>, subject this
+    /// request's id): every step it took, the sync's lines and each run as it finishes.</summary>
+    public Guid ActivityId { get; set; }
+
+    /// <summary>The control-plane replica working on the request, while it holds the lease.</summary>
+    public string? LeaseOwner { get; set; }
+
+    /// <summary>Until when <see cref="LeaseOwner"/> holds the request; another replica may take it over after this.</summary>
+    public DateTime? LeaseUntilUtc { get; set; }
+
+    /// <summary>When someone asked to cancel the request; null while nobody has.</summary>
+    public DateTime? CancelRequestedUtc { get; set; }
+
+    /// <summary>Who asked to cancel the request.</summary>
+    public string? CancelRequestedBy { get; set; }
+
+    public DateTime CreatedUtc { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>When the request reached a terminal state; null while it runs.</summary>
+    public DateTime? CompletedUtc { get; set; }
+}
+
+/// <summary>One schedule a <see cref="CatalogTriggerRequest"/> asked to fire, in the order the request named them.</summary>
+public class CatalogTriggerRequestSchedule
+{
+    public Guid RequestId { get; set; }
+
+    /// <summary>The schedule's position in the request, from 1.</summary>
+    public int Ordinal { get; set; }
+
+    /// <summary>The schedule's name, as the request wrote it.</summary>
+    public string ScheduleName { get; set; } = string.Empty;
+
+    /// <summary>The schedule the name resolved to after the sync; null until it is resolved, and when it resolves to none.</summary>
+    public Guid? ScheduleId { get; set; }
+
+    /// <summary>Where it stands (<see cref="TriggerScheduleStates"/>).</summary>
+    public string State { get; set; } = TriggerScheduleStates.Pending;
+
+    /// <summary>Why it did not fire, or how its runs ended, in one sentence; null while it runs.</summary>
+    public string? Detail { get; set; }
+
+    /// <summary>The run the fire queued: its single run, or the first member of its group.</summary>
+    public Guid? RunId { get; set; }
+
+    /// <summary>The run group the fire queued, when the schedule has more than one member.</summary>
+    public Guid? GroupId { get; set; }
+
+    /// <summary>How many flows the fire queued.</summary>
+    public int? MemberCount { get; set; }
+
+    /// <summary>The commit the fire's runs are pinned to.</summary>
+    public string? CommitSha { get; set; }
+
+    /// <summary>When the fire began; a request found firing past this looks for runs it may already have queued.</summary>
+    public DateTime? FiringUtc { get; set; }
+
+    /// <summary>When the fire queued its runs.</summary>
+    public DateTime? FiredUtc { get; set; }
+
+    /// <summary>When the last of its runs ended, or when it was refused.</summary>
+    public DateTime? CompletedUtc { get; set; }
+
+    /// <summary>How many of its runs succeeded, failed, were cancelled and were skipped, counted when the last ended, so
+    /// the request still says how its schedules went after the runs themselves are cleaned up.</summary>
+    public int Succeeded { get; set; }
+
+    public int Failed { get; set; }
+
+    public int Cancelled { get; set; }
+
+    public int Skipped { get; set; }
+}
+
+/// <summary>
+/// One run a <see cref="CatalogTriggerRequest"/>'s fire started: the link from a run back to the request (and so to the
+/// workflow run that asked for it), and the last state the request's trace reported for it, so each start and end is
+/// written to the trace exactly once whichever replica sees it.
+/// </summary>
+public class CatalogTriggerRequestRun
+{
+    public Guid RequestId { get; set; }
+
+    public Guid RunId { get; set; }
+
+    /// <summary>The <see cref="CatalogTriggerRequestSchedule.Ordinal"/> of the schedule whose fire started the run.</summary>
+    public int ScheduleOrdinal { get; set; }
+
+    public string FlowName { get; set; } = string.Empty;
+
+    /// <summary>The run's state the request's trace last reported (<see cref="RunStatuses"/>).</summary>
+    public string ReportedStatus { get; set; } = RunStatuses.Queued;
 }
 
 /// <summary>

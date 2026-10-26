@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
+  Webhook,
   Workflow,
   Wrench,
   type LucideIcon,
@@ -149,6 +150,8 @@ export const navGroups: NavGroup[] = [
         description: "The user accounts with their role, sign-in provider and last sign-in; create local users, change roles or passwords, and deactivate or delete accounts." },
       { label: "AI context", to: "/semantic-layer", icon: Sparkles, testId: "nav-semantic-layer",
         description: "What the assistant may use to answer business questions: the AI context files to approve or revoke, the tables and columns they open, saved answers and Power BI reports." },
+      { label: "External triggers", to: "/external-triggers", icon: Webhook, testId: "nav-external-triggers",
+        description: "The GitHub workflows and other systems that may sync a repository and fire a selection of its schedules, and every request they made: its sync, the schedules it fired and how their runs ended." },
     ],
   },
   {

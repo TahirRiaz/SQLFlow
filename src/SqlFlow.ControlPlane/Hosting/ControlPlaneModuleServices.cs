@@ -128,6 +128,15 @@ public sealed class ControlPlaneModuleServices
         where TLookup : class, IRunParameterLookup
         => Services.AddScoped<IRunParameterLookup, TLookup>();
 
+    /// <summary>
+    /// Registers what says, in a few words, what a run of the module's flow kinds did (read from its result), for the trace of
+    /// a trigger request and the summary a GitHub job writes. A run no describer speaks for is described by its row counts.
+    /// The describer is resolved per request and per trigger request pass, so it may depend on scoped services.
+    /// </summary>
+    public void AddRunOutcomeDescriber<TDescriber>()
+        where TDescriber : class, Background.IRunOutcomeDescriber
+        => Services.AddScoped<Background.IRunOutcomeDescriber, TDescriber>();
+
     /// <summary>Registers a hosted service the control plane starts and stops with the host.</summary>
     public void AddHostedService<THostedService>()
         where THostedService : class, IHostedService

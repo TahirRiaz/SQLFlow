@@ -20,6 +20,7 @@ keywords:
 related:
   - concept-control-plane
   - guide-deployment
+  - concept-external-triggers
 sourceRefs:
   - src/SqlFlow.ControlPlane/Api/AuthEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/UserEndpoints.cs
@@ -39,6 +40,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs
   - src/SqlFlow.Catalog/UserStore.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
+  - src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs
 ---
 
 # Authentication and identity
@@ -155,6 +157,19 @@ Two defenses protect the endpoint:
 ```
 
 Requested scopes are filtered against the allowed set `read`, `operate`, `author`, `admin`; omitting `scopes` defaults to `["read"]`. If no requested scope is valid, the response is 400 `No valid scope requested` listing the allowed scopes. A wrong secret returns 401 `Invalid bootstrap secret`. The response is `{ accessToken, tokenType, expiresIn }` with no role or uid claim.
+
+## External trigger credentials
+
+A caller outside SQLFlow that syncs a repository and fires its schedules (a GitHub Actions workflow after a merge, or a
+system holding a key) is an [external trigger](external-triggers.md), not a user. It exchanges its proof at an anonymous
+endpoint, `POST /api/v1/auth/trigger/github` for the OpenID Connect token GitHub mints for a job (checked against GitHub's
+published keys and the configured audience, then matched to the trigger that trusts the job's repository, ref, workflow
+and environment) or `POST /api/v1/auth/trigger/key` for a key of the form `sqlft_...` (only its hash is stored). Either
+answers a token from `TokenIssuer.IssueTriggerCredential`: subject `trigger:<name>`, `token_use: trigger`, the trigger's
+id, no scope, no role, no user and no `auth_time` (so `/auth/renew` refuses it), valid for
+`ControlPlane:ExternalTriggers:TokenMinutes`. `ExternalTriggerCredentialMiddleware` (src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs),
+registered after the worker fence, refuses it with 403 (`Not available to an external trigger`) on every endpoint not
+opened to it; the trigger request endpoints are, and each reads only the requests the trigger made.
 
 ## Microsoft Entra ID single sign-on
 

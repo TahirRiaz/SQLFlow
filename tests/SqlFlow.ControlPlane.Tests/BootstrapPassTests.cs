@@ -257,7 +257,7 @@ public sealed class BootstrapPassTests
             }
 
             Assert.Equal(
-                ["catalog", "module-databases", "roles", "admin", "repositories", "node-credential", "worker-pool"],
+                ["catalog", "module-databases", "roles", "admin", "repositories", "external-triggers", "node-credential", "worker-pool"],
                 bootstrap.Steps.Select(s => s.Name));
             Assert.All(bootstrap.Steps, step => Assert.Equal(BootstrapStepStates.Done, step.State));
             Assert.Contains($"registered {source}", bootstrap.Steps.Single(s => s.Name == "repositories").Summary, StringComparison.Ordinal);

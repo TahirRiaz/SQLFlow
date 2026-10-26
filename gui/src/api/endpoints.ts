@@ -33,6 +33,7 @@ import type {
   SearchHit, SourceDiscoverRequest, SourceDiscoverResult, StorageCleanup, StorageCleanupPreview, StorageDays, StorageReport,
   StorageRetention, Subscriber, SubscriberDossier, SubscriberHit,
   UpdateNotificationSubscriptionRequest, UpdateUserProfileRequest, User, Wave, WorkerPool, WorkerPoolScaleRequest,
+  ExternalTrigger, ExternalTriggerSetup, ExternalTriggerWriteRequest, ExternalTriggerWritten, TriggerRequest, TriggerRequestQuery,
 } from "./types";
 
 export interface PageQuery {
@@ -713,6 +714,28 @@ export const questionExampleApi = {
 };
 
 // ---- Personal access tokens (self-service: the caller's own tokens) ----------------------------------------------
+
+// ---- External triggers (admin) and their requests ----------------------------------------------------------------
+
+export const externalTriggerApi = {
+  list: () => get<ExternalTrigger[]>("/api/v1/external-triggers"),
+  setup: () => get<ExternalTriggerSetup>("/api/v1/external-triggers/setup"),
+  create: (request: ExternalTriggerWriteRequest) => post<ExternalTriggerWritten>("/api/v1/external-triggers", request),
+  update: (id: string, request: ExternalTriggerWriteRequest) => put<ExternalTriggerWritten>(`/api/v1/external-triggers/${id}`, request),
+  enable: (id: string) => post<ExternalTrigger>(`/api/v1/external-triggers/${id}/enable`),
+  disable: (id: string) => post<ExternalTrigger>(`/api/v1/external-triggers/${id}/disable`),
+  // A key trigger's new key, shown once; the old key stops working at once.
+  rotateKey: (id: string, expiresInDays: number | null) =>
+    post<ExternalTriggerWritten>(`/api/v1/external-triggers/${id}/key`, { expiresInDays }),
+  remove: (id: string) => del<void>(`/api/v1/external-triggers/${id}`),
+};
+
+export const triggerRequestApi = {
+  list: (query: TriggerRequestQuery = {}) => get<PagedResult<TriggerRequest>>("/api/v1/trigger-requests", query as QueryParams),
+  // The request as Markdown: what a GitHub job writes to its summary.
+  summary: (id: string) => getText(`/api/v1/trigger-requests/${id}/summary`),
+  cancel: (id: string) => post<TriggerRequest>(`/api/v1/trigger-requests/${id}/cancel`),
+};
 
 export const tokenApi = {
   list: () => get<AccessToken[]>("/api/v1/me/tokens"),

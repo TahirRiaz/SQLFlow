@@ -499,7 +499,7 @@ public static class AuthEndpoints
             : scope.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>Sign-in responses carry bearer tokens; never let an intermediary cache them.</summary>
-    private static void NeverCache(HttpContext httpContext)
+    internal static void NeverCache(HttpContext httpContext)
     {
         httpContext.Response.Headers.CacheControl = "no-store";
         httpContext.Response.Headers.Pragma = "no-cache";

@@ -195,6 +195,16 @@ public static class ControlPlaneHost
         // advances the next-fire atomically so multiple control-plane nodes never double-fire an occurrence.
         builder.Services.AddHostedService<SchedulerService>();
 
+        // ---- External triggers: GitHub workflows and key holders that sync a repository and fire a selection of its
+        // schedules. A trigger exchanges its proof (a GitHub job's OpenID Connect token, or its key) for a short-lived
+        // credential fenced to its own requests (ExternalTriggerCredential); each request is durable and moved along on
+        // every replica under a lease, through the same sync and the same schedule fire the rest of the control plane uses.
+        builder.Services.AddSingleton<IGitHubActionsTokenValidator, GitHubActionsTokenValidator>();
+        builder.Services.AddSingleton<ICommitContainment, GitCommitContainment>();
+        builder.Services.AddSingleton<TriggerRequestSignal>();
+        builder.Services.AddScoped<TriggerRequestProcessor>();
+        builder.Services.AddHostedService<TriggerRequestService>();
+
         // ---- Maintenance: what the catalog's database holds, described area by area (SQLFlow's own here, each module's by
         // its own contributor), the cleanups an admin runs from the Maintenance page and the automatic pass that applies the
         // retention an admin set. Both go through the one runner, so a cleanup asked for and one applied automatically run
@@ -446,6 +456,20 @@ public static class ControlPlaneHost
                 // nodes sharing one node token never trips a limit meant for people and scripts, and one misbehaving node
                 // cannot starve its siblings. An unauthenticated hit on the node path stays under the normal per-IP limit,
                 // so a token cannot be brute-forced any faster there.
+                // An external trigger's credential gets a window per issued credential (its jti), so several jobs acting as
+                // one trigger at once (parallel workflows following their requests) never share one window and starve each
+                // other; each credential still comes from a rate-limited anonymous exchange.
+                if (subject is not null && ExternalTriggerCredential.IsTriggerCredential(context.User))
+                {
+                    var jti = context.User.FindFirst("jti")?.Value ?? string.Empty;
+                    return RateLimitPartition.GetFixedWindowLimiter("trigger:" + subject + "/" + jti, _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = options.RateLimit.PermitPerWindow,
+                        Window = TimeSpan.FromSeconds(options.RateLimit.WindowSeconds),
+                        QueueLimit = 0,
+                    });
+                }
+
                 if (subject is not null
                     && context.Request.Path.StartsWithSegments(NodeProtocol.RoutePrefix)
                     && HasScope(context.User, NodeProtocol.Scope))
@@ -536,6 +560,8 @@ public static class ControlPlaneHost
         // Likewise refuses a credential the control plane issued to a worker it started on every route but the node
         // protocol (see NodeCredential).
         app.UseMiddleware<NodeCredentialMiddleware>();
+        // And refuses an external trigger's credential on every endpoint not opened to it (see ExternalTriggerCredential).
+        app.UseMiddleware<ExternalTriggerCredentialMiddleware>();
 
         // Liveness has no dependencies; readiness probes the catalog database. Probes are exempt from the rate limiter
         // so a shared egress IP's traffic can never throttle a liveness/readiness check into a false negative.
@@ -555,6 +581,8 @@ public static class ControlPlaneHost
         // The sign-in surface: providers discovery and local login are always available; the Entra token exchange is
         // mapped when Azure SSO is enabled; the break-glass bootstrap token endpoint only when a secret is configured.
         v1.MapAuthEndpoints(options);
+        // Where an external trigger proves who it is (a GitHub job's token, or its key) and gets its credential.
+        v1.MapExternalTriggerAuthEndpoints();
 
         // The authenticated read surface: repos/pipelines, runs, lineage, cross-repo search, and schedules. Its safe methods
         // are open to an assistant run's delegated token (the MCP tools read from here); its few writes are not.
@@ -613,6 +641,11 @@ public static class ControlPlaneHost
             .MapIntegrationDebugEndpoints()
             .MapMaintenanceOperateEndpoints();
 
+        // Trigger requests: a repository sync and a selection of its schedules, made by an external trigger (whose
+        // credential reaches only these endpoints, and only its own requests) or by a person.
+        v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Operate)
+            .MapTriggerRequestEndpoints();
+
         // The author surface: proposing pipelines to a source repo as a pull request pushes a branch under the source's own
         // credential, so it lives under the "author" scope rather than "operate".
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Author)
@@ -631,7 +664,9 @@ public static class ControlPlaneHost
             // The Power BI reports the layer holds: store (extracted in the isolated extractor), list, and remove.
             .MapSemanticReportEndpoints()
             // The Maintenance page's writes: an area's retention, and a cleanup now.
-            .MapMaintenanceAdminEndpoints();
+            .MapMaintenanceAdminEndpoints()
+            // The External triggers page: the GitHub workflows and keys that may sync a repository and fire its schedules.
+            .MapExternalTriggerEndpoints();
 
         // The node protocol: compute nodes poll for work and report outcomes here, under the "node" scope. This is the
         // only way work leaves the control plane; a node needs no catalog access to take or finish a run.

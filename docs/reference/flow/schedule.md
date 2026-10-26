@@ -37,6 +37,7 @@ related:
   - cli-worker
   - flow-overview
   - flow-batch
+  - concept-external-triggers
 sourceRefs:
   - src/SqlFlow.Yaml/YamlDocumentLoader.cs
   - src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs
@@ -306,6 +307,14 @@ schedules:
 - `parentFreshnessHours` (default 24; `0` disables the check) is how recently every parent must have fired for the fire to count as fed by current data. A parent older than the window does not hold the fire back: the fire proceeds, the stale parents are recorded on the schedule (`lastStaleParents`) and logged as a warning. A negative value falls back to the default with the warning `<file>: schedule '<name>' sets parentFreshnessHours to <n>, which is not a usable window; using the default of 24 (use 0 to disable the check).`
 - A parent fire that enqueued nothing (an empty member set, or a parked clock fire) still records its fire time, so the schedules chained behind it fire.
 - A run-now fire records the fire time too, so by default the chain follows a manual fire; `chain=false` on the run-now request holds the direct children whose only parent is this schedule.
+
+## Fired from outside SQLFlow
+
+A schedule also fires when an [external trigger](../concepts/external-triggers.md) asks: a GitHub workflow after a
+merge, or a system holding a key, makes a trigger request that syncs the repository (at the commit it names) and then
+fires the schedules it picks, through the same fire path as run-now (`ScheduleFire.EnqueueAsync`). The request's runs
+record `trigger:<name>` as the one that asked, a disabled or paused schedule is not fired, and `chain: false` holds the
+schedules behind it as run-now's `chain=false` does. The cadence is untouched.
 
 ## operation and values
 

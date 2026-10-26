@@ -124,6 +124,20 @@ public sealed class CatalogStorageContributor : IStorageContributor
             },
             new()
             {
+                Id = "sqlflow.trigger-requests",
+                Group = RunHistory,
+                Title = "Trigger requests",
+                Verdict = StorageVerdict.Keep,
+                Holds = "One row per request to sync a repository and fire its schedules: who asked and from which workflow run, the commits asked for and synced, each schedule's fire and the runs it started.",
+                Reason = "It is the record that ties a merge, the sync it caused and the runs it fired together; the External triggers page and each caller's job read it.",
+                Brief = "Never removed",
+                Lifecycle = "Nothing removes them; a request is a few rows, and its trace is one activity.",
+                Grows = true,
+                Tables = [T("TriggerRequest"), T("TriggerRequestSchedule"), T("TriggerRequestRun")],
+                ManagedAt = "/external-triggers",
+            },
+            new()
+            {
                 Id = "sqlflow.run-details",
                 Group = RunHistory,
                 Title = "Run files and results",
@@ -248,10 +262,10 @@ public sealed class CatalogStorageContributor : IStorageContributor
                 Group = Fleet,
                 Title = "Sync and discovery traces",
                 Verdict = StorageVerdict.Safe,
-                Holds = "The log lines of repository syncs and source discoveries, which the trace panel shows.",
-                Reason = "Only the latest attempts are worth reading; an old sync's lines describe a state long replaced.",
+                Holds = "The log lines of repository syncs, source discoveries and trigger requests, which the trace panel shows.",
+                Reason = "Only the latest attempts are worth reading; an old sync's lines describe a state long replaced. A trigger request copies the lines of the sync it waited for into its own trace.",
                 Brief = "Last 5 attempts per subject",
-                Lifecycle = "Removed automatically: each subject keeps the lines of its last five attempts, a discovery's lines go after 2 days, and a repository source's go with it.",
+                Lifecycle = "Removed automatically: each subject keeps the lines of its last five attempts, a discovery's lines go after 2 days, and a repository source's go with it. A trigger request has one trace, kept as long as the request.",
                 Tables = [T("ActivityEvent")],
             },
             new()
@@ -400,6 +414,19 @@ public sealed class CatalogStorageContributor : IStorageContributor
                 Lifecycle = "Managed on the Users page; a token is revoked rather than removed, and goes with its user.",
                 Tables = [T("User"), T("Role"), T("AccessToken")],
                 ManagedAt = "/users",
+            },
+            new()
+            {
+                Id = "sqlflow.external-triggers",
+                Group = Setup,
+                Title = "External triggers",
+                Verdict = StorageVerdict.Keep,
+                Holds = "The GitHub workflows and key holders that may sync a repository and fire its schedules, with what each may fire and when it was last used.",
+                Reason = "Every exchange and every trigger request checks them.",
+                Brief = "Managed on its page",
+                Lifecycle = "Managed on the External triggers page; one the configuration names is written at every start.",
+                Tables = [T("ExternalTrigger")],
+                ManagedAt = "/external-triggers",
             },
             new()
             {

@@ -97,6 +97,34 @@ public sealed class TokenIssuer
         return Sign(claims, nowUtc, nowUtc.Add(lifetime));
     }
 
+    /// <summary>
+    /// Issues the credential an external trigger exchanges its proof for (see <see cref="ExternalTriggerCredential"/>): the
+    /// subject <paramref name="subject"/> (<c>trigger:&lt;name&gt;</c>), no scope, no role, no user, no <c>auth_time</c> (so
+    /// it can never be renewed), marked <c>token_use=trigger</c> and bound to <paramref name="triggerId"/>, with where the
+    /// caller came from (<paramref name="origin"/>, <paramref name="originUrl"/>) for the requests it makes to record, valid
+    /// for <paramref name="lifetime"/>.
+    /// </summary>
+    public TokenResult IssueTriggerCredential(
+        string subject, Guid triggerId, string? origin, string? originUrl, TimeSpan lifetime, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(lifetime, TimeSpan.Zero);
+        var claims = SubjectClaims(subject, [], role: null, userId: null);
+        claims.Add(new Claim(ExternalTriggerCredential.ClaimType, ExternalTriggerCredential.ClaimValue));
+        claims.Add(new Claim(ExternalTriggerCredential.TriggerIdClaim, triggerId.ToString("D")));
+        if (!string.IsNullOrWhiteSpace(origin))
+        {
+            claims.Add(new Claim(ExternalTriggerCredential.OriginClaim, origin));
+        }
+
+        if (!string.IsNullOrWhiteSpace(originUrl))
+        {
+            claims.Add(new Claim(ExternalTriggerCredential.OriginUrlClaim, originUrl));
+        }
+
+        return Sign(claims, nowUtc, nowUtc.Add(lifetime));
+    }
+
     private static List<Claim> SubjectClaims(string subject, IReadOnlyList<string> scopes, string? role, Guid? userId)
     {
         var claims = new List<Claim>

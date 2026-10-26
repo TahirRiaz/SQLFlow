@@ -709,7 +709,7 @@ public static class RunEndpoints
             statusCode: StatusCodes.Status404NotFound,
             title: "Not found");
 
-    private static async Task<ContentHttpResult> TraceTextAsync(CatalogDbContext db, CatalogRun run, CancellationToken ct)
+    internal static async Task<ContentHttpResult> TraceTextAsync(CatalogDbContext db, CatalogRun run, CancellationToken ct)
     {
         var entries = await TraceQuery(db, run.RunId).ToListAsync(ct).ConfigureAwait(false);
         return TypedResults.Text(RenderTraceText(run, entries), "text/plain; charset=utf-8");

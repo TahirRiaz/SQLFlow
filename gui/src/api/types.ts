@@ -3525,3 +3525,153 @@ export interface ChatStreamError {
 export interface ChatTranscription {
   text: string;
 }
+
+// ---- External triggers (admin: GitHub workflows and key holders that sync a repository and fire its schedules) -----
+
+/** How a trigger proves who it is. */
+export type ExternalTriggerKind = "github" | "key";
+
+/** The GitHub half of a trigger: what a job's OpenID Connect token must state. */
+export interface ExternalTriggerGitHub {
+  repository: string | null;
+  /** The repository's numeric id when pinned; null trusts the name alone. */
+  repositoryId: string | null;
+  /** The ref pattern a job must run on; `*` matches any run of characters. */
+  ref: string | null;
+  /** The workflow file it trusts; null trusts every workflow of the repository. */
+  workflow: string | null;
+  environment: string | null;
+}
+
+export interface ExternalTriggerLastRequest {
+  id: string;
+  state: string;
+  conclusion: TriggerConclusion | null;
+  createdUtc: string;
+  completedUtc: string | null;
+}
+
+export interface ExternalTrigger {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: ExternalTriggerKind;
+  repoName: string;
+  allSchedules: boolean;
+  schedules: string[];
+  gitHub: ExternalTriggerGitHub | null;
+  keyPrefix: string | null;
+  keyExpiresUtc: string | null;
+  enabled: boolean;
+  /** The setting that names the trigger; the API refuses every change to a configured trigger. */
+  configuredBy: string | null;
+  createdBy: string | null;
+  createdUtc: string;
+  updatedUtc: string;
+  lastUsedUtc: string | null;
+  lastUsedDetail: string | null;
+  lastRequest: ExternalTriggerLastRequest | null;
+}
+
+export interface ExternalTriggerWriteRequest {
+  name: string;
+  kind: ExternalTriggerKind;
+  repoName: string;
+  description: string | null;
+  allSchedules: boolean;
+  schedules: string[];
+  gitHub: ExternalTriggerGitHub | null;
+  /** A key trigger's new key: days it lives, or null/0 for never. */
+  keyExpiresInDays?: number | null;
+}
+
+/** A trigger as written, with what is worth knowing about it, and the key (shown exactly once) for a key trigger. */
+export interface ExternalTriggerWritten {
+  trigger: ExternalTrigger;
+  warnings: string[];
+  key: string | null;
+}
+
+export interface ExternalTriggerSetup {
+  enabled: boolean;
+  gitHubIssuer: string;
+  gitHubAudience: string;
+  gitHubServerUrl: string;
+  /** What a workflow's `uses:` names to find the sync-and-fire action. */
+  gitHubActionReference: string;
+  tokenMinutes: number;
+}
+
+export type TriggerConclusion = "success" | "failure" | "cancelled";
+
+export type TriggerRequestState = "syncing" | "firing" | "running" | "succeeded" | "failed" | "cancelled";
+
+export type TriggerScheduleState = "pending" | "firing" | "running" | "succeeded" | "failed" | "cancelled" | "not-fired";
+
+export type TriggerSyncOutcome = "current" | "succeeded" | "failed" | "timed-out" | "skipped";
+
+export interface TriggerRunCounts {
+  total: number;
+  queued: number;
+  running: number;
+  succeeded: number;
+  failed: number;
+  cancelled: number;
+  skipped: number;
+}
+
+export interface TriggerRequestSchedule {
+  ordinal: number;
+  name: string;
+  scheduleId: string | null;
+  state: TriggerScheduleState;
+  detail: string | null;
+  runId: string | null;
+  groupId: string | null;
+  memberCount: number | null;
+  commitSha: string | null;
+  firedUtc: string | null;
+  completedUtc: string | null;
+  counts: TriggerRunCounts;
+  url: string | null;
+}
+
+/** One request to sync a repository and fire a selection of its schedules, with what became of it. */
+export interface TriggerRequest {
+  id: string;
+  repoName: string;
+  triggerId: string | null;
+  triggerName: string | null;
+  requestedBy: string;
+  requestKey: string | null;
+  /** Where the request came from, as its proof stated it (for GitHub: repository, workflow, ref, run, actor). */
+  origin: string | null;
+  /** A link back to the job that made the request. */
+  originUrl: string | null;
+  expectedCommit: string | null;
+  sync: boolean;
+  batch: string[];
+  chain: boolean;
+  state: TriggerRequestState;
+  conclusion: TriggerConclusion | null;
+  detail: string | null;
+  syncOutcome: TriggerSyncOutcome | null;
+  syncRequestedUtc: string | null;
+  syncedCommit: string | null;
+  syncError: string | null;
+  createdUtc: string;
+  updatedUtc: string;
+  completedUtc: string | null;
+  cancelRequestedUtc: string | null;
+  cancelRequestedBy: string | null;
+  schedules: TriggerRequestSchedule[];
+  url: string | null;
+}
+
+export interface TriggerRequestQuery {
+  triggerId?: string;
+  repo?: string;
+  state?: string;
+  page?: number;
+  pageSize?: number;
+}

@@ -47,6 +47,7 @@ referenceRefs:
   - concept-semantic-layer
   - concept-authentication-and-identity
 related:
+  - wiki-external-triggers-prove-and-request
   - wiki-assistant-tool-sets-by-question
   - wiki-semantic-layer-is-the-allow-list
 updated: 2026-10-12

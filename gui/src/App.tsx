@@ -37,6 +37,7 @@ const LineageGraphPage = lazyRoute("LineageGraphPage", () => import("./features/
 const SearchPage = lazyRoute("SearchPage", () => import("./features/search/SearchPage"));
 const UsersPage = lazyRoute("UsersPage", () => import("./features/users/UsersPage"));
 const SemanticLayerPage = lazyRoute("SemanticLayerPage", () => import("./features/semantic-layer/SemanticLayerPage"));
+const ExternalTriggersPage = lazyRoute("ExternalTriggersPage", () => import("./features/external-triggers/ExternalTriggersPage"));
 const AccessTokensPage = lazyRoute("AccessTokensPage", () => import("./features/tokens/AccessTokensPage"));
 const NotificationsPage = lazyRoute("NotificationsPage", () => import("./features/notifications/NotificationsPage"));
 const MaintenancePage = lazyRoute("MaintenancePage", () => import("./features/maintenance/MaintenancePage"));
@@ -144,6 +145,14 @@ export default function App() {
             element={(
               <RequireScope scope="admin">
                 <SemanticLayerPage />
+              </RequireScope>
+            )}
+          />
+          <Route
+            path="/external-triggers"
+            element={(
+              <RequireScope scope="admin">
+                <ExternalTriggersPage />
               </RequireScope>
             )}
           />

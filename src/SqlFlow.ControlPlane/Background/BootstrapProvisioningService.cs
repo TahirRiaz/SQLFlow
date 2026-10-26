@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
 using SqlFlow.Catalog.Modules;
@@ -111,6 +112,7 @@ public sealed class BootstrapProvisioningService : BackgroundService
             new("roles", (_, ct) => SeedRolesAsync(ct)),
             new("admin", (_, ct) => ProvisionAdminAsync(ct)),
             new("repositories", (_, ct) => ProvisionRepositoriesAsync(ct)),
+            new("external-triggers", (_, ct) => ProvisionExternalTriggersAsync(ct)),
             new("node-credential", (_, ct) => ProvisionNodeCredentialAsync(ct)),
             new("worker-pool", (_, ct) => EnsureDefaultPoolFloorAsync(ct)),
             .. _moduleSteps.Select(step => new Step(step.Name, step.ApplyAsync)),
@@ -374,6 +376,49 @@ public sealed class BootstrapProvisioningService : BackgroundService
             _syncSignal.Wake();
         }
 
+        return applied.Describe();
+    }
+
+    /// <summary>
+    /// Writes the external triggers the configuration names (<see cref="BootstrapOptions.ExternalTriggers"/>), disabling and
+    /// releasing the ones it no longer names. A key trigger's key is read from its secret at every start, so rotating the
+    /// secret and restarting rotates the key; a secret that does not hold a key of SQLFlow's form fails the step (and
+    /// readiness) rather than leaving the trigger accepting a weak key. A trigger whose repo source the configuration does
+    /// not name and the catalog does not hold is written, and logged, since its repository may be registered later.
+    /// </summary>
+    private async Task<string> ProvisionExternalTriggersAsync(CancellationToken ct)
+    {
+        await using var catalog = CatalogDatabase.Create(_connection.ConnectionString);
+        var entries = _options.Bootstrap.ConfiguredExternalTriggers();
+        var configured = new List<ConfiguredExternalTrigger>(entries.Count);
+        foreach (var entry in entries)
+        {
+            string? hash = null;
+            string? prefix = null;
+            if (entry.KeyReference is { } reference)
+            {
+                var key = (await _secrets.ResolveAsync(reference, ct).ConfigureAwait(false)).Trim();
+                if (!AccessTokenGenerator.LooksLikeTriggerKey(key))
+                {
+                    throw new InvalidOperationException(
+                        $"The secret {entry.Setting}:KeyReference names is not a trigger key of SQLFlow's form: '{AccessTokenGenerator.TriggerKeyPrefix}' followed by at least {AccessTokenGenerator.MinTriggerKeyBody} random characters. Generate one (for example '{AccessTokenGenerator.TriggerKeyPrefix}' and 43 random letters and digits) and keep it in the vault.");
+                }
+
+                hash = AccessTokenGenerator.HashSecret(key);
+                prefix = AccessTokenGenerator.DisplayPrefixOf(key);
+            }
+
+            if (!await catalog.RepoSources.AnyAsync(s => s.Name == entry.Definition.RepoName, ct).ConfigureAwait(false))
+            {
+                _logger.LogWarning(
+                    "{Setting} names repo source '{Repo}', which the catalog does not hold; the trigger is written, and its requests are refused until the repository is registered.",
+                    entry.Setting, entry.Definition.RepoName);
+            }
+
+            configured.Add(new ConfiguredExternalTrigger(entry.Definition, hash, prefix, entry.Setting));
+        }
+
+        var applied = await ExternalTriggerStore.ApplyConfiguredAsync(catalog, configured, Now(), ct).ConfigureAwait(false);
         return applied.Describe();
     }
 

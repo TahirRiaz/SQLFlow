@@ -1,0 +1,39 @@
+# The workflow the ExternalTriggers live suite runs (GitHubActionsLiveTests): copied to .github/workflows/ on the default
+# branch of the private repository SQLFLOW_TEST_GITHUB_OIDC_REPOSITORY names. Each run asks GitHub for the job's OpenID
+# Connect token for the audience the suite gives, which nothing else accepts, and keeps it as an artifact for a day; the
+# suite downloads it, deletes the artifact at once and deletes the run when it has finished.
+name: SQLFlow OIDC probe
+run-name: SQLFlow OIDC probe ${{ inputs.nonce }}
+on:
+  workflow_dispatch:
+    inputs:
+      audience:
+        description: The audience to ask GitHub's token for
+        required: true
+      nonce:
+        description: The suite's name for this run, so it finds it
+        required: true
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  mint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask GitHub for the job's token
+        env:
+          AUDIENCE: ${{ inputs.audience }}
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          audience="$(jq -rn --arg a "$AUDIENCE" '$a|@uri')"
+          curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience" \
+            | jq -r .value > probe/token
+          echo "::add-mask::$(cat probe/token)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oidc-token
+          path: probe/token
+          retention-days: 1
+          if-no-files-found: error

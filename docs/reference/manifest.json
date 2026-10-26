@@ -625,7 +625,8 @@
       ],
       "related": [
         "concept-control-plane",
-        "guide-deployment"
+        "guide-deployment",
+        "concept-external-triggers"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Api/AuthEndpoints.cs",
@@ -645,7 +646,8 @@
         "src/SqlFlow.ControlPlane/Program.cs",
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
         "src/SqlFlow.Catalog/UserStore.cs",
-        "src/SqlFlow.Catalog/CatalogEntities.cs"
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs"
       ]
     },
     {
@@ -806,7 +808,8 @@
         "concept-shadow-catalog",
         "guide-deployment",
         "guide-github-app",
-        "concept-maintenance"
+        "concept-maintenance",
+        "concept-external-triggers"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
@@ -972,6 +975,65 @@
         "deploy/docker/worker-entrypoint.sh",
         "deploy/compose/docker-compose.yml",
         "src/SqlFlow.SourceControl/GitHub/GitHubAppEnvironment.cs"
+      ]
+    },
+    {
+      "id": "concept-external-triggers",
+      "corpus": "reference",
+      "path": "concepts/external-triggers.md",
+      "title": "External triggers: sync a repository and fire its schedules from outside SQLFlow",
+      "type": "concept",
+      "summary": "How a GitHub workflow or a key holder gets a fenced credential and asks to sync a repository and fire its schedules, and every way a request ends.",
+      "keywords": [
+        "external trigger",
+        "trigger request",
+        "github actions",
+        "oidc",
+        "openid connect",
+        "workload identity",
+        "trigger key",
+        "sqlft_",
+        "sync and fire",
+        "merge",
+        "commit",
+        "request key",
+        "idempotency",
+        "cancel",
+        "job summary",
+        "ControlPlane:ExternalTriggers",
+        "ControlPlane:Bootstrap:ExternalTriggers"
+      ],
+      "related": [
+        "guide-github-actions",
+        "concept-authentication-and-identity",
+        "concept-control-plane",
+        "flow-schedule",
+        "concept-maintenance"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/ExternalTriggerStore.cs",
+        "src/SqlFlow.Catalog/TriggerRequestStore.cs",
+        "src/SqlFlow.Catalog/RepoSourceStore.cs",
+        "src/SqlFlow.ControlPlane/Api/ExternalTriggerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/TriggerRequestEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/TriggerRequestSummary.cs",
+        "src/SqlFlow.ControlPlane/Background/TriggerRequestProcessor.cs",
+        "src/SqlFlow.ControlPlane/Background/TriggerRequestService.cs",
+        "src/SqlFlow.ControlPlane/Background/CommitContainment.cs",
+        "src/SqlFlow.ControlPlane/Background/RunOutcomeDescriber.cs",
+        "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
+        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs",
+        "src/SqlFlow.ControlPlane/Security/GitHubActionsTokenValidator.cs",
+        "src/SqlFlow.ControlPlane/Security/TokenIssuer.cs",
+        "src/SqlFlow.ControlPlane/Security/AccessTokenGenerator.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ExternalTriggerOptions.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneModuleServices.cs",
+        "gui/src/features/external-triggers/ExternalTriggersPage.tsx",
+        "gui/src/features/external-triggers/workflow.ts",
+        "integrations/github/action.yml",
+        "integrations/github/lib.mjs"
       ]
     },
     {
@@ -1339,7 +1401,8 @@
         "concept-shadow-catalog",
         "concept-control-plane",
         "guide-notifications",
-        "concept-run-artifacts"
+        "concept-run-artifacts",
+        "concept-external-triggers"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Maintenance/StorageArea.cs",
@@ -2536,7 +2599,8 @@
         "cli-db",
         "cli-worker",
         "flow-overview",
-        "flow-batch"
+        "flow-batch",
+        "concept-external-triggers"
       ],
       "sourceRefs": [
         "src/SqlFlow.Yaml/YamlDocumentLoader.cs",
@@ -3238,6 +3302,45 @@
         "samples/quickstart/orders.flow.yaml",
         "samples/csv/README.md",
         "docs/environment-variables.md"
+      ]
+    },
+    {
+      "id": "guide-github-actions",
+      "corpus": "reference",
+      "path": "guides/github-actions.md",
+      "title": "Syncing and firing schedules from GitHub after a merge",
+      "type": "guide",
+      "summary": "Have a GitHub workflow sync a repository after a merge, fire the schedules it picks and show the sync and every run in the job, with no secret stored.",
+      "keywords": [
+        "github actions",
+        "workflow",
+        "merge",
+        "after merge",
+        "sync after merge",
+        "fire schedule from github",
+        "oidc",
+        "id-token",
+        "job summary",
+        "artifact",
+        "integrations/github",
+        "sync and fire action",
+        "workflow_dispatch",
+        "trigger key"
+      ],
+      "related": [
+        "concept-external-triggers",
+        "concept-authentication-and-identity",
+        "flow-schedule",
+        "guide-github-app"
+      ],
+      "sourceRefs": [
+        "integrations/github/action.yml",
+        "integrations/github/lib.mjs",
+        "gui/src/features/external-triggers/workflow.ts",
+        "gui/src/features/external-triggers/ConnectSheet.tsx",
+        "src/SqlFlow.ControlPlane/Api/ExternalTriggerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/TriggerRequestEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Security/GitHubActionsTokenValidator.cs"
       ]
     },
     {
@@ -4069,6 +4172,46 @@
       ]
     },
     {
+      "id": "wiki-external-triggers-prove-and-request",
+      "corpus": "wiki",
+      "path": "decisions/external-triggers-prove-and-request.md",
+      "title": "An external trigger proves who it is and makes a request it then follows",
+      "type": "decision",
+      "summary": "Why a GitHub workflow syncs and fires through a federated, fenced credential and a durable request it follows, and what was rejected.",
+      "keywords": [
+        "external trigger",
+        "trigger request",
+        "github actions",
+        "openid connect",
+        "workload identity",
+        "federation",
+        "personal access token",
+        "fence",
+        "durable request",
+        "commit containment",
+        "job summary",
+        "check run",
+        "event webhook"
+      ],
+      "related": [
+        "wiki-the-mcp-server-is-the-assistants-one-definition"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Security/GitHubActionsTokenValidator.cs",
+        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs",
+        "src/SqlFlow.ControlPlane/Security/TokenIssuer.cs",
+        "src/SqlFlow.ControlPlane/Api/ExternalTriggerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/TriggerRequestEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Background/TriggerRequestProcessor.cs",
+        "src/SqlFlow.ControlPlane/Background/TriggerRequestService.cs",
+        "src/SqlFlow.ControlPlane/Background/CommitContainment.cs",
+        "src/SqlFlow.ControlPlane/Background/ScheduleFire.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
+        "src/SqlFlow.Catalog/TriggerRequestStore.cs",
+        "integrations/github/lib.mjs"
+      ]
+    },
+    {
       "id": "wiki-file-ingestion-shaping",
       "corpus": "wiki",
       "path": "patterns/file-ingestion-shaping.md",
@@ -4819,6 +4962,7 @@
         "X-SqlFlow-Surface"
       ],
       "related": [
+        "wiki-external-triggers-prove-and-request",
         "wiki-assistant-tool-sets-by-question",
         "wiki-semantic-layer-is-the-allow-list"
       ],

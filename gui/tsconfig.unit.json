@@ -21,6 +21,7 @@
     "src/modules/branding.ts",
     "src/modules/homePrompts.ts",
     "src/features/catalog/databaseTree.ts",
+    "src/features/external-triggers/workflow.ts",
     "src/features/catalog/nodeIds.ts",
     "src/features/chat/answerSql.ts",
     "src/features/chat/chatHandoff.ts",

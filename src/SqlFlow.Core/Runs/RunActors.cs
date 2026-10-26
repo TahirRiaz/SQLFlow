@@ -17,6 +17,22 @@ public static class RunActors
     /// <summary>The prefix of a label naming the account a direct CLI run executed under.</summary>
     public const string CliPrefix = "cli:";
 
+    /// <summary>The prefix of a label naming the external trigger (a GitHub workflow, a key holder) that asked for a run.</summary>
+    public const string TriggerPrefix = "trigger:";
+
+    /// <summary>
+    /// The external trigger that asked for a run, <c>trigger:&lt;name&gt;</c>: the subject its credential carries, and
+    /// what its requests and their runs record. A name that is blank, or too long for the column once prefixed, is named
+    /// by the trigger's id instead.
+    /// </summary>
+    public static string Trigger(string? name, Guid id)
+    {
+        var trimmed = name?.Trim();
+        return string.IsNullOrEmpty(trimmed) || TriggerPrefix.Length + trimmed.Length > MaxLength
+            ? TriggerPrefix + id.ToString("D")
+            : TriggerPrefix + trimmed;
+    }
+
     /// <summary>
     /// The schedule that fired a run, <c>schedule:&lt;name&gt;</c>. A name that is blank, or too long for the column
     /// once prefixed, is named by the schedule's id instead, which always fits and still says which schedule it was.

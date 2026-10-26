@@ -231,7 +231,7 @@ public sealed partial class RepoSyncService : BackgroundService
                 await trace.InfoAsync("ai-context", warning, ct).ConfigureAwait(false);
             }
 
-            await RepoSourceStore.RecordSuccessAsync(catalog, source.Id, sha, _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
+            await RepoSourceStore.RecordSuccessAsync(catalog, source.Id, sha, _clock.GetUtcNow().UtcDateTime, trace.ActivityId, ct).ConfigureAwait(false);
             await trace.CompleteAsync(ActivityStatuses.Succeeded, $"Sync complete at {sha}.", ct).ConfigureAwait(false);
             LogSynced(source.Name, sha);
         }
@@ -247,7 +247,7 @@ public sealed partial class RepoSyncService : BackgroundService
         {
             var redacted = SecretHygiene.RedactedMessage(ex);
             LogSyncError(source.Name, redacted);
-            await RecordFailureAsync(catalog, source.Id, redacted).ConfigureAwait(false);
+            await RecordFailureAsync(catalog, source.Id, redacted, trace.ActivityId).ConfigureAwait(false);
             await CompleteTraceFailureAsync(trace, redacted).ConfigureAwait(false);
         }
     }
@@ -393,12 +393,12 @@ public sealed partial class RepoSyncService : BackgroundService
         }
     }
 
-    private async Task RecordFailureAsync(CatalogDbContext catalog, Guid id, string error)
+    private async Task RecordFailureAsync(CatalogDbContext catalog, Guid id, string error, Guid activityId)
     {
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            await RepoSourceStore.RecordFailureAsync(catalog, id, error, _clock.GetUtcNow().UtcDateTime, cts.Token).ConfigureAwait(false);
+            await RepoSourceStore.RecordFailureAsync(catalog, id, error, _clock.GetUtcNow().UtcDateTime, activityId, cts.Token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

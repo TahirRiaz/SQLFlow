@@ -1,0 +1,103 @@
+name: SQLFlow sync and fire
+description: >-
+  Asks a SQLFlow control plane to sync a repository and fire a selection of its schedules, follows the request to its
+  end, and reports it in the job: the sync's and the runs' trace in the log, a summary on the job's page, the traces as
+  files, and the job's outcome. Authenticates with the job's GitHub OpenID Connect token (no stored secret) or a trigger key.
+author: SQLFlow
+branding:
+  icon: refresh-cw
+  color: blue
+inputs:
+  control-plane:
+    description: The control plane's address, such as https://sqlflow.example.com.
+    required: true
+  schedules:
+    description: The schedules to fire once the sync has run, separated by commas or new lines. Empty only syncs.
+    required: false
+    default: ""
+  commit:
+    description: >-
+      The commit the repository must be synced at (the merge being reported); the schedules fire only once the sync holds
+      it. Empty takes whatever the sync pulls. Ignored when sync is false.
+    required: false
+    default: ${{ github.sha }}
+  repo:
+    description: The repository (repo source) to sync. Empty takes the trigger's own.
+    required: false
+    default: ""
+  sync:
+    description: Whether to sync before firing. false fires on the commit already synced, and ignores commit.
+    required: false
+    default: "true"
+  batch:
+    description: The batch tags every fire is narrowed to, separated by commas. Empty fires every member.
+    required: false
+    default: ""
+  chain:
+    description: Whether each fire carries the schedules chained behind it, as the schedule's own clock does.
+    required: false
+    default: "true"
+  auth:
+    description: How the job proves who it is, github (the job's OpenID Connect token, with id-token write permission) or key.
+    required: false
+    default: github
+  audience:
+    description: The audience to ask GitHub's token for; the control plane's ControlPlane:ExternalTriggers:GitHub:Audience.
+    required: false
+    default: sqlflow
+  trigger:
+    description: The trigger to act as, when several trust this workflow.
+    required: false
+    default: ""
+  key:
+    description: The trigger's key, from a secret, when auth is key.
+    required: false
+    default: ""
+  wait:
+    description: Whether to follow the request to its end. false answers as soon as it is made.
+    required: false
+    default: "true"
+  timeout-minutes:
+    description: How long to follow the request before the step fails, in minutes.
+    required: false
+    default: "120"
+  poll-seconds:
+    description: How often to read the request's trace while nothing new has happened, in seconds.
+    required: false
+    default: "5"
+  summary:
+    description: Whether to write the request's summary to the job's page.
+    required: false
+    default: "true"
+  traces:
+    description: A folder to write the request's trace and every run's trace into, for actions/upload-artifact. Empty writes none.
+    required: false
+    default: ""
+  cancel-on-timeout:
+    description: Whether to cancel the request when the step stops following it at its timeout.
+    required: false
+    default: "false"
+  request-key:
+    description: >-
+      The request's key: a request made again with the same key is answered with the one already made, so a retried step
+      never fires twice. Defaults to the run, its attempt, the job and the step.
+    required: false
+    default: ""
+outputs:
+  request-id:
+    description: The trigger request's id.
+  url:
+    description: The request's page in the GUI, when the control plane knows its address.
+  state:
+    description: Where the request ended (succeeded, failed, cancelled), or where it stood when the step stopped following it.
+  conclusion:
+    description: success, failure or cancelled; empty when the step stopped before the request ended.
+  synced-commit:
+    description: The commit the repository was synced at.
+  traces:
+    description: The folder the traces were written to.
+runs:
+  using: node24
+  main: index.mjs
+  post: post.mjs
+  post-if: cancelled()

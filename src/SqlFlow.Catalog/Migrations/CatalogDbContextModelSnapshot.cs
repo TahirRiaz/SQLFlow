@@ -423,6 +423,106 @@ namespace SqlFlow.Catalog.Migrations
                     b.ToTable("DispatchLease", "catalog");
                 });
 
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogExternalTrigger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AllSchedules")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ConfiguredBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("GitHubEnvironment")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("GitHubRef")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("GitHubRepository")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("GitHubRepositoryId")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("GitHubWorkflow")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("KeyExpiresUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("KeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("KeyPrefix")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("LastUsedDetail")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("LastUsedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RepoName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Schedules")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GitHubRepository");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique()
+                        .HasFilter("[KeyHash] IS NOT NULL");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("ExternalTrigger", "catalog");
+                });
+
             modelBuilder.Entity("SqlFlow.Catalog.CatalogFlowDependency", b =>
                 {
                     b.Property<long>("Id")
@@ -1410,6 +1510,9 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.Property<string>("LastError")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("LastSyncActivityId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("LastSyncUtc")
                         .HasColumnType("datetime2");
@@ -3030,6 +3133,222 @@ namespace SqlFlow.Catalog.Migrations
                     b.HasIndex("VisualKey");
 
                     b.ToTable("SubscriberReportVisualQuestion", "catalog");
+                });
+
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogTriggerRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ActivityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Batch")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("CancelRequestedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("CancelRequestedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Chain")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ExpectedCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Origin")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OriginUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("RepoName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid?>("RepoSourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RequestKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RequestedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<bool>("Sync")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("SyncActivityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long?>("SyncCopiedThroughId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SyncError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SyncOutcome")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTime?>("SyncRequestedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SyncedCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("TriggerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TriggerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedUtc")
+                        .HasDatabaseName("IX_TriggerRequest_Open")
+                        .HasFilter("[CompletedUtc] IS NULL");
+
+                    b.HasIndex("RepoName", "CreatedUtc");
+
+                    b.HasIndex("RequestedBy", "RequestKey")
+                        .IsUnique()
+                        .HasFilter("[RequestKey] IS NOT NULL");
+
+                    b.HasIndex("TriggerId", "CreatedUtc");
+
+                    b.ToTable("TriggerRequest", "catalog");
+                });
+
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogTriggerRequestRun", b =>
+                {
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FlowName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ReportedStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("ScheduleOrdinal")
+                        .HasColumnType("int");
+
+                    b.HasKey("RequestId", "RunId");
+
+                    b.HasIndex("RunId");
+
+                    b.ToTable("TriggerRequestRun", "catalog");
+                });
+
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogTriggerRequestSchedule", b =>
+                {
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Cancelled")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CommitSha")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("Failed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FiredUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FiringUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MemberCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ScheduleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ScheduleName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("Skipped")
+                        .HasColumnType("int");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<int>("Succeeded")
+                        .HasColumnType("int");
+
+                    b.HasKey("RequestId", "Ordinal");
+
+                    b.ToTable("TriggerRequestSchedule", "catalog");
                 });
 
             modelBuilder.Entity("SqlFlow.Catalog.CatalogUser", b =>

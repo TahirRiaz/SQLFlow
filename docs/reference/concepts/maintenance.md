@@ -23,6 +23,7 @@ related:
   - concept-control-plane
   - guide-notifications
   - concept-run-artifacts
+  - concept-external-triggers
 sourceRefs:
   - src/SqlFlow.ControlPlane/Maintenance/StorageArea.cs
   - src/SqlFlow.ControlPlane/Maintenance/CatalogStorageContributor.cs
@@ -155,6 +156,7 @@ A limit set for the SQL statements before this page existed carries over to the 
 | Area | Tables (`catalog.`) | Verdict | How its data leaves |
 | --- | --- | --- | --- |
 | Runs | `Run`, `RunGroup` | Keep, grows | Deleted with its repository |
+| Trigger requests | `TriggerRequest`, `TriggerRequestSchedule`, `TriggerRequestRun` | Keep, grows | Never removed ([External triggers](external-triggers.md)) |
 | Run files and results | `RunFile`, `RunAssertion`, `RunSurrogateKey`, `RunHealthCheckMetric` | Keep, grows | Deleted with its repository |
 | SQL statements | `RunStatement` | Safe to remove | The limit an admin sets (above) |
 | Run events | `RunEvent` | Optional | The limit an admin sets (above) |
@@ -164,7 +166,7 @@ A limit set for the SQL statements before this page existed carries over to the 
 | Schema changes | `SchemaChange` | Keep, grows | Deleted with its repository |
 | Schedules | `Schedule`, `ScheduleMember`, `ScheduleParent` | Keep | Rewritten by each sync |
 | Subscribers | `Subscriber` and its eight report and model tables | Keep | Rewritten by each sync |
-| Sync and discovery traces | `ActivityEvent` | Safe to remove | The last five attempts per subject; a discovery's lines after 2 days |
+| Sync and discovery traces | `ActivityEvent` | Safe to remove | The last five attempts per subject; a discovery's lines after 2 days; a trigger request's one trace stays with the request |
 | Nodes | `Node` | Safe to remove | After `Dispatch:NodeRetentionHours` offline (24) |
 | Dispatch and worker pools | `DispatchLease`, `WorkerPool` | Keep | Updated in place |
 | Compute tasks | `ComputeTask` | Keep, grows | Never removed |
@@ -176,6 +178,7 @@ A limit set for the SQL statements before this page existed carries over to the 
 | Chat conversations | `ChatConversation`, `ChatMessage` | Keep, grows | Each person deletes their own |
 | AI contexts and saved answers | `AiContext`, `ColumnPolicy`, `SemanticObject`, `SemanticRelationship`, `SemanticMeasure`, `SemanticLayerSettings`, `SemanticReportSpec`, `SemanticExample` | Keep | Removed by an admin, or with the repository |
 | Users and access tokens | `User`, `Role`, `AccessToken` | Keep | Managed on the Users page |
+| External triggers | `ExternalTrigger` | Keep | Managed on the External triggers page; a configured one is written at every start |
 | Retention settings | `RetentionSetting` | Keep | One row per area |
 | Cleanup log | `MaintenanceCleanup` | Safe to remove | A year after the cleanup |
 | Catalog schema history | `__CatalogMigrationsHistory` | Keep | Never removed |

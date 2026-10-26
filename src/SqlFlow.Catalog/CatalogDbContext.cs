@@ -118,6 +118,16 @@ public sealed class CatalogDbContext : DbContext
 
     public DbSet<CatalogAccessToken> AccessTokens => Set<CatalogAccessToken>();
 
+    /// <summary>The callers outside SQLFlow (GitHub workflows, key holders) that may sync a repository and fire its schedules.</summary>
+    public DbSet<CatalogExternalTrigger> ExternalTriggers => Set<CatalogExternalTrigger>();
+
+    /// <summary>Each request to sync a repository and fire a selection of its schedules, with what became of it.</summary>
+    public DbSet<CatalogTriggerRequest> TriggerRequests => Set<CatalogTriggerRequest>();
+
+    public DbSet<CatalogTriggerRequestSchedule> TriggerRequestSchedules => Set<CatalogTriggerRequestSchedule>();
+
+    public DbSet<CatalogTriggerRequestRun> TriggerRequestRuns => Set<CatalogTriggerRequestRun>();
+
     public DbSet<CatalogComputeTask> ComputeTasks => Set<CatalogComputeTask>();
 
     /// <summary>Prepared ad-hoc queries awaiting approval; the confirmation gate for the query surface.</summary>
@@ -1048,6 +1058,82 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(t => t.ConfiguredBy).HasMaxLength(200);
             // The owner's token list (self-service management) seeks by user.
             entity.HasIndex(t => t.UserId);
+        });
+
+        modelBuilder.Entity<CatalogExternalTrigger>(entity =>
+        {
+            entity.ToTable("ExternalTrigger");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Name).HasMaxLength(200).IsRequired();
+            entity.HasIndex(t => t.Name).IsUnique();
+            entity.Property(t => t.Description).HasMaxLength(1000);
+            entity.Property(t => t.Kind).HasMaxLength(16).IsRequired();
+            entity.Property(t => t.RepoName).HasMaxLength(256).IsRequired();
+            // A JSON array of schedule names: unbounded, since a trigger may be allowed many.
+            entity.Property(t => t.Schedules);
+            entity.Property(t => t.GitHubRepository).HasMaxLength(200);
+            entity.Property(t => t.GitHubRepositoryId).HasMaxLength(32);
+            entity.Property(t => t.GitHubRef).HasMaxLength(256);
+            entity.Property(t => t.GitHubWorkflow).HasMaxLength(256);
+            entity.Property(t => t.GitHubEnvironment).HasMaxLength(256);
+            // The GitHub exchange looks for the triggers that trust a token's repository.
+            entity.HasIndex(t => t.GitHubRepository);
+            // SHA-256 hex is exactly 64 chars. The key exchange seeks by hash; two keys never share one.
+            entity.Property(t => t.KeyHash).HasMaxLength(64);
+            entity.HasIndex(t => t.KeyHash).IsUnique().HasFilter("[KeyHash] IS NOT NULL");
+            entity.Property(t => t.KeyPrefix).HasMaxLength(32);
+            entity.Property(t => t.ConfiguredBy).HasMaxLength(200);
+            entity.Property(t => t.CreatedBy).HasMaxLength(256);
+            entity.Property(t => t.LastUsedDetail).HasMaxLength(1000);
+        });
+
+        modelBuilder.Entity<CatalogTriggerRequest>(entity =>
+        {
+            entity.ToTable("TriggerRequest");
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.RepoName).HasMaxLength(256).IsRequired();
+            entity.Property(r => r.TriggerName).HasMaxLength(200);
+            entity.Property(r => r.RequestedBy).HasMaxLength(256).IsRequired();
+            entity.Property(r => r.RequestKey).HasMaxLength(200);
+            // Asking again with the same key answers with the request already made: one request per caller and key.
+            entity.HasIndex(r => new { r.RequestedBy, r.RequestKey }).IsUnique().HasFilter("[RequestKey] IS NOT NULL");
+            entity.Property(r => r.Origin).HasMaxLength(1000);
+            entity.Property(r => r.OriginUrl).HasMaxLength(1024);
+            entity.Property(r => r.ExpectedCommit).HasMaxLength(64);
+            entity.Property(r => r.Batch).HasMaxLength(2000);
+            entity.Property(r => r.State).HasMaxLength(16).IsRequired();
+            entity.Property(r => r.Detail).HasMaxLength(2000);
+            entity.Property(r => r.SyncOutcome).HasMaxLength(16);
+            entity.Property(r => r.SyncedCommit).HasMaxLength(64);
+            // A sync error is whatever git or the reconcile said, already redacted: no useful bound.
+            entity.Property(r => r.SyncError);
+            entity.Property(r => r.LeaseOwner).HasMaxLength(128);
+            entity.Property(r => r.CancelRequestedBy).HasMaxLength(256);
+            // The processor scans the requests still running; the filter keeps that scan to the handful in flight.
+            entity.HasIndex(r => r.CreatedUtc).HasFilter("[CompletedUtc] IS NULL").HasDatabaseName("IX_TriggerRequest_Open");
+            // The request lists read newest first, by trigger and by repository.
+            entity.HasIndex(r => new { r.TriggerId, r.CreatedUtc });
+            entity.HasIndex(r => new { r.RepoName, r.CreatedUtc });
+        });
+
+        modelBuilder.Entity<CatalogTriggerRequestSchedule>(entity =>
+        {
+            entity.ToTable("TriggerRequestSchedule");
+            entity.HasKey(s => new { s.RequestId, s.Ordinal });
+            entity.Property(s => s.ScheduleName).HasMaxLength(256).IsRequired();
+            entity.Property(s => s.State).HasMaxLength(16).IsRequired();
+            entity.Property(s => s.Detail).HasMaxLength(2000);
+            entity.Property(s => s.CommitSha).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<CatalogTriggerRequestRun>(entity =>
+        {
+            entity.ToTable("TriggerRequestRun");
+            entity.HasKey(r => new { r.RequestId, r.RunId });
+            entity.Property(r => r.FlowName).HasMaxLength(256).IsRequired();
+            entity.Property(r => r.ReportedStatus).HasMaxLength(16).IsRequired();
+            // From a run back to the request that started it.
+            entity.HasIndex(r => r.RunId);
         });
     }
 }

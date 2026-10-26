@@ -52,6 +52,10 @@ public sealed class ControlPlaneOptions
 
     public AiContextOptions AiContext { get; set; } = new();
 
+    /// <summary>External triggers: GitHub workflows and key holders that sync a repository and fire its schedules.
+    /// Bound from <c>ControlPlane:ExternalTriggers</c>.</summary>
+    public ExternalTriggerOptions ExternalTriggers { get; set; } = new();
+
     /// <summary>Validates the options, throwing a clear startup error for any missing or unsafe required value.
     /// Called during host build so a misconfigured deployment never starts serving.</summary>
     public void Validate()
@@ -130,6 +134,7 @@ public sealed class ControlPlaneOptions
         Assistant.Validate();
         DataOps.Validate();
         AiContext.Validate(Assistant.Anthropic);
+        ExternalTriggers.Validate();
     }
 }
 
@@ -364,6 +369,67 @@ public sealed class BootstrapOptions
     /// </summary>
     public string? NodeTokenReference { get; set; }
 
+    /// <summary>The configuration key of the external trigger named <paramref name="name"/> under <see cref="ExternalTriggers"/>.</summary>
+    public static string ExternalTriggerKey(string name) => $"ControlPlane:Bootstrap:ExternalTriggers:{name}";
+
+    /// <summary>
+    /// The external triggers the deployment trusts, by name (<c>ControlPlane:Bootstrap:ExternalTriggers:&lt;name&gt;</c>):
+    /// each the GitHub workflow or the key that may sync a repo source and fire its schedules. The control plane writes them
+    /// at every start, the API refuses to change or remove them, and one the configuration stops naming is disabled and kept.
+    /// Empty names none and leaves the triggers an administrator created as they are.
+    /// </summary>
+    public Dictionary<string, ConfiguredExternalTriggerOptions?> ExternalTriggers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The external triggers the configuration names, checked by the same rules the API applies: every name once, a repo
+    /// source, exactly one of a GitHub workflow and a key reference, and a key only as a reference.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A trigger is not one the configuration may hold; the message names the setting.</exception>
+    public IReadOnlyList<ConfiguredExternalTriggerEntry> ConfiguredExternalTriggers()
+    {
+        var configured = new List<ConfiguredExternalTriggerEntry>();
+        foreach (var (name, options) in ExternalTriggers.OrderBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var key = ExternalTriggerKey(name);
+            if (options is null)
+            {
+                throw new InvalidOperationException($"{key} sets nothing: give it a RepoSource and either GitHub (the workflow it trusts) or KeyReference.");
+            }
+
+            var hasGitHub = options.GitHub is not null;
+            var keyReference = string.IsNullOrWhiteSpace(options.KeyReference) ? null : options.KeyReference.Trim();
+            if (hasGitHub == (keyReference is not null))
+            {
+                throw new InvalidOperationException(
+                    $"{key} needs exactly one of GitHub (the repository, ref and workflow whose token it accepts) and KeyReference (the secret holding the key it accepts).");
+            }
+
+            if (keyReference is not null && !SqlFlow.Core.Secrets.SuppliedReferences.IsWholeReference(keyReference))
+            {
+                throw new InvalidOperationException(
+                    $"{key}:KeyReference must be a secret reference such as ${{keyvault:<vault>/<secret>}} or ${{env:NAME}}, never the key itself.");
+            }
+
+            SqlFlow.Catalog.ExternalTriggerDefinition definition;
+            try
+            {
+                definition = new SqlFlow.Catalog.ExternalTriggerDefinition(
+                    name, hasGitHub ? SqlFlow.Catalog.ExternalTriggerKinds.GitHub : SqlFlow.Catalog.ExternalTriggerKinds.Key, options.RepoSource ?? string.Empty,
+                    options.Description, options.AllSchedules, options.Schedules ?? [],
+                    options.GitHub?.Repository, options.GitHub?.RepositoryId, options.GitHub?.Ref, options.GitHub?.Workflow,
+                    options.GitHub?.Environment).Normalized();
+            }
+            catch (SqlFlow.Catalog.ExternalTriggerDefinitionException ex)
+            {
+                throw new InvalidOperationException($"{key}: {ex.Message}", ex);
+            }
+
+            configured.Add(new ConfiguredExternalTriggerEntry(definition, keyReference, key));
+        }
+
+        return configured;
+    }
+
     /// <summary>
     /// The repo sources the configuration names, <see cref="DemoRepo"/> included, as the control plane writes them, checked:
     /// every name once, exactly one of a remote and a local path, a positive interval, and a credential only as a reference.
@@ -461,6 +527,7 @@ public sealed class BootstrapOptions
         }
 
         _ = ConfiguredRepositories();
+        _ = ConfiguredExternalTriggers();
 
         if (!string.IsNullOrWhiteSpace(NodeTokenReference))
         {

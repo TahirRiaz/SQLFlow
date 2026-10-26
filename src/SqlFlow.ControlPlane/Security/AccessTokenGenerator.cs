@@ -25,12 +25,39 @@ public static class AccessTokenGenerator
     /// <paramref name="Hash"/> to persist, and the non-secret <paramref name="DisplayPrefix"/> for the listing.</summary>
     public readonly record struct MintedToken(string Secret, string Hash, string DisplayPrefix);
 
+    /// <summary>The literal that opens every external trigger's key, so a leaked key is recognizable for what it is and
+    /// is never mistaken for a personal access token (whose prefix it does not share).</summary>
+    public const string TriggerKeyPrefix = "sqlft_";
+
+    /// <summary>The fewest random characters a trigger key carries after its prefix: 32, about 190 bits. A minted key
+    /// carries 43 (256 bits); a key the configuration names must carry at least this many.</summary>
+    public const int MinTriggerKeyBody = 32;
+
     /// <summary>Generates a new secret and its stored derivatives. Uses a cryptographic RNG; never reuse the secret
     /// after handing it back once.</summary>
-    public static MintedToken Mint()
+    public static MintedToken Mint() => Mint(Prefix);
+
+    /// <summary>Generates a new external trigger key (<see cref="TriggerKeyPrefix"/> and 256 random bits) and its stored
+    /// derivatives, the same way <see cref="Mint()"/> does a personal access token.</summary>
+    public static MintedToken MintTriggerKey() => Mint(TriggerKeyPrefix);
+
+    /// <summary>Whether <paramref name="value"/> has the shape of a trigger key: the prefix and enough random characters
+    /// after it. A shape test, not a validation; the hash lookup is the real check.</summary>
+    public static bool LooksLikeTriggerKey(string? value)
+        => value is not null && value.StartsWith(TriggerKeyPrefix, StringComparison.Ordinal)
+           && value.Length >= TriggerKeyPrefix.Length + MinTriggerKeyBody && !value.Any(char.IsWhiteSpace);
+
+    /// <summary>The non-secret leading characters of a key or token, kept for display.</summary>
+    public static string DisplayPrefixOf(string secret)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(secret);
+        return secret[..Math.Min(DisplayPrefixLength, secret.Length)];
+    }
+
+    private static MintedToken Mint(string prefix)
     {
         var bytes = RandomNumberGenerator.GetBytes(32);
-        var secret = Prefix + Base64UrlEncode(bytes);
+        var secret = prefix + Base64UrlEncode(bytes);
         return new MintedToken(secret, HashSecret(secret), secret[..DisplayPrefixLength]);
     }
 

@@ -340,8 +340,10 @@ public static class RepoSourceStore
     /// one-shot force-lineage request a manual sync-now made, when this attempt answered it. A sync-now made while the
     /// attempt was already running is not answered by it: its flag stays, and the source, made due by the request,
     /// syncs again on the next tick with the full recompute the operator asked for.</summary>
+    /// <remarks><paramref name="activityId"/> is the attempt's activity trace, recorded so whatever waited for the attempt
+    /// reads exactly its lines.</remarks>
     public static Task RecordSuccessAsync(
-        CatalogDbContext catalog, Guid id, string commitSha, DateTime nowUtc, CancellationToken ct = default)
+        CatalogDbContext catalog, Guid id, string commitSha, DateTime nowUtc, Guid? activityId = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         return catalog.RepoSources
@@ -349,6 +351,7 @@ public static class RepoSourceStore
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.LastSyncUtc, nowUtc)
                 .SetProperty(x => x.LastSyncedSha, commitSha)
+                .SetProperty(x => x.LastSyncActivityId, activityId)
                 .SetProperty(x => x.LastError, (string?)null)
                 .SetProperty(
                     x => x.ForceLineageOnNextSync,
@@ -356,15 +359,17 @@ public static class RepoSourceStore
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
     }
 
-    /// <summary>Records a failed sync: keeps the last successful commit and stores the (redacted) error.</summary>
+    /// <summary>Records a failed sync: keeps the last successful commit and stores the (redacted) error, with the
+    /// attempt's activity trace (<paramref name="activityId"/>).</summary>
     public static Task RecordFailureAsync(
-        CatalogDbContext catalog, Guid id, string error, DateTime nowUtc, CancellationToken ct = default)
+        CatalogDbContext catalog, Guid id, string error, DateTime nowUtc, Guid? activityId = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         return catalog.RepoSources
             .Where(s => s.Id == id)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.LastSyncUtc, nowUtc)
+                .SetProperty(x => x.LastSyncActivityId, activityId)
                 .SetProperty(x => x.LastError, error)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
     }
@@ -446,15 +451,25 @@ public static class RepoSourceStore
     /// object bodies/columns from the persisted run trace). The flag clears once the sync succeeds. The request's time
     /// is recorded (<see cref="CatalogRepoSource.SyncRequestedUtc"/>), so the caller can tell when an attempt has
     /// answered it (<see cref="IsSyncAnswered"/>).</summary>
-    public static async Task<RepoSourceMutation> TriggerNowAsync(
+    public static Task<RepoSourceMutation> TriggerNowAsync(
         CatalogDbContext catalog, Guid id, DateTime nowUtc, CancellationToken ct = default)
+        => RequestSyncAsync(catalog, id, nowUtc, forceLineage: true, ct);
+
+    /// <summary>
+    /// Makes a source due immediately and records the request's time, as <see cref="TriggerNowAsync"/> does, but asks for
+    /// the full lineage recompute only when <paramref name="forceLineage"/> is set. A trigger request after a merge leaves
+    /// it off: the merge changed the estate, so the sync recomputes what changed anyway, and an unchanged estate needs
+    /// nothing recomputed. A force-lineage request already pending stays pending.
+    /// </summary>
+    public static async Task<RepoSourceMutation> RequestSyncAsync(
+        CatalogDbContext catalog, Guid id, DateTime nowUtc, bool forceLineage, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         var affected = await catalog.RepoSources
             .Where(s => s.Id == id && s.Enabled)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.NextSyncUtc, nowUtc)
-                .SetProperty(x => x.ForceLineageOnNextSync, true)
+                .SetProperty(x => x.ForceLineageOnNextSync, x => forceLineage || x.ForceLineageOnNextSync)
                 .SetProperty(x => x.SyncRequestedUtc, nowUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
             .ConfigureAwait(false);

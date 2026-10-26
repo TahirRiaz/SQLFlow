@@ -79,6 +79,10 @@ to narrow a search to one kind of page.
 
 ### Decisions
 
+- [An external trigger proves who it is and makes a request it then follows](decisions/external-triggers-prove-and-request.md) -
+  why a GitHub workflow federates instead of holding a token, why its credential is fenced rather than scoped, why a
+  request is a durable row the caller follows, why the synced commit must contain the merge, and why the answer goes to
+  the job instead of back to GitHub.
 - [Landing is string-first](decisions/string-first-landing.md) - why every non-Parquet source lands
   as strings and typing is deferred, and what the alternative would have cost.
 - [A report's model entity becomes a warehouse object](decisions/powerbi-model-entity-resolution.md) -

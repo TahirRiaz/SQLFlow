@@ -20,6 +20,7 @@ related:
   - guide-deployment
   - guide-github-app
   - concept-maintenance
+  - concept-external-triggers
 sourceRefs:
   - src/SqlFlow.ControlPlane/Background/RunReferences.cs
   - src/SqlFlow.ControlPlane/Background/BootstrapSteps.cs
@@ -132,6 +133,7 @@ Read surface (policy `read`):
 | `GET /summary` | Estate summary |
 | `GET /dataops/capabilities` | Whether the data-operations surface is enabled here, the operations available, and the linked servers a baseline comparison may name (concept-data-operations) |
 | `GET /maintenance/storage`, `GET /maintenance/areas/{areaId}/cleanups` | What the catalog's database holds, area by area, with each area's verdict, size, limit and cleanups, and one area's cleanup log ([Maintenance](maintenance.md)); closed to an assistant run's delegated token |
+| `GET /trigger-requests`, `GET /trigger-requests/{id}`, `/events`, `/summary`, `/runs/{runId}/trace` | Trigger requests: the list, one request with its runs read live, its trace after a cursor, its Markdown summary, and a run's trace as text; an external trigger's credential reaches only its own ([External triggers](external-triggers.md#following-a-request)) |
 
 Operate surface (policy `operate`):
 
@@ -151,8 +153,11 @@ Operate surface (policy `operate`):
 | `POST /dataops/queries/prepare` | Validate an ad-hoc SELECT and mint a one-time plan token; nothing runs. Behind `AiContext:Enabled` |
 | `POST /dataops/queries/{planId}/run` | Redeem an approved plan token and queue the query. Takes a token, never a statement, so the confirmation cannot be skipped |
 | `POST /maintenance/areas/{areaId}/preview` | What a cleanup of a storage area at the days named would remove; changes nothing ([Maintenance](maintenance.md)) |
+| `POST /trigger-requests`, `POST /trigger-requests/{id}/cancel` | Sync a repository and fire a selection of its schedules (202, or 200 with the request already made for a repeated `requestKey`), and cancel a request; open to an external trigger's credential for its own repository and schedules ([External triggers](external-triggers.md#trigger-requests)) |
 
-Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/activate` `/deactivate` `/password`, and `GET /roles` (src/SqlFlow.ControlPlane/Api/UserEndpoints.cs); and a storage area's limit and cleanup, `PUT /maintenance/areas/{areaId}/retention` and `POST /maintenance/areas/{areaId}/cleanup` ([Maintenance](maintenance.md)).
+Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/activate` `/deactivate` `/password`, and `GET /roles` (src/SqlFlow.ControlPlane/Api/UserEndpoints.cs); a storage area's limit and cleanup, `PUT /maintenance/areas/{areaId}/retention` and `POST /maintenance/areas/{areaId}/cleanup` ([Maintenance](maintenance.md)); and the external triggers, `GET/POST /external-triggers`, `GET /external-triggers/setup`, `GET/PUT/DELETE /external-triggers/{id}` and `POST /external-triggers/{id}/enable` `/disable` `/key` ([External triggers](external-triggers.md)).
+
+Anonymous: an external trigger exchanges its proof for its credential at `POST /auth/trigger/github` (a GitHub Actions job's OpenID Connect token) and `POST /auth/trigger/key` (its key) ([External triggers](external-triggers.md#how-a-trigger-proves-who-it-is)).
 
 ### Health probes and rate limiting
 
@@ -247,6 +252,7 @@ Before provisioning anything, the `catalog` step applies the `Bootstrap:AllowCre
 | `roles` | Seeds the built-in roles: `admin` (scopes `read operate admin author node`), `operator` (`read operate author`), `viewer` (`read`). A scope an operator added to a built-in role survives re-seeding, and a scope the definition gained later (such as `node`) is appended to an existing row (`EnsureRoleAsync`). |
 | `admin` | Creates the initial admin from `Bootstrap:AdminUsername` and `Bootstrap:AdminPasswordReference` (resolved through the secret resolver) when the user is absent. An existing admin's password is never reset. A reference that resolves to nothing, or to a password shorter than the minimum, fails the step (and so readiness), and the next attempt picks up a secret put right. |
 | `repositories` | Writes the repo sources `Bootstrap:Repositories` and `Bootstrap:DemoRepo` name (`RepoSourceStore.ApplyConfiguredAsync`): registers each one the catalog does not hold (due at once), brings each one it holds in line and enables it, records the setting that names it (`ConfiguredBy`), and releases each source an earlier configuration named and this one does not, keeping it as an ordinary source. It wakes the managed sync when it registered or changed one. |
+| `external-triggers` | Writes the external triggers `Bootstrap:ExternalTriggers` names (`ExternalTriggerStore.ApplyConfiguredAsync`), reading each key trigger's key from the secret its `KeyReference` names, and disables and releases each trigger an earlier configuration named and this one does not ([External triggers](external-triggers.md#configured-triggers)). A secret that does not hold a key of SQLFlow's form fails the step. |
 | `node-credential` | Reads the token `Bootstrap:NodeTokenReference` names, at every start, and makes it the one active node-scope token of the initial admin (`AccessTokenStore.EnsureConfiguredAsync`), revoking the one it replaced when the secret changed; with none named, revokes the one an earlier configuration set. A deployment's workers present the same secret, so they connect with no token minted by hand. |
 | `worker-pool` | Seeds the default pool with an always-on floor of one worker when the pool has no desired state yet. |
 | a module's steps | What a host module needs from the configuration (`IBootstrapStep`), in the order the modules registered them. |

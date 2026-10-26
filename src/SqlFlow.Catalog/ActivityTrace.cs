@@ -76,6 +76,26 @@ public sealed class ActivityTrace
         return new ActivityTrace(context, kind, subjectKey, Guid.NewGuid(), clock);
     }
 
+    /// <summary>
+    /// Continues the activity <paramref name="activityId"/> of (<paramref name="kind"/>, <paramref name="subjectKey"/>):
+    /// a writer whose next event follows the last one already written, for an operation that appends to one activity
+    /// across many steps, processes or replicas (a trigger request's trace). Nothing is pruned. An activity with no event
+    /// yet starts at ordinal 1.
+    /// </summary>
+    public static async Task<ActivityTrace> ResumeAsync(
+        CatalogDbContext context, string kind, string subjectKey, Guid activityId, TimeProvider clock, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+        ArgumentException.ThrowIfNullOrWhiteSpace(subjectKey);
+        ArgumentNullException.ThrowIfNull(clock);
+
+        var last = await context.ActivityEvents.AsNoTracking()
+            .Where(e => e.Kind == kind && e.SubjectKey == subjectKey && e.ActivityId == activityId)
+            .MaxAsync(e => (int?)e.Ordinal, ct).ConfigureAwait(false);
+        return new ActivityTrace(context, kind, subjectKey, activityId, clock) { _ordinal = last ?? 0 };
+    }
+
     public Task InfoAsync(string step, string message, CancellationToken ct = default)
         => AppendAsync(step, RunEventLevels.Info, message, terminal: false, status: null, ct);
 
@@ -134,4 +154,9 @@ public static class ActivityKinds
     /// <summary>A source discovery scan (format detection, delimiter sniff, schema read, YAML generation). Subject:
     /// the scanned location, so repeat discoveries of the same source keep a short bounded scrollback.</summary>
     public const string SourceDiscover = "source-discover";
+
+    /// <summary>A trigger request (<see cref="CatalogTriggerRequest"/>): its sync, the sync's own lines, each fire and
+    /// each run as it starts and ends. Subject: the request's id, so every request has exactly one activity, kept as
+    /// long as the request is.</summary>
+    public const string TriggerRequest = "trigger-request";
 }
