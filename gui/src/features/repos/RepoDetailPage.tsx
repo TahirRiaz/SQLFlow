@@ -41,6 +41,8 @@ interface RepoFolder {
   files: RepoTreeEntry[];
   /** Every folder path under this project, so one holding nothing still appears in its tree. */
   folders: string[];
+  /** Whether a search narrowed the folder to the rows that matched, rather than keeping it whole for its name. */
+  narrowed: boolean;
 }
 
 /**
@@ -87,7 +89,7 @@ function foldersOf(pipelines: PipelineSummary[], tree: RepoTree | undefined): Re
     if (existing !== undefined) {
       return existing;
     }
-    const created: RepoFolder = { project, pipelines: [], files: [], folders: [] };
+    const created: RepoFolder = { project, pipelines: [], files: [], folders: [], narrowed: false };
     byProject.set(project, created);
     return created;
   };
@@ -119,8 +121,9 @@ function foldersOf(pipelines: PipelineSummary[], tree: RepoTree | undefined): Re
   return [...byProject.values()].sort((a, b) => a.project.localeCompare(b.project));
 }
 
-/** The folders whose name, pipelines, or files match the search. A folder matched by name keeps all of its contents;
- * otherwise only the matching rows survive, and a folder left with nothing drops out. */
+/** The folders whose name, pipelines, or files match the search. A folder matched by name keeps all of its contents,
+ * which stay shut under it since none of them is what matched; otherwise only the matching rows survive, opened onto,
+ * and a folder left with nothing drops out. */
 function matchingFolders(folders: RepoFolder[], needle: string): RepoFolder[] {
   if (needle === "") {
     return folders;
@@ -134,6 +137,7 @@ function matchingFolders(folders: RepoFolder[], needle: string): RepoFolder[] {
         files: folder.files.filter((f) => f.path.toLowerCase().includes(needle)),
         // A search narrows a folder to what matched, so an empty folder is not carried into the result.
         folders: [],
+        narrowed: true,
       })
     .filter((folder) => folder.pipelines.length > 0 || folder.files.length > 0);
 }
@@ -261,7 +265,7 @@ function RepoProjects({
           files={folder.files}
           folders={folder.folders}
           repoId={repoId}
-          filtered={needle !== ""}
+          filtered={folder.narrowed}
           defaultOpen={needle !== ""}
           onOpen={onOpen}
           onRunBatch={onRunBatch}

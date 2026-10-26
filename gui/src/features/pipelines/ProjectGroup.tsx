@@ -13,7 +13,7 @@ import { ActiveBadge } from "../../components/StatusBadge";
 import { formatBytes } from "../../lib/time";
 import { flowKindIdentity, flowKindToneClasses } from "../../modules/flowKinds";
 import { projectOf } from "../repos/project";
-import { baseName, buildFolderTree, type FolderNode } from "./folderTree";
+import { baseName, buildFolderTree, expandedFolders, opensFolder, type FolderNode } from "./folderTree";
 
 /** Whether a pipeline matches a free-text search over the fields a user eyeballs to find a flow: its name, path,
  * kind (its value or the name its chip shows), and the project (folder) it groups under. `needle` must already be
@@ -40,28 +40,6 @@ export function groupByProject(pipelines: PipelineSummary[]): [string, PipelineS
     }
   }
   return [...byProject.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-}
-
-/**
- * Whether a folder shows its contents when nobody has said otherwise: open when a pipeline sits somewhere under it,
- * shut when it holds only files. That is the rule the page is for. The flows are what a reader came to find, while a
- * folder of data or documents is context they open when they want it, and a repository whose source folder carries a
- * drop-off area cannot unfold into thousands of rows on arrival. A search overrides it and opens everything, so a
- * match is never left hidden behind a collapsed folder.
- */
-function opensByDefault(folder: FolderNode, filtered: boolean): boolean {
-  return filtered || folder.pipelineCount > 0;
-}
-
-/** Every folder id currently expanded, which is the shape the tree primitive reads its expansion state in. */
-function expandedIds(node: FolderNode, isOpen: (folder: FolderNode) => boolean, into: Set<string>): Set<string> {
-  for (const child of node.folders) {
-    if (isOpen(child)) {
-      into.add(child.path);
-    }
-    expandedIds(child, isOpen, into);
-  }
-  return into;
 }
 
 /**
@@ -156,7 +134,7 @@ function FileLabel({ file }: { file: RepoTreeEntry }) {
  * other files appear under the folders that hold them, with the workbench tree's own keyboard navigation. A project
  * that holds a batch flow (kind: batch) can be run as a unit, so "Run project" triggers that wave-ordered run.
  *
- * `filtered` keys the collapsible so it remounts (and springs back open) when a search starts or clears, surfacing a
+ * `defaultOpen` keys the collapsible so it remounts (and springs back open) when a search starts or clears, surfacing a
  * matching flow in a project the user had collapsed. */
 export function ProjectGroup({
   project, rows, files = [], folders = [], repoId, filtered, defaultOpen = false, onOpen, onRunBatch,
@@ -170,6 +148,8 @@ export function ProjectGroup({
   /** The project's folder paths as the repository lists them, so a folder holding nothing still shows in the tree. */
   folders?: string[];
   repoId: string;
+  /** Whether the rows are what a search or a filter matched. The tree then holds only the folders on the way to them,
+   * so they all start open and no match is left behind a collapsed folder. */
   filtered: boolean;
   /** Whether the tree starts expanded. Projects stay collapsed so a repo with dozens of them reads as a folder
    * outline the user opens one at a time; a search passes true so every matching project springs open. */
@@ -177,9 +157,10 @@ export function ProjectGroup({
   onOpen: (pipelineId: string) => void;
   onRunBatch: (repoId: string, flowName: string) => void;
 }) {
-  // What the user has explicitly opened or closed, by folder path. Only the overrides are kept, never the whole
-  // expansion: the default is derived from the tree on every render, so a folder that arrives with a later query (the
-  // repository listing resolves after the catalog's flows) still opens correctly without being re-seeded.
+  // What the user has explicitly opened or closed, by folder path; every other folder is shut unless the rows are a
+  // search's matches (opensFolder). Only the overrides are kept, never the whole expansion, so a folder that arrives
+  // with a later query (the repository listing resolves after the catalog's flows) starts as the rest do without being
+  // re-seeded.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -189,17 +170,12 @@ export function ProjectGroup({
   const tree = buildFolderTree(project, rows, files, folders);
   const byId = new Map(rows.map((p) => [p.id, p]));
 
-  const isOpen = (folder: FolderNode) => overrides[folder.path] ?? opensByDefault(folder, filtered);
   const setOpen = (id: string, open: boolean) => setOverrides((current) => ({ ...current, [id]: open }));
 
   const treeState: TreeState = {
-    expanded: expandedIds(tree, isOpen, new Set<string>()),
+    expanded: expandedFolders(tree, overrides, filtered),
     setOpen,
-    toggle: (id) => setOverrides((current) => {
-      const folder = folderAt(tree, id);
-      const open = current[id] ?? (folder !== null && opensByDefault(folder, filtered));
-      return { ...current, [id]: !open };
-    }),
+    toggle: (id) => setOverrides((current) => ({ ...current, [id]: !opensFolder(current, id, filtered) })),
     selectedId,
     // Selecting a flow opens it; selecting a folder only moves the selection, because its own click already toggled it.
     select: (id) => {
@@ -211,7 +187,7 @@ export function ProjectGroup({
   };
 
   return (
-    <Collapsible key={`${project}:${filtered ? "filtered" : "all"}`} defaultOpen={defaultOpen}>
+    <Collapsible key={`${project}:${defaultOpen ? "open" : "shut"}`} defaultOpen={defaultOpen}>
       <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="repo-project">
         {/* The trigger spans the row up to the action button, so a nested button never sits inside it. */}
         <div className="flex items-center gap-2 pr-2">
@@ -265,18 +241,4 @@ export function ProjectGroup({
       </Card>
     </Collapsible>
   );
-}
-
-/** The folder a tree id names, for reading its default open state when the user toggles it the first time. */
-function folderAt(node: FolderNode, path: string): FolderNode | null {
-  for (const child of node.folders) {
-    if (child.path === path) {
-      return child;
-    }
-    const found = folderAt(child, path);
-    if (found !== null) {
-      return found;
-    }
-  }
-  return null;
 }

@@ -1,5 +1,5 @@
-import type { PipelineSummary, RepoTreeEntry } from "../../api/types";
-import { projectOf, ROOT_PROJECT } from "../repos/project";
+import type { PipelineSummary, RepoTreeEntry } from "../../api/types.ts";
+import { projectOf, ROOT_PROJECT } from "../repos/project.ts";
 
 /**
  * One folder of a project, with everything it directly holds and the folders under it. A project is a repository's
@@ -124,4 +124,31 @@ export function buildFolderTree(
   }
 
   return settle(root);
+}
+
+/**
+ * Whether a folder shows its contents: as the user last opened or closed it, else shut. A project opens onto its
+ * top-level folders and its own rows and is read a level at a time, the way a file browser reads a repository, since
+ * one that carries thousands of files beside its flows (a data drop, a folder per well) cannot unfold into all of them
+ * when its project opens. Only a tree of a search's or a filter's matches (`filtered`) starts with every folder open:
+ * it holds just the folders on the way to them, so no match is left behind a collapsed folder.
+ */
+export function opensFolder(overrides: Readonly<Record<string, boolean>>, path: string, filtered: boolean): boolean {
+  return overrides[path] ?? filtered;
+}
+
+/** Every folder of the tree that shows its contents (`opensFolder`), by path: the shape the tree primitive reads. */
+export function expandedFolders(
+  tree: FolderNode,
+  overrides: Readonly<Record<string, boolean>>,
+  filtered: boolean,
+  into: Set<string> = new Set<string>(),
+): Set<string> {
+  for (const child of tree.folders) {
+    if (opensFolder(overrides, child.path, filtered)) {
+      into.add(child.path);
+    }
+    expandedFolders(child, overrides, filtered, into);
+  }
+  return into;
 }

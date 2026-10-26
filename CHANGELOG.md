@@ -154,6 +154,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- A repo's folders stay shut until they are opened. Opening a project on a repo's page or the Pipelines page unfolded
+  every folder that held a flow, with every file beside it, so a repository keeping thousands of files beside its
+  flows listed them all; a project now opens onto its top-level folders, each opening one level at a time. A search
+  opens only the folders on the way to the rows it matched, and a project it matches by name opens with its folders shut
+  ([What a repository holds, and its page](docs/reference/concepts/control-plane.md#what-a-repository-holds-and-its-page)).
 - Every run says how long it took, whatever its flow kind. An ingestion run's duration was dropped because it is a
   fraction of a second, and a kind a host module registers reports none, so those runs showed when they ran and never
   how long. A run whose kind reports no duration is now timed from its start to its end, a run failed, cancelled or
