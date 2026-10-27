@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { branding } from "../modules/branding";
 import type { ModuleNavigation } from "../modules/registry";
+import { layOutMenu } from "./menuLayout";
 
 export interface NavItem {
   label: string;
@@ -191,9 +192,9 @@ export function navListing(group: NavGroup): NavListing[] {
   return parts.filter((part) => part.items.length > 0);
 }
 
-/** Every path that selects an entry: each entry's own and those it owns. */
-function claimedPaths(): string[] {
-  return allNavItems().flatMap((item) => [item.to, ...(item.owns ?? [])]);
+/** Every path that selects an entry, its own and those it owns: the listed entries' and those still to be placed. */
+function claimedPaths(unplaced: readonly NavItem[]): string[] {
+  return [...allNavItems(), ...unplaced].flatMap((item) => [item.to, ...(item.owns ?? [])]);
 }
 
 /**
@@ -255,15 +256,28 @@ export function routeTitle(pathname: string): { title: string; icon: LucideIcon 
 
 /**
  * Adds the navigation of the registered GUI modules: their groups and the sections they declare, their entries (into
- * existing groups or their own), and the initial titles of their detail routes. Called once by registerModules, before
- * the app renders; a group, section, entry or owned path that already exists, or an anchor or section that does not,
- * fails with a message naming the module.
+ * existing groups or their own), and the initial titles of their detail routes; then, when a module lays out the whole
+ * menu, lists every entry, SQLFlow's and the modules', where its layout says. Called once by registerModules, before
+ * the app renders; a group, section, entry or owned path that already exists, an anchor or section that does not, an
+ * entry without a group while no module lays out the menu, and a second module laying it out fail with a message
+ * naming the module.
  */
 export function extendNavigation(contributions: readonly ModuleNavigation[]): void {
+  const layouts = contributions.filter((contribution) => contribution.menu !== undefined);
+  if (layouts.length > 1) {
+    throw new Error(`GUI module '${layouts[1].moduleId}' lays out the menu, which module '${layouts[0].moduleId}' already lays out.`);
+  }
+
+  // The entries added without a group, which only the module laying out the menu places.
+  const unplaced: NavItem[] = [];
   for (const contribution of contributions) {
     const fail = (message: string): never => {
       throw new Error(`GUI module '${contribution.moduleId}' ${message}`);
     };
+
+    if (contribution.menu !== undefined && contribution.groups.length > 0) {
+      fail("adds navigation groups and lays out the menu, whose groups are the only ones listed.");
+    }
 
     for (const group of contribution.groups) {
       if (navGroups.some((existing) => existing.id === group.id)) {
@@ -307,14 +321,8 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
     }
 
     for (const item of contribution.items) {
-      const group = navGroups.find((existing) => existing.id === item.group)
-        ?? fail(`adds the navigation entry '${item.to}' to the group '${item.group}', which does not exist.`);
-      if (claimedPaths().includes(item.to)) {
+      if (claimedPaths(unplaced).includes(item.to)) {
         fail(`adds the navigation entry '${item.to}', which already exists.`);
-      }
-
-      if (item.section !== undefined && !(group.sections ?? []).some((section) => section.id === item.section)) {
-        fail(`places the navigation entry '${item.to}' in the section '${item.section}', which the group '${item.group}' does not declare.`);
       }
 
       const owns = [...(item.owns ?? [])];
@@ -323,7 +331,7 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
           fail(`gives the navigation entry '${item.to}' the path '${path}' to own, which is not a path below the root.`);
         }
 
-        if (path === item.to || claimedPaths().includes(path) || owns.indexOf(path) !== owns.lastIndexOf(path)) {
+        if (path === item.to || claimedPaths(unplaced).includes(path) || owns.indexOf(path) !== owns.lastIndexOf(path)) {
           fail(`gives the navigation entry '${item.to}' the path '${path}' to own, which an entry already has.`);
         }
       }
@@ -337,6 +345,29 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
         section: item.section,
         owns: owns.length > 0 ? owns : undefined,
       };
+      if (item.group === undefined) {
+        if (layouts.length === 0) {
+          fail(`adds the navigation entry '${item.to}' without a group, and no module lays out the menu.`);
+        }
+
+        if (item.section !== undefined || item.after !== undefined) {
+          fail(`places the navigation entry '${item.to}' in a section or after an entry without naming its group.`);
+        }
+
+        unplaced.push(entry);
+        continue;
+      }
+
+      if (contribution.menu !== undefined) {
+        fail(`adds the navigation entry '${item.to}' to the group '${item.group}', but lays out the menu, which places every entry.`);
+      }
+
+      const group = navGroups.find((existing) => existing.id === item.group)
+        ?? fail(`adds the navigation entry '${item.to}' to the group '${item.group}', which does not exist.`);
+      if (item.section !== undefined && !(group.sections ?? []).some((section) => section.id === item.section)) {
+        fail(`places the navigation entry '${item.to}' in the section '${item.section}', which the group '${item.group}' does not declare.`);
+      }
+
       if (item.after !== undefined) {
         const anchor = group.items.findIndex((existing) => existing.to === item.after);
         if (anchor < 0) {
@@ -353,4 +384,22 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
       detailTitles.push([detail.pattern, detail.title]);
     }
   }
+
+  const [owner] = layouts;
+  if (owner?.menu === undefined) {
+    return;
+  }
+
+  const laidOut = layOutMenu([...allNavItems(), ...unplaced], owner.menu, (message): never => {
+    throw new Error(`GUI module '${owner.moduleId}' ${message}`);
+  });
+  navGroups.splice(0, navGroups.length, ...laidOut.map(({ group, sections, items }): NavGroup => ({
+    id: group.id,
+    label: group.label,
+    icon: group.icon,
+    items,
+    sections: sections.length > 0 ? sections : undefined,
+    requiresScope: group.requiresScope,
+    bottom: group.bottom,
+  })));
 }

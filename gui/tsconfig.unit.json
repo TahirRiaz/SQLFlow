@@ -33,6 +33,7 @@
     "src/features/repos/gitCredential.ts",
     "src/features/repos/project.ts",
     "src/api/types.ts",
+    "src/layout/menuLayout.ts",
     "src/layout/workbench/sideBarStart.ts",
     "src/lib/codeLanguage.ts",
     "src/lib/runTiming.ts",

@@ -9,6 +9,7 @@ import type { LucideIcon } from "lucide-react";
 import { setModuleRequestHeaders } from "../api/client";
 import type { PipelineDetail, RunDetail, RunSummary, RunValue, SearchCategory } from "../api/types";
 import type { Column } from "../components/DataTable";
+import type { MenuGroupLayout, MenuLayout, MenuSectionLayout } from "../layout/menuLayout";
 import { extendNavigation } from "../layout/nav";
 import { registerCensus, type CensusSource } from "../lib/lsp/sqlflowLsp";
 import { installModuleBranding, type BrandingContribution } from "./branding";
@@ -59,10 +60,13 @@ export interface ModuleNavSection {
   label: string;
 }
 
-/** A navigation entry a module adds to an existing group or to one of its own groups. */
+/** A navigation entry a module adds to an existing group or to one of its own groups, or for a menu layout to place. */
 export interface ModuleNavItem {
-  /** The id of the group the entry belongs to (`operate`, `workspace`, or a group a module adds). */
-  group: string;
+  /**
+   * The id of the group the entry belongs to (`operate`, `workspace`, or a group a module adds). Omitted when a module
+   * lays out the whole menu (`GuiModule.menu`), which places the entry, and so does its `section` and `after`.
+   */
+  group?: string;
   label: string;
   to: string;
   icon: LucideIcon;
@@ -86,12 +90,26 @@ export interface ModuleDetailTitle {
   title: (match: RegExpMatchArray) => string;
 }
 
+/**
+ * The whole menu, laid out by a module: its groups in the order the activity bar and the side bar show them, the top ones
+ * first, each with the paths of the entries listed straight under it and its sections with theirs. It lists every entry,
+ * SQLFlow's and the modules', exactly once, and its groups are the only ones shown.
+ */
+export type ModuleMenu = MenuLayout<LucideIcon>;
+
+/** A group of a module's menu layout. */
+export type ModuleMenuGroup = MenuGroupLayout<LucideIcon>;
+
+/** A labelled part of a group of a module's menu layout. */
+export type ModuleMenuSection = MenuSectionLayout;
+
 /** Everything one module adds to the navigation, as the navigation model receives it. */
 export interface ModuleNavigation {
   moduleId: string;
   groups: readonly ModuleNavGroup[];
   items: readonly ModuleNavItem[];
   detailTitles: readonly ModuleDetailTitle[];
+  menu?: ModuleMenu;
 }
 
 /** A tab a kind adds to the pipeline detail page, ahead of the built-in tabs. */
@@ -300,6 +318,14 @@ export interface GuiModule {
   routes?: readonly ModuleRoute[];
   navGroups?: readonly ModuleNavGroup[];
   navItems?: readonly ModuleNavItem[];
+  /**
+   * The whole menu, for a product whose people work across SQLFlow's pages and its own: grouped by what they do there
+   * rather than by who added a page. At most one registered module may lay it out, and it adds no groups of its own
+   * (`navGroups`) and names no group on its entries. An entry it leaves out or lists twice, a path no entry has, and a
+   * group or section that lists nothing are refused at registration, so a page SQLFlow adds later cannot drop out of
+   * the menu unnoticed.
+   */
+  menu?: ModuleMenu;
   detailTitles?: readonly ModuleDetailTitle[];
   kinds?: readonly FlowKindContribution[];
   searchCategories?: readonly SearchCategoryContribution[];
@@ -491,6 +517,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
     groups: module.navGroups ?? [],
     items: module.navItems ?? [],
     detailTitles: module.detailTitles ?? [],
+    menu: module.menu,
   })));
   installModuleBranding(modules.flatMap((module) => (
     module.branding === undefined ? [] : [{ moduleId: module.id, branding: module.branding }]

@@ -221,7 +221,10 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   (`sqlflow.workbench.sections`, a section as `group/section`), so folding a group and opening it again
   shows its sections as they were left; before the browser keeps any, the menu starts expanded, or every
   group and section collapsed when a module asks (`GuiModule.sideBar.menuCollapsedOnFirstVisit`).
-  Entries of no section come first, straight under the group. SQLFlow's own groups declare none.
+  Entries of no section come first, straight under the group. SQLFlow's own groups declare none. A product
+  built on the workbench may lay out the whole menu instead (`GuiModule.menu`): its groups, sections and the
+  order of every entry, SQLFlow's and its own, by what its people do there rather than by who added a page;
+  the layout lists every entry once, so a page added later is refused at startup until it is placed.
   Selection follows the longest-prefix rule over each entry's path and the paths it owns (a page reached
   from the entry rather than from the menu, such as a builder opened from its list, lights that entry);
   the selected entry is the tree's selected row, announced as the current page (`aria-current="page"`).
