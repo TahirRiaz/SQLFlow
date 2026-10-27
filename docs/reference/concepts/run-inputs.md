@@ -147,8 +147,9 @@ member's document refuses (a required parameter the schedule does not give, say)
   reset back to it. As the operator types, the form asks the control plane to explain the run and shows each problem
   under its field, and the rest above the buttons; a run that would be refused cannot be started. A field left empty
   gives the run nothing, so the document's own value applies. Repeating a run opens the form with its values.
-- **Schedules** shows, on each schedule's row, the operation and values it gives its flows ("Runs with", or
-  `defaults` when it gives none); the cell and the values action open a sheet
+- **Schedules** marks, on each schedule's row, what it gives its flows ("Runs with": tinted when it gives an operation
+  or values, quiet when its flows run with their own defaults), with the operation and values on hover, where they can
+  be copied. The mark opens a sheet
   with the schedule's own operation and values and, for every member in wave order, each parameter's value and where
   it comes from (the schedule, the flow's default, not set, missing), its run settings, its note and what would refuse
   it. **Run now** lists the same line under each member and says before firing when a member's run would be refused.

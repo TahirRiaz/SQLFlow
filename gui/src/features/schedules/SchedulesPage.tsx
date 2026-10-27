@@ -20,6 +20,7 @@ import type { RunGroupCounts, RunStatus, Schedule } from "../../api/types";
 import { ComboBoxField } from "../../components/ComboBoxField";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CorrelationError } from "../../components/CorrelationError";
+import { ExplainTip } from "../../components/ExplainTip";
 import { FilterBar } from "../../components/FilterBar";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
@@ -84,40 +85,40 @@ function instantDetail(utc: string): string {
 }
 
 /**
- * What a schedule runs its flows with, in one cell: the operation and values it gives, the first of them in the cell and
- * every one on hover, or that its flows run with their own defaults. A click opens what each flow is given, read as a
- * fire applies the schedule.
+ * What a schedule runs its flows with, as one mark: tinted when the schedule gives an operation or values, quiet when its
+ * flows run with their own defaults. The values are on hover, where they can be copied, and a click opens what each flow
+ * is given, read as a fire applies the schedule. A mark rather than the values themselves, because a schedule giving a
+ * list widened the whole table past its panel.
  */
 function RunsWithCell({ schedule, onOpen }: { schedule: Schedule; onOpen: () => void }) {
   const parts = [
     ...(schedule.operation !== null ? [`operation ${schedule.operation}`] : []),
     ...scheduleValueAssignments(schedule.values),
   ];
-  const label = parts.length === 0 ? "defaults" : parts[0];
+  const given = parts.length > 0;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex max-w-[14rem] items-center gap-1 text-left"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen();
-          }}
-          data-testid="schedule-runs-with"
-        >
-          <span className={cn("min-w-0 truncate font-mono text-[12px]", parts.length === 0 ? "text-muted-foreground" : "text-primary hover:underline")}>
-            {label}
-          </span>
-          {parts.length > 1 && <span className="shrink-0 text-[11px] text-muted-foreground">{`+${parts.length - 1}`}</span>}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="whitespace-pre-line">
-        {parts.length === 0
-          ? "The schedule gives no operation and no values: each flow runs with its own defaults. Click to see what each is given."
-          : `${parts.join("\n")}\nClick to see what each flow is given.`}
-      </TooltipContent>
-    </Tooltip>
+    <ExplainTip
+      title={given ? "Runs with" : "Runs with defaults"}
+      text={given
+        ? parts.join("\n")
+        : "The schedule gives no operation and no values: each flow runs with its own defaults. Click for what each is given."}
+      testId="schedule-runs-with"
+      side="bottom"
+    >
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        aria-label={given ? `Runs with ${parts.join(", ")}` : "Runs with defaults"}
+        className={given ? "text-primary hover:text-primary" : "text-muted-foreground"}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen();
+        }}
+        data-testid="schedule-runs-with"
+      >
+        <SlidersHorizontal />
+      </Button>
+    </ExplainTip>
   );
 }
 
@@ -711,23 +712,6 @@ export default function SchedulesPage() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Run now (preview the waves, then start)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="What each flow is given"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setValuesTarget(row);
-                  }}
-                  data-testid="schedule-values"
-                >
-                  <SlidersHorizontal />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>What each flow is given when this schedule fires</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
