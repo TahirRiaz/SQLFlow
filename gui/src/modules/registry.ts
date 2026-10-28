@@ -209,6 +209,13 @@ export interface FlowKindContribution {
   /** Built-in pipeline tabs that say nothing about this kind (`transforms`, `files`). */
   hiddenPipelineTabs?: readonly string[];
   /**
+   * The order of the pipeline page's tabs, by value: the kind's own and the built-in ones it shows (`yaml`, `transforms`,
+   * `runs`, `files`, `schedules`, `definition`), so a kind's tabs and the built-in ones can sit together by what they are
+   * about. The tabs it names come first, in its order, and any it leaves out follow as they otherwise stand. Without it
+   * the kind's own tabs lead and the built-in ones follow.
+   */
+  pipelineTabOrder?: readonly string[];
+  /**
    * Built-in facts of the pipeline header that say nothing about this kind: `sourceServer`, `targetServer`, `batch`,
    * `wave`. The average file size needs no entry: it profiles the Files tab's history, so it goes with that tab.
    */

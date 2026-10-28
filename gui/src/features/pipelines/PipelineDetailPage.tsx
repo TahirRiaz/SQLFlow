@@ -38,6 +38,7 @@ import { kindContribution } from "../../modules/registry";
 import { projectOf } from "../repos/project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { hasCensus } from "../../lib/lsp/sqlflowLsp";
+import { orderPipelineTabs } from "./pipelineTabs";
 
 /** Definition JSON arrives as one compact string; pretty-print it, falling back to the raw text if malformed. */
 function prettyJson(raw: string): string {
@@ -374,6 +375,16 @@ function RunTimes({ pipelineId }: { pipelineId: string }) {
   );
 }
 
+/** The page's own tabs, in the order they stand when a flow kind asks for none. */
+const BUILT_IN_TABS: readonly { value: string; label: string; testId: string }[] = [
+  { value: "yaml", label: "YAML", testId: "pipeline-tab-yaml" },
+  { value: "transforms", label: "Transforms", testId: "pipeline-tab-transforms" },
+  { value: "runs", label: "Runs", testId: "pipeline-tab-runs" },
+  { value: "files", label: "Files", testId: "pipeline-tab-files" },
+  { value: "schedules", label: "Schedules", testId: "pipeline-tab-schedules" },
+  { value: "definition", label: "Definition", testId: "pipeline-tab-definition" },
+];
+
 const scheduleColumns: Column<Schedule>[] = [
   { id: "trigger", header: "Trigger", render: (row) => <Mono>{scheduleTrigger(row)}</Mono> },
   { id: "timezone", header: "Timezone", render: (row) => row.timezone },
@@ -474,10 +485,12 @@ export default function PipelineDetailPage() {
   const identity = flowKindIdentity(detail.kind);
   const shows = (builtInTab: string) => !(kind?.hiddenPipelineTabs ?? []).includes(builtInTab);
   const showsFact = (builtInFact: string) => !(kind?.hiddenPipelineFacts ?? []).includes(builtInFact);
-  const tabValues = [
-    ...(kind?.pipelineTabs ?? []).map((contributed) => contributed.value),
-    ...["yaml", "transforms", "runs", "files", "schedules", "definition"].filter(shows),
-  ];
+  // The kind's own tabs, then the built-in ones it shows, in the order the kind asks for.
+  const tabs = orderPipelineTabs([
+    ...(kind?.pipelineTabs ?? []).map((contributed) => ({ value: contributed.value, label: contributed.label, testId: contributed.testId })),
+    ...BUILT_IN_TABS.filter((tab) => shows(tab.value)),
+  ], kind?.pipelineTabOrder);
+  const tabValues = tabs.map((tab) => tab.value);
   const defaultTab = kind?.defaultPipelineTab !== undefined && tabValues.includes(kind.defaultPipelineTab)
     ? kind.defaultPipelineTab
     : tabValues[0] ?? "yaml";
@@ -668,17 +681,11 @@ export default function PipelineDetailPage() {
 
       <Tabs value={activeTab} onValueChange={selectTab}>
         <TabsList data-testid="pipeline-tabs">
-          {(kind?.pipelineTabs ?? []).map((contributed) => (
-            <TabsTrigger key={contributed.value} value={contributed.value} data-testid={contributed.testId}>
-              {contributed.label}
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} data-testid={tab.testId}>
+              {tab.label}
             </TabsTrigger>
           ))}
-          {shows("yaml") && <TabsTrigger value="yaml" data-testid="pipeline-tab-yaml">YAML</TabsTrigger>}
-          {shows("transforms") && <TabsTrigger value="transforms" data-testid="pipeline-tab-transforms">Transforms</TabsTrigger>}
-          {shows("runs") && <TabsTrigger value="runs" data-testid="pipeline-tab-runs">Runs</TabsTrigger>}
-          {shows("files") && <TabsTrigger value="files" data-testid="pipeline-tab-files">Files</TabsTrigger>}
-          {shows("schedules") && <TabsTrigger value="schedules" data-testid="pipeline-tab-schedules">Schedules</TabsTrigger>}
-          {shows("definition") && <TabsTrigger value="definition" data-testid="pipeline-tab-definition">Definition</TabsTrigger>}
         </TabsList>
 
         {(kind?.pipelineTabs ?? []).map((contributed) => (

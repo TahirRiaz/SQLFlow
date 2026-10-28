@@ -30,6 +30,7 @@
     "src/features/maintenance/storageText.ts",
     "src/features/nodes/scalingMode.ts",
     "src/features/pipelines/folderTree.ts",
+    "src/features/pipelines/pipelineTabs.ts",
     "src/features/repos/gitCredential.ts",
     "src/features/repos/project.ts",
     "src/api/types.ts",
