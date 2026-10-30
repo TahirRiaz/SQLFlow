@@ -8,7 +8,7 @@
   ],
   "repository": {
     "flowtype": {
-      "match": "^(flowType)\\s*(:)\\s*(ing|exp|sp|inv|hc|scm|batch)\\b",
+      "match": "^(flowType)\\s*(:)\\s*([\\w-]+)",
       "captures": {
         "1": { "name": "keyword.control.flowtype.sqlflow" },
         "2": { "name": "punctuation.separator.key-value.sqlflow" },

@@ -1,25 +1,54 @@
 import * as vscode from 'vscode';
-import { AuthError, ControlPlaneClient, DataStream, Pipeline, Repo, Run, Schedule } from '../api/controlPlaneClient';
+import { DataStream, Estate, Pipeline, Repo, RepoSource, Run, Schedule } from '../mcp/estate';
+import { SignInNeeded } from '../mcp/toolAnswer';
 
-/** Unwrap either a PagedResult<T> or a bare T[] into T[]. */
-function items<T>(result: { items: T[] } | T[]): T[] {
-    return Array.isArray(result) ? result : result.items;
-}
-
-/** A leaf node shown when the catalog cannot be loaded (e.g. not signed in). */
-function messageNode(label: string, command?: vscode.Command): vscode.TreeItem {
+/** A leaf node shown when a view has nothing to list, or cannot read it (e.g. not signed in). */
+export function messageNode(label: string, command?: vscode.Command): vscode.TreeItem {
     const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
     item.command = command;
     item.iconPath = new vscode.ThemeIcon('info');
     return item;
 }
 
+/** What a view shows in place of what it could not read. */
+export function errorNode(err: unknown): vscode.TreeItem {
+    if (err instanceof SignInNeeded) {
+        return messageNode('Sign in to view…', { command: 'sqlflow.signIn', title: 'Sign In' });
+    }
+    const item = messageNode(err instanceof Error ? err.message : String(err));
+    item.iconPath = new vscode.ThemeIcon('error');
+    return item;
+}
+
+/** How long ago an instant was, the way a person says it. */
+export function ago(utc: string | null | undefined): string {
+    if (!utc) {
+        return '';
+    }
+    const seconds = Math.round((Date.now() - Date.parse(utc)) / 1000);
+    if (Number.isNaN(seconds)) {
+        return '';
+    }
+    if (seconds < 90) {
+        return 'just now';
+    }
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 90) {
+        return `${minutes}m ago`;
+    }
+    const hours = Math.round(minutes / 60);
+    return hours < 36 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
+}
+
 export class RepoNode extends vscode.TreeItem {
-    constructor(public readonly repo: Repo) {
+    constructor(public readonly repo: Repo, public readonly source: RepoSource | undefined) {
         super(repo.name ?? repo.id, vscode.TreeItemCollapsibleState.Collapsed);
-        this.contextValue = 'repo';
-        this.iconPath = new vscode.ThemeIcon('repo');
+        this.contextValue = source ? 'repo-synced' : 'repo';
+        this.iconPath = new vscode.ThemeIcon(source?.lastError ? 'warning' : source?.syncPending ? 'sync~spin' : 'repo');
         this.id = `repo:${repo.id}`;
+        const commit = source?.lastSyncedSha?.slice(0, 8);
+        this.description = [commit, source?.branch, ago(source?.lastSyncUtc ?? repo.lastSyncUtc)].filter(Boolean).join(' · ');
+        this.tooltip = source?.lastError ? `The last sync failed: ${source.lastError}` : undefined;
     }
 }
 
@@ -38,7 +67,7 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
     private readonly emitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.emitter.event;
 
-    constructor(private readonly client: ControlPlaneClient) {}
+    constructor(private readonly estate: Estate) {}
 
     refresh(): void {
         this.emitter.fire();
@@ -51,13 +80,13 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
         try {
             if (!element) {
-                const repos = items(await this.client.listRepos());
-                return repos.length ? repos.map((r) => new RepoNode(r)) : [messageNode('No repositories synced yet.')];
+                const [repos, sources] = await Promise.all([this.estate.repos(), this.estate.repoSources()]);
+                return repos.length
+                    ? repos.map((r) => new RepoNode(r, sources.find((s) => s.name === r.name || (s.remoteUrl && s.remoteUrl === r.remoteUrl))))
+                    : [messageNode('No repositories synced yet.')];
             }
             if (element instanceof RepoNode) {
-                const pipelines = items(await this.client.listPipelines({ repoId: element.repo.id }));
-                // Stamp the owning repo so a run can be triggered straight from the node.
-                pipelines.forEach((p) => (p.repoId = p.repoId ?? element.repo.id));
+                const pipelines = await this.estate.pipelines({ repoId: element.repo.id });
                 return pipelines.length ? pipelines.map((p) => new PipelineNode(p)) : [messageNode('No flows in this repository.')];
             }
             return [];
@@ -70,20 +99,26 @@ export class CatalogTreeProvider implements vscode.TreeDataProvider<vscode.TreeI
 export class RunNode extends vscode.TreeItem {
     constructor(public readonly run: Run) {
         super(run.flowName ?? run.runId, vscode.TreeItemCollapsibleState.None);
-        const active = run.status === 'queued' || run.status === 'running';
+        const active = isActive(run);
         this.contextValue = active ? 'run-active' : 'run';
-        this.description = run.status;
+        this.description = [run.status, run.operation, ago(run.endUtc ?? run.startUtc ?? run.writtenUtc)].filter(Boolean).join(' · ');
         this.iconPath = new vscode.ThemeIcon(statusIcon(run.status));
-        this.tooltip = `${run.flowName ?? ''}\nstatus: ${run.status}\nstarted: ${run.startedUtc ?? '-'}`;
-        this.command = { command: 'sqlflow.openRun', title: 'Open', arguments: [this] };
+        this.tooltip = `${run.flowName ?? ''}\nstatus: ${run.status}\nstarted: ${run.startUtc ?? '-'}${run.error ? `\n\n${run.error}` : ''}`;
+        this.command = { command: 'sqlflow.openRun', title: 'Open', arguments: [run.runId] };
     }
+}
+
+/** Whether a run is still under way. */
+export function isActive(run: Run): boolean {
+    return run.status === 'queued' || run.status === 'running';
 }
 
 export class RunsTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     private readonly emitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.emitter.event;
+    private timer: NodeJS.Timeout | undefined;
 
-    constructor(private readonly client: ControlPlaneClient) {}
+    constructor(private readonly estate: Estate) {}
 
     refresh(): void {
         this.emitter.fire();
@@ -94,9 +129,14 @@ export class RunsTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem
     }
 
     async getChildren(): Promise<vscode.TreeItem[]> {
+        clearTimeout(this.timer);
         try {
             const limit = vscode.workspace.getConfiguration('sqlflow').get<number>('runResultLimit', 50);
-            const runs = items(await this.client.listRuns({ pageSize: limit }));
+            const runs = await this.estate.runs({ pageSize: limit });
+            // A list with a run under way keeps itself current until nothing is.
+            if (runs.some(isActive)) {
+                this.timer = setTimeout(() => this.refresh(), 5000);
+            }
             return runs.length ? runs.map((r) => new RunNode(r)) : [messageNode('No runs yet.')];
         } catch (err) {
             return [errorNode(err)];
@@ -108,7 +148,7 @@ export class SchedulesTreeProvider implements vscode.TreeDataProvider<vscode.Tre
     private readonly emitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.emitter.event;
 
-    constructor(private readonly client: ControlPlaneClient) {}
+    constructor(private readonly estate: Estate) {}
 
     refresh(): void {
         this.emitter.fire();
@@ -120,7 +160,7 @@ export class SchedulesTreeProvider implements vscode.TreeDataProvider<vscode.Tre
 
     async getChildren(): Promise<vscode.TreeItem[]> {
         try {
-            const schedules = items(await this.client.listSchedules());
+            const schedules = await this.estate.schedules();
             return schedules.length
                 ? schedules.map((s) => new ScheduleNode(s))
                 : [messageNode('No schedules configured.')];
@@ -136,6 +176,8 @@ export class ScheduleNode extends vscode.TreeItem {
         this.description = [schedule.cron, schedule.paused ? 'paused' : undefined].filter(Boolean).join(' · ');
         this.iconPath = new vscode.ThemeIcon(schedule.paused ? 'debug-pause' : 'watch');
         this.contextValue = 'schedule';
+        this.tooltip = `Next: ${schedule.nextFireUtc ?? '-'}\nLast: ${schedule.lastFireUtc ?? '-'}`;
+        this.command = { command: 'sqlflow.showSchedulePlan', title: 'Open', arguments: [this] };
     }
 }
 
@@ -165,7 +207,7 @@ export class DataStreamsTreeProvider implements vscode.TreeDataProvider<vscode.T
     private readonly emitter = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this.emitter.event;
 
-    constructor(private readonly client: ControlPlaneClient) {}
+    constructor(private readonly estate: Estate) {}
 
     refresh(): void {
         this.emitter.fire();
@@ -180,7 +222,7 @@ export class DataStreamsTreeProvider implements vscode.TreeDataProvider<vscode.T
             const config = vscode.workspace.getConfiguration('sqlflow');
             const days = config.get<number>('dataStreamWindowDays', 60);
             const showHealthy = config.get<boolean>('dataStreamShowHealthy', false);
-            const board = await this.client.listDataStreams({ days });
+            const board = await this.estate.dataStreams(days);
 
             const listed = showHealthy
                 ? board.streams
@@ -254,16 +296,7 @@ function streamColor(severity: DataStream['severity']): vscode.ThemeColor | unde
     }
 }
 
-function errorNode(err: unknown): vscode.TreeItem {
-    if (err instanceof AuthError) {
-        return messageNode('Sign in to view…', { command: 'sqlflow.signIn', title: 'Sign In' });
-    }
-    const item = messageNode(err instanceof Error ? err.message : String(err));
-    item.iconPath = new vscode.ThemeIcon('error');
-    return item;
-}
-
-function statusIcon(status: string): string {
+export function statusIcon(status: string): string {
     switch (status) {
         case 'succeeded':
             return 'pass';

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DataStream } from '../api/controlPlaneClient';
+import { DataStream } from '../mcp/estate';
 
 interface SeriesPoint {
     date: string;
@@ -92,7 +92,6 @@ export class DataStreamPanel {
             { viewColumn: column, preserveFocus: true },
             { enableScripts: true, retainContextWhenHidden: true }
         );
-        panel.iconPath = new vscode.ThemeIcon('pulse');
         panel.webview.html = render(panel.webview, stream, windowDays);
 
         const instance = new DataStreamPanel(panel);

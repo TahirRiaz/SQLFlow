@@ -1,4 +1,5 @@
 .vscode/**
+test/**
 src/**
 node_modules/**
 esbuild.mjs

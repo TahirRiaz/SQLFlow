@@ -10,7 +10,7 @@ reference corpus under [`../docs/reference`](../docs/reference).
 | [`sqlflow-lang`](sqlflow-lang) | Rust (lib) | Protocol-free analysis engine: parses `.flow.yaml`, resolves cursor→path against the key census, and produces completion / hover / diagnostics / document symbols / code actions. |
 | [`sqlflow-lsp`](sqlflow-lsp) | Rust (bin) | Language Server Protocol server over stdio, a thin shell over `sqlflow-lang`. |
 | [`sqlflow-mcp`](sqlflow-mcp) | Rust (lib + bin) | Model Context Protocol server: the embedded reference corpus (doc tools) plus a live proxy over the control plane's `/api/v1` surface (catalog, lineage, runs, schedules, search) with device-flow auth. A library a host composes with modules of its own; the binary is that library run with none. |
-| [`sqlflow-vscode`](sqlflow-vscode) | TypeScript | VSCode extension: registers the `.flow.yaml` language, launches the LSP, browses the catalog / runs / schedules, triggers runs, searches the bundled docs, and generates MCP registration snippets. |
+| [`sqlflow-vscode`](sqlflow-vscode) | TypeScript (lib + extension) | VSCode extension: recognises pipeline documents by their content, launches the LSP, reads the estate through the MCP server and shares its browser sign-in, follows runs, searches the bundled docs, and registers the server with the editor's assistants. A library a host composes with modules of its own; its extension is that library with none. |
 
 The design mirrors DeltaForge's protocol/analysis split, but SQLFlow authors
 **YAML flow documents** (not SQL), so the analysis engine is driven by the
@@ -63,7 +63,56 @@ npm run bundle          # or: npm run package   (produces a .vsix)
 browser works offline) and stages the built `sqlflow-lsp` / `sqlflow-mcp`
 binaries into `bin/`. The extension also discovers binaries from
 `../target/{release,debug}` when run from a checkout, or from the
-`sqlflow.lspBinaryPath` / `sqlflow.mcpBinaryPath` settings.
+`sqlflow.lspBinaryPath` / `sqlflow.mcpBinaryPath` settings, which a workspace
+cannot set: only the person's own settings name a program it runs.
+
+## The VSCode extension
+
+The extension is a client of the MCP server: every view, panel and command reads through the server's tools, so it
+sees what an assistant sees, under the same rules, and it holds no REST client. It starts the program on first use and
+signs in through its `login` tool: the browser opens the control plane's approval, which goes on to the GUI, so an account
+that signs in with Microsoft Entra approves there. The server keeps the session, and an assistant registered with the same
+program shares it. The extension registers the server with VS Code's own assistants, once per mode, and
+**Connect an AI Assistant** prints another client's registration from the server's `install`.
+
+A YAML file is a pipeline document by what it holds (`src/documents/recognition.ts`, which follows
+`FlowDocumentRecognition` and the engine's document kinds), since a repository's flows are plain `*.yaml` files. What one
+file cannot know, such as the schedule a flow joins or the connections other flows use, comes from
+`src/editor/references.ts`, which reads the workspace and the estate.
+
+A product composes the extension as it composes the MCP server. `src/host.ts` is the library; a host is a package of its
+own that compiles these sources in place and calls `activateHost`:
+
+```ts
+export async function activate(context: vscode.ExtensionContext) {
+    return activateHost(context, {
+        product: 'Widget',
+        mcp: { program: 'widget-mcp', statePrefix: 'widget-mcp', providerId: 'widget.mcp', searchPaths: () => [] },
+        lspSearchPaths: () => [],
+        censusDirectories: (extensionPath) => [path.join(extensionPath, 'dist', 'census')],
+        docCorpora: (extensionPath) => [path.join(extensionPath, 'dist', 'reference')],
+        skeletons: [],
+        cliVerbs: [],
+        modules: [widgetModule],
+    });
+}
+```
+
+| A module adds | With | What it gets |
+| --- | --- | --- |
+| Sections of the Document view | `documentView.register` | Rows about the document in the editor, read when opened. |
+| References | `references.register` | What a key may hold and the file a value refers to, as completion, links and go to definition. |
+| Lenses | `lenses.register` | Actions at the top of a document. |
+| Commands | `command` | A command that reads the estate: a failure is shown, a missing sign-in offers one. |
+| A run's panel and form | `addRunSections`, `addRunParameters` | What it knows of a run of its kinds. |
+
+VS Code reads a manifest as a file, so a host's `package.json` restates what this one contributes under the same `sqlflow.*`
+ids, and a host's extension replaces this one rather than sitting beside it.
+
+```sh
+npm run compile   # type check
+npm test          # the unit tests, which need no editor
+```
 
 ## Test
 

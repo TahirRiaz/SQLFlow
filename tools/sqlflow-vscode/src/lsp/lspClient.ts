@@ -10,12 +10,20 @@ import {
 
 let client: LanguageClient | undefined;
 
+/** Where the language server runs from, and what a host adds to what it knows. */
+export interface LspOptions {
+    /** Folders that may hold a build, beside the setting and `bin/`. */
+    searchPaths: string[];
+    /** The key census files of the flow kinds and documents the host's modules add. */
+    censusDirectories: string[];
+}
+
 /**
  * Resolve the sqlflow-lsp binary: the `sqlflow.lspBinaryPath` setting first,
- * then the bundled `bin/` copy, then the debug build under the Cargo target
- * (so the extension works from a checkout without a packaging step).
+ * then the bundled `bin/` copy, then the host's build folders (so the extension
+ * works from a checkout without a packaging step).
  */
-function findLspBinary(context: vscode.ExtensionContext): string | null {
+function findLspBinary(context: vscode.ExtensionContext, options: LspOptions): string | null {
     const explicit = vscode.workspace.getConfiguration('sqlflow').get<string>('lspBinaryPath', '');
     if (explicit && fs.existsSync(explicit)) {
         return explicit;
@@ -23,8 +31,7 @@ function findLspBinary(context: vscode.ExtensionContext): string | null {
     const exe = process.platform === 'win32' ? 'sqlflow-lsp.exe' : 'sqlflow-lsp';
     const candidates = [
         path.join(context.extensionPath, 'bin', exe),
-        path.join(context.extensionPath, '..', 'target', 'release', exe),
-        path.join(context.extensionPath, '..', 'target', 'debug', exe),
+        ...options.searchPaths.map((folder) => path.join(folder, exe)),
     ];
     return candidates.find((p) => fs.existsSync(p)) ?? null;
 }
@@ -36,9 +43,10 @@ function findLspBinary(context: vscode.ExtensionContext): string | null {
  */
 export async function startLspClient(
     context: vscode.ExtensionContext,
-    output: vscode.LogOutputChannel
+    output: vscode.LogOutputChannel,
+    options: LspOptions
 ): Promise<boolean> {
-    const binary = findLspBinary(context);
+    const binary = findLspBinary(context, options);
     if (!binary) {
         output.warn('[lsp] sqlflow-lsp binary not found; language features disabled. Build with: cargo build -p sqlflow-lsp');
         return false;
@@ -62,6 +70,7 @@ export async function startLspClient(
             { scheme: 'file', language: 'sqlflow-flow' },
             { scheme: 'untitled', language: 'sqlflow-flow' },
         ],
+        initializationOptions: { censusDirectories: options.censusDirectories },
         outputChannel: output,
     };
 
