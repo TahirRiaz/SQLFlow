@@ -189,11 +189,18 @@ public static class RunEndpoints
     private static async Task<Ok<PagedResult<RunSummaryDto>>> ListRunsAsync(
         CatalogDbContext db, Guid? repoId, Guid? pipelineId, string? flowKind, string? status, bool? success,
         string? flowName, string? batch, Guid? scheduleId, Guid? groupId, bool? latest, DateTime? from, DateTime? to,
-        int? page, int? pageSize, CancellationToken ct)
+        int? page, int? pageSize, Guid? runId, CancellationToken ct)
     {
         var (p, size) = PageRequest.Normalize(page, pageSize);
 
         var query = db.Runs.AsNoTracking().AsQueryable();
+
+        // A run asked for by its id: the board's search box given an id copied from a log.
+        if (runId is { } one)
+        {
+            query = query.Where(x => x.RunId == one);
+        }
+
         if (repoId is { } r)
         {
             query = query.Where(x => x.RepoId == r);

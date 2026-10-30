@@ -109,6 +109,61 @@ public sealed class RunTimeWindowApiTests
         }
     }
 
+    [SkippableFact]
+    public async Task RunsApi_RunId_FindsThatRunAlone()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoName = "cp_run_id_" + suffix;
+        var repoId = FlowIdentity.FromName(repoName);
+        var flowName = "cp_run_id_flow_" + suffix;
+        var pipelineId = CatalogIdentity.Pipeline(repoId, flowName);
+        var anchor = new DateTime(2026, 3, 10, 12, 0, 0, DateTimeKind.Utc);
+        var older = Guid.CreateVersion7();
+        var newer = Guid.CreateVersion7();
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Repos.Add(new CatalogRepo
+                {
+                    Id = repoId,
+                    Name = repoName,
+                    RemoteUrl = null,
+                    RootPath = "/tmp/" + repoName,
+                    FirstSeenUtc = anchor,
+                    LastSyncUtc = anchor,
+                });
+                db.Pipelines.Add(SeedPipeline(pipelineId, repoId, flowName, anchor));
+                db.Runs.Add(SeedRun(older, pipelineId, repoId, flowName, anchor.AddDays(-20)));
+                db.Runs.Add(SeedRun(newer, pipelineId, repoId, flowName, anchor));
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var token = await IssueReadTokenAsync(client);
+
+            var found = await GetJsonAsync<PagedResult<RunSummaryDto>>(client, token, $"/api/v1/runs?runId={older}");
+            Assert.Equal(older, Assert.Single(found.Items).RunId);
+            Assert.Equal(1, found.Total);
+
+            var none = await GetJsonAsync<PagedResult<RunSummaryDto>>(client, token, $"/api/v1/runs?runId={Guid.NewGuid()}");
+            Assert.Empty(none.Items);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.Runs.Where(r => r.PipelineId == pipelineId).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.Id == pipelineId).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
+        }
+    }
+
     private static string Iso(DateTime utc)
         => Uri.EscapeDataString(utc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture));
 

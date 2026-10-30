@@ -41,6 +41,9 @@ function numCell(value: number | null | undefined) {
 // The identity columns lead every layout; the data-impact columns (files read, rows loaded / inserted / updated)
 // trail it. Pool and commit are omitted here on purpose: they are per-run plumbing details that live on the run
 // detail page, not signal an operator scans a run board for.
+/** A run id, wherever it sits in the text: a value copied from a log carries one among other words. */
+const RUN_ID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
 const statusColumn: Column<RunSummary> = {
   id: "status",
   header: "Status",
@@ -417,6 +420,9 @@ export default function RunsPage() {
     [scheduleByPipeline],
   );
 
+  // One run is shown as a row of its own, never folded inside its schedule's group.
+  const findsOneRun = RUN_ID.test(flowName);
+
   return (
     <Page data-testid="page-runs">
       <PageHeader
@@ -436,7 +442,7 @@ export default function RunsPage() {
         <Input
           value={flowNameInput}
           onChange={(e) => setFlowNameInput(e.target.value)}
-          placeholder="Flow name"
+          placeholder="Flow name or run id"
           aria-label="Flow name"
           data-testid="filter-flow-name"
           className={cn("h-8 w-44", flowNameInput !== "" && activeFilterClass)}
@@ -514,23 +520,28 @@ export default function RunsPage() {
 
       <PagedTable
         queryKey={["runs", "list", status, flowName, kind, batch, scheduleId, view, grouped]}
-        fetchPage={(page, pageSize) =>
-          runApi.list({
-            status: status ?? undefined,
-            flowName: flowName === "" ? undefined : flowName,
-            flowKind: kind === "all" ? undefined : kind,
-            batch: batch === "" ? undefined : batch,
-            scheduleId: scheduleId === "" ? undefined : scheduleId,
-            latest: view === "last" || undefined,
-            page,
-            pageSize,
-          })}
-        columns={[...(grouped ? baseColumns : flatColumns), ...kindColumns]}
+        fetchPage={(page, pageSize) => {
+          // An id names one run, whichever filters are set and however old it is.
+          const runId = RUN_ID.exec(flowName)?.[0];
+          return runApi.list(runId === undefined
+            ? {
+              status: status ?? undefined,
+              flowName: flowName === "" ? undefined : flowName,
+              flowKind: kind === "all" ? undefined : kind,
+              batch: batch === "" ? undefined : batch,
+              scheduleId: scheduleId === "" ? undefined : scheduleId,
+              latest: view === "last" || undefined,
+              page,
+              pageSize,
+            }
+            : { runId, page, pageSize });
+        }}
+        columns={[...(grouped && !findsOneRun ? baseColumns : flatColumns), ...kindColumns]}
         rowKey={(row) => row.runId}
         onRowClick={(row) => navigate(`/runs/${row.runId}`)}
         pollMs={5000}
         emptyMessage="No runs match the current filters."
-        grouping={grouped ? grouping : undefined}
+        grouping={grouped && !findsOneRun ? grouping : undefined}
         data-testid="runs-table"
       />
 

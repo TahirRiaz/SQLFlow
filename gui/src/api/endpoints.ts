@@ -229,6 +229,8 @@ export interface RunListQuery extends PageQuery {
   scheduleId?: string;
   /** Keep only this run group's members (the group view), returned in wave order. */
   groupId?: string;
+  /** Keep only the run with this id (the board's search box given a run id). */
+  runId?: string;
   /** Keep only each pipeline's newest run (the batch status board); status filters apply to that latest run. */
   latest?: boolean;
   /** Inclusive lower bound on WrittenUtc (ISO 8601, UTC): the schedules timeline reads runs by day. */
