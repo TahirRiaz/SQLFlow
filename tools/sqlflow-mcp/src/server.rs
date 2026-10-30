@@ -1536,14 +1536,45 @@ fn annotate_search_all(value: &mut Value, query: &str) {
     }
 }
 
-/// The `sqlflow` CLI executable the discover tool shells out to: `SQLFLOW_CLI` when
-/// set (a full path), otherwise `sqlflow` resolved from `PATH`.
+/// The `sqlflow` CLI executable: `SQLFLOW_CLI` when set (a full path), else the one packaged beside this program, as an
+/// editor's extension ships them, otherwise `sqlflow` resolved from `PATH`.
 fn sqlflow_cli_command() -> String {
     match std::env::var("SQLFLOW_CLI") {
         Ok(path) if !path.trim().is_empty() => path,
-        _ => "sqlflow".to_string(),
+        _ => cli_beside_this_program().unwrap_or_else(|| "sqlflow".to_string()),
     }
 }
+
+/// Where a command resolves to, found rather than run: a path as it stands, a bare name along `paths`.
+fn resolve_command(command: &str, paths: impl Iterator<Item = std::path::PathBuf>) -> Option<String> {
+    let given = std::path::Path::new(command);
+    if given.components().count() > 1 {
+        return given.is_file().then(|| command.to_string());
+    }
+    let names = if cfg!(windows) {
+        vec![format!("{command}.exe"), format!("{command}.cmd")]
+    } else {
+        vec![command.to_string()]
+    };
+    paths
+        .flat_map(|folder| names.iter().map(|name| folder.join(name)).collect::<Vec<_>>())
+        .find(|candidate| candidate.is_file())
+        .map(|found| found.to_string_lossy().into_owned())
+}
+
+fn cli_beside_this_program() -> Option<String> {
+    let program = std::env::current_exe().ok()?;
+    let cli = program.parent()?.join(if cfg!(windows) { "sqlflow.exe" } else { "sqlflow" });
+    cli.is_file().then(|| cli.to_string_lossy().into_owned())
+}
+
+/// How an assistant scripts with the command line, carried on the answer rather than only in the instructions, since a
+/// client may cut those short.
+const CLI_CONVENTIONS: &str = "It signs in with this server's own sign-in, per control plane, so a script needs no token. \
+Add --json for an answer to read rather than a person's text; get_doc_by_cli_command gives a verb's page. Run a verb that \
+writes (run, trigger, cancel, or anything else that changes the estate) only when the person asked for that action. \
+`preview` and `values` print row values, which reach you and your model provider, so run those only when the person asks \
+for them too.";
 
 /// Runs the `sqlflow` CLI with the given arguments and returns its stdout on success.
 /// The child is spawned on a blocking thread (the workspace tokio build omits the
@@ -2918,6 +2949,36 @@ flows connect to'. It reads no datasource and holds no secret."
     )]
     async fn list_datasources(&self, Parameters(_): Parameters<EmptyInput>) -> String {
         self.get("/api/v1/datasources", &[]).await
+    }
+
+    #[tool(
+        description = "List the AI contexts the repositories' files propose, and where each stands: its status, the version \
+its file proposes and the version approved, who approved it, how many of its tables are served, and its problems. Use it \
+for 'is this context approved', 'why does the assistant not see this table'. Deciding what an assistant may use is a \
+governance decision, so this needs the 'admin' scope, and it decides nothing."
+    )]
+    async fn list_ai_contexts(&self, Parameters(_): Parameters<EmptyInput>) -> String {
+        self.get("/api/v1/powerai/ai-contexts", &[]).await
+    }
+
+    #[tool(
+        description = "The `sqlflow` command line on this machine: where it is, and how to script with it. Use it when a \
+script does the job better than a tool: checking every file of a working copy (`validate .`), a flow's preflight \
+(`check`), or steps run in a row. Returns its path, or how to get it."
+    )]
+    async fn get_cli(&self, Parameters(_): Parameters<EmptyInput>) -> String {
+        if self.http_mode {
+            return "This server runs as a service, so a command line beside it is not on the person's machine.".to_string();
+        }
+        let command = sqlflow_cli_command();
+        let on_path = std::env::var_os("PATH").map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>()).unwrap_or_default();
+        match resolve_command(&command, on_path.into_iter()) {
+            Some(path) => json_str(&json!({ "path": path, "conventions": CLI_CONVENTIONS })),
+            None => format!(
+                "Error: the `sqlflow` command line was not found (looked for '{command}'). Install the editor's extension, \
+                 which carries it, or set SQLFLOW_CLI to the full path of the executable."
+            ),
+        }
     }
 
     #[tool(description = "Get the dashboard summary rollup (repos, pipelines, runs, health).")]
@@ -4527,6 +4588,8 @@ OFFLINE (always available):
   For ANY question about a SQLFlow CLI command, a `.flow.yaml` key, a source type, or a concept,
   search the docs FIRST and cite the page id; do not answer from memory.
 - Flow language: validate_flow (parse + census diagnostics), list_flow_kinds, list_flow_keys, describe_flow_key.
+- Scripting: get_cli says where the `sqlflow` command line is on this machine and how to use it, for what a script does
+  better than a tool. It shares this server's sign-in.
   Before returning any `.flow.yaml` you authored or edited, run validate_flow and fix what it reports.
 ";
 
@@ -4747,6 +4810,21 @@ distinct product from DeltaForge; use these tools and the embedded corpus as the
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_command_is_found_as_a_path_or_along_the_folders_given() {
+        let folder = std::env::temp_dir().join(format!("sqlflow-mcp-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let program = folder.join(if cfg!(windows) { "probe-cli.exe" } else { "probe-cli" });
+        std::fs::write(&program, b"").unwrap();
+        let path = program.to_string_lossy().into_owned();
+
+        assert_eq!(resolve_command(&path, std::iter::empty()), Some(path.clone()));
+        assert_eq!(resolve_command("probe-cli", std::iter::once(folder.clone())), Some(path));
+        assert_eq!(resolve_command("probe-cli", std::iter::empty()), None);
+        assert_eq!(resolve_command(&folder.join("gone").to_string_lossy(), std::iter::empty()), None);
+        std::fs::remove_dir_all(&folder).unwrap();
+    }
 
     #[test]
     fn the_key_tools_read_a_library_document_and_refuse_one_no_census_describes() {
