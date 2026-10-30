@@ -1,25 +1,57 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
+using SqlFlow.ControlPlane.Configuration;
 
 namespace SqlFlow.ControlPlane.Security;
 
 /// <summary>
-/// Serves the self-contained device-approval page at <c>GET /device</c>, the <c>verificationUri</c> advertised by
-/// the device-authorization grant. It signs the user in against <c>/api/v1/auth/login</c> and then calls
-/// <c>/api/v1/auth/device/approve</c> with the entered code, so a human can approve a headless client (the MCP
-/// server) without any separate front-end deployment. The page is inlined and has no external dependencies.
+/// Serves <c>GET /device</c>, the <c>verificationUri</c> advertised by the device-authorization grant. Where the control
+/// plane knows the GUI's address the request goes on to the GUI's own <c>/device</c> page, which sits behind the GUI's
+/// sign-in: that is the one place a person signs in with Microsoft Entra, since the GUI's origin is the redirect URI an
+/// app registration names, so a client's browser sign-in is single sign-on with nothing more to register. Without a GUI
+/// address it answers with a self-contained page that signs the user in against <c>/api/v1/auth/login</c> and then calls
+/// <c>/api/v1/auth/device/approve</c> with the entered code, so a human can approve a headless client (the MCP server)
+/// without any separate front-end deployment. That page is inlined, has no external dependencies, and takes a local
+/// account's password, so it cannot serve an account that signs in with Entra alone.
 /// </summary>
 public static class DeviceApprovalPage
 {
     public static IEndpointRouteBuilder MapDeviceApprovalPage(this IEndpointRouteBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        app.MapGet("/device", () => Results.Content(Html, "text/html; charset=utf-8"))
+        app.MapGet("/device", (string? code, IOptions<ControlPlaneOptions> options) =>
+                GuiApprovalUrl(options.Value, code) is { } gui
+                    ? Results.Redirect(gui)
+                    : Results.Content(Html, "text/html; charset=utf-8"))
             .AllowAnonymous()
             .WithName("DeviceApprovalPage")
             .DisableRateLimiting();
         return app;
+    }
+
+    /// <summary>
+    /// The GUI's device page for a user code, or null when the control plane does not know the GUI's address: its
+    /// configured base URL, else the one origin the deployment allows to call it, which on a separate-origin GUI is the
+    /// GUI. Several origins name no single GUI, so they are read as none. The address comes from configuration alone and
+    /// the code travels escaped as a query value, so a request cannot steer the redirect anywhere else.
+    /// </summary>
+    internal static string? GuiApprovalUrl(ControlPlaneOptions options, string? code)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var origins = options.Cors.AllowedOrigins.Where(origin => !string.IsNullOrWhiteSpace(origin)).ToArray();
+        var gui = !string.IsNullOrWhiteSpace(options.Notifications.GuiBaseUrl)
+            ? options.Notifications.GuiBaseUrl
+            : origins.Length == 1 ? origins[0] : null;
+        if (gui is null)
+        {
+            return null;
+        }
+
+        var page = $"{gui.Trim().TrimEnd('/')}/device";
+        return string.IsNullOrWhiteSpace(code) ? page : $"{page}?code={Uri.EscapeDataString(code.Trim())}";
     }
 
     private const string Html = """

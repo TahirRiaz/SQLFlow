@@ -54,6 +54,9 @@ export const authApi = {
    * on a timer so a working session never lapses under the user. Answers 401/403 once the session may no longer
    * roll (past the absolute cap, account deactivated, or a credential that does not renew at all). */
   renew: () => post<SessionResponse>("/api/v1/auth/renew"),
+  /** Bind a pending device sign-in to this session: the client that shows the code signs in as this person. */
+  approveDevice: (userCode: string) => post<void>("/api/v1/auth/device/approve", { userCode }),
+  denyDevice: (userCode: string) => post<void>("/api/v1/auth/device/deny", { userCode }),
 };
 
 // ---- Dashboard ------------------------------------------------------------------------------------------------------

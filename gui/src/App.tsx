@@ -10,6 +10,7 @@ import { moduleRoutes, type ModuleRouteFrame } from "./modules/registry";
 
 // Feature pages are lazy so heavy dependencies (Monaco, React Flow, Recharts) load with their page, not at boot.
 const DashboardPage = lazyRoute("DashboardPage", () => import("./features/dashboard/DashboardPage"));
+const DeviceApprovalPage = lazyRoute("DeviceApprovalPage", () => import("./auth/DeviceApprovalPage"));
 const ChatPage = lazyRoute("ChatPage", () => import("./features/chat/ChatPage"));
 const QueryResultPage = lazyRoute("QueryResultPage", () => import("./features/chat/QueryResultPage"));
 const InsightsPage = lazyRoute("InsightsPage", () => import("./features/insights/InsightsPage"));
@@ -78,6 +79,7 @@ export default function App() {
             </RequireAuth>
           )}
         >
+          <Route path="/device" element={<DeviceApprovalPage />} />
           {moduleRouteElements("window")}
         </Route>
         <Route
