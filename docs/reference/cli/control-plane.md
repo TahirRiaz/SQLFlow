@@ -52,13 +52,19 @@ raw API shapes. Exit codes: 0 success, 1 error or a followed run that did not su
 ## Signing in
 
 ```
-sqlflow login --url https://sqlflow.example.com --username tahir     # password from a hidden prompt / piped stdin
-sqlflow login --device                                               # RFC 8628 browser grant, for SSO accounts
+sqlflow login --url https://sqlflow.example.com                      # opens the browser: sign in as in the GUI, then approve
+sqlflow login --device                                               # the same, printing the link, for a machine with no browser
+sqlflow login --username tahir                                       # a local account: password from a hidden prompt / piped stdin
 sqlflow login --with-token                                           # paste an existing sqlf_ personal access token
 sqlflow login --username ci-bot --no-store                           # print the minted secret once (CI bootstrap)
 sqlflow logout                                                       # revoke the stored token and remove it
 sqlflow whoami                                                       # subject, role, scopes, credential source
 ```
+
+`sqlflow login` opens the browser on the control plane's approval, which goes on to the GUI, so a person signs in as they do
+there, Microsoft Entra single sign-on included, and approves the code. It keeps the credential in `~/.sqlflow/credentials.json`,
+per control plane, which the MCP server reads and writes too: signing in to either signs in the other, a session is renewed by
+whichever client is running, and while the file holds one control plane a verb needs no `--url`.
 
 Password and device sign-ins mint a personal access token (`--token-name`, `--expires-days` default 90,
 `--no-expiry`, `--scopes "read operate"` to narrow) and store that, never the password and never the

@@ -109,6 +109,10 @@ internal sealed class ControlPlaneClient : IDisposable
     public Task<SessionResponse> LoginAsync(string username, string password, CancellationToken ct)
         => PostAsync<SessionResponse>("/api/v1/auth/login", new LoginRequest(username, password), ct);
 
+    /// <summary>Rolls the live session this client carries onto a fresh token, keeping its absolute limit.</summary>
+    public Task<SessionResponse> RenewSessionAsync(CancellationToken ct)
+        => PostAsync<SessionResponse>("/api/v1/auth/renew", new { }, ct);
+
     /// <summary>Starts the RFC 8628 device grant for the given space-delimited scopes.</summary>
     public Task<DeviceAuthorizationResponse> StartDeviceAuthorizationAsync(string scope, CancellationToken ct)
         => PostAsync<DeviceAuthorizationResponse>("/api/v1/auth/device", new DeviceAuthorizationRequest("sqlflow-cli", scope), ct);

@@ -7,7 +7,7 @@
 //! alive by [`ControlPlane::spawn_session_keeper`], which rolls it at `POST /api/v1/auth/renew` on the GUI's own
 //! schedule. Over HTTP this process holds no credential at all: every call runs as the bearer on the inbound request.
 
-use crate::config::{self, StateStore, TokenCache};
+use crate::config::{self, SharedCredentials, StateStore, TokenCache};
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -196,6 +196,11 @@ pub struct ControlPlane {
     session_ended: RwLock<Option<String>>,
     /// Single-flights session renewal, so concurrent requests entering the renewal lead roll the session once.
     renew_lock: tokio::sync::Mutex<()>,
+    /// The file a sign-in is shared through, with every other client of this control plane. None over HTTP, and for a
+    /// process given its credential in the environment, which is that credential whatever anyone else signs in with.
+    shared: Option<SharedCredentials>,
+    /// When the shared file was last read, so it is read again only once another client has written it.
+    shared_seen: RwLock<Option<std::time::SystemTime>>,
 }
 
 impl ControlPlane {
@@ -204,10 +209,13 @@ impl ControlPlane {
     /// `SQLFLOW_CONTROL_PLANE_TOKEN`; without it (HTTP) no token is loaded from anywhere.
     pub fn from_env(identity: &ClientIdentity, ambient_credentials: bool) -> Self {
         let cfg = identity.state.load_config();
+        let shared = if ambient_credentials { SharedCredentials::located() } else { None };
         let base_url = std::env::var("SQLFLOW_CONTROL_PLANE_URL")
             .ok()
             .or(cfg.control_plane_url)
+            .or_else(|| shared.as_ref().and_then(SharedCredentials::only_url))
             .unwrap_or_else(|| config::DEFAULT_URL.to_string());
+        let from_environment = ambient_credentials && std::env::var("SQLFLOW_CONTROL_PLANE_TOKEN").is_ok();
         let token = if ambient_credentials {
             std::env::var("SQLFLOW_CONTROL_PLANE_TOKEN")
                 .ok()
@@ -223,11 +231,14 @@ impl ControlPlane {
                 // A lapsed environment credential must not shadow the stored one, or every restart would send the
                 // user back to the sign-in they just completed, with no way out but editing the environment.
                 .filter(|t| !t.is_expired(config::EXPIRY_FLOOR_SECS))
+                .or_else(|| shared.as_ref().and_then(|file| file.load(&base_url)))
                 .or_else(|| identity.state.load_token())
         } else {
             None
         };
-        ControlPlane::new(identity, &base_url, token, ambient_credentials)
+        let mut client = ControlPlane::new(identity, &base_url, token, ambient_credentials);
+        client.shared = shared.filter(|_| !from_environment);
+        client
     }
 
     /// The client for the control plane at `base_url`, holding `token` when the caller has one. With
@@ -252,6 +263,8 @@ impl ControlPlane {
             ambient_credentials,
             session_ended: RwLock::new(None),
             renew_lock: tokio::sync::Mutex::new(()),
+            shared: None,
+            shared_seen: RwLock::new(None),
         }
     }
 
@@ -297,14 +310,45 @@ impl ControlPlane {
 
     pub fn set_token(&self, token: TokenCache) {
         let _ = self.identity.state.save_token(&token);
+        if let Some(shared) = &self.shared {
+            let _ = shared.save(&self.base_url(), &token);
+            *self.shared_seen.write().unwrap() = shared.stamp();
+        }
         *self.token.write().unwrap() = Some(token);
         *self.session_ended.write().unwrap() = None;
     }
 
     pub fn clear_token(&self) {
         let _ = self.identity.state.clear_token();
+        if let Some(shared) = &self.shared {
+            let _ = shared.clear(&self.base_url());
+            *self.shared_seen.write().unwrap() = shared.stamp();
+        }
         *self.token.write().unwrap() = None;
         *self.session_ended.write().unwrap() = None;
+    }
+
+    /// Takes up what another client did to the shared sign-in: `sqlflow login`, an editor signing in or out, another
+    /// server renewing. A cheap no-op until the file changes, so it is safe before every request.
+    fn adopt_shared_credential(&self) {
+        let Some(shared) = &self.shared else {
+            return;
+        };
+        let stamp = shared.stamp();
+        if *self.shared_seen.read().unwrap() == stamp {
+            return;
+        }
+        *self.shared_seen.write().unwrap() = stamp;
+
+        let held = shared.load(&self.base_url());
+        let current = self.current_token();
+        if held.as_ref().map(|t| &t.access_token) != current.as_ref().map(|t| &t.access_token) {
+            let signed_in = held.is_some();
+            *self.token.write().unwrap() = held;
+            if signed_in {
+                *self.session_ended.write().unwrap() = None;
+            }
+        }
     }
 
     fn current_token(&self) -> Option<TokenCache> {
@@ -334,6 +378,7 @@ impl ControlPlane {
     /// then calls `GET /api/v1/me`. A 401 is reported as `Unauthenticated`, never as an error, so a stale credential
     /// surfaces as truthful status rather than a failed request.
     pub async fn whoami(&self) -> Result<WhoAmI> {
+        self.adopt_shared_credential();
         if let RenewOutcome::Failed(e) = self.renew_if_due().await {
             tracing::warn!("session renewal before whoami failed; checking the current token: {e:#}");
         }
@@ -565,6 +610,7 @@ impl ControlPlane {
         if !self.ambient_credentials {
             bail!("no bearer on this request: over HTTP every call must carry the caller's own Authorization header");
         }
+        self.adopt_shared_credential();
         if let RenewOutcome::Failed(e) = self.renew_if_due().await {
             tracing::warn!("session renewal before a request failed; using the current token: {e:#}");
         }

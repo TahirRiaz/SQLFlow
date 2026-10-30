@@ -13,6 +13,11 @@
 //! composes this server under a name of its own gives it a prefix of its own, so two
 //! servers on one machine, signed in to two control planes, never read each other's
 //! token.
+//!
+//! A person signs in once for a control plane, whichever client they sign in with: `~/.sqlflow/credentials.json`, the
+//! file `sqlflow login` keeps, holds one credential per control-plane URL, and this server reads and writes it beside its
+//! own token file ([`SharedCredentials`]). `tests/shared-credentials.json` holds the CLI's reader and this one to one
+//! format.
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -130,6 +135,134 @@ fn sqlflow_dir() -> Option<PathBuf> {
 /// The prefix SQLFlow's own server keeps its state files under.
 pub const DEFAULT_STATE_PREFIX: &str = "mcp";
 
+/// One control plane's credential in the shared file, as `StoredCredential` in the CLI's `CredentialStore` writes it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SharedCredential {
+    token: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    token_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    username: Option<String>,
+    created_utc: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    expires_utc: Option<DateTime<Utc>>,
+    #[serde(default)]
+    renews: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    scope: Option<String>,
+}
+
+/// The file a person's sign-in is shared through: every client of a control plane reads the credential kept for its URL,
+/// so signing in to one signs in the others. Keyed by URL, so two control planes never read each other's credential.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SharedCredentials {
+    path: PathBuf,
+}
+
+impl SharedCredentials {
+    /// The file: `SQLFLOW_CREDENTIALS_FILE` when set, as the CLI reads it, else under the user's profile. None for this
+    /// crate's own unit tests with no file named, which must not write to the person's.
+    pub fn located() -> Option<Self> {
+        let path = match std::env::var("SQLFLOW_CREDENTIALS_FILE") {
+            Ok(path) if !path.trim().is_empty() => PathBuf::from(path),
+            _ if cfg!(test) => return None,
+            _ => sqlflow_dir()?.join("credentials.json"),
+        };
+        Some(SharedCredentials { path })
+    }
+
+    pub fn at(path: PathBuf) -> Self {
+        SharedCredentials { path }
+    }
+
+    /// When the file last changed, so a server reads it only when another client has written it.
+    pub fn stamp(&self) -> Option<std::time::SystemTime> {
+        std::fs::metadata(&self.path).and_then(|m| m.modified()).ok()
+    }
+
+    fn read(&self) -> serde_json::Map<String, serde_json::Value> {
+        std::fs::read_to_string(&self.path)
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or_default()
+    }
+
+    fn write(&self, entries: &serde_json::Map<String, serde_json::Value>) -> std::io::Result<()> {
+        if let Some(parent) = self.path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        // Written beside it and moved over it, so a client reading the file never meets half of one.
+        let staged = self.path.with_extension("json.new");
+        std::fs::write(&staged, serde_json::to_string_pretty(entries).unwrap_or_default())?;
+        restrict_permissions(&staged);
+        std::fs::rename(&staged, &self.path)
+    }
+
+    /// The credential kept for a control plane.
+    pub fn load(&self, url: &str) -> Option<TokenCache> {
+        let entry = self.read().remove(&credential_key(url))?;
+        let credential: SharedCredential = serde_json::from_value(entry).ok()?;
+        Some(TokenCache {
+            access_token: credential.token,
+            scope: credential.scope.unwrap_or_else(|| "read operate author".to_string()),
+            expires_at: credential.expires_utc,
+            renews: credential.renews,
+        })
+    }
+
+    /// Keeps a credential for a control plane, leaving every other control plane's as it is. The same token keeps who it
+    /// is and its server-side id, so a session renewing does not forget them.
+    pub fn save(&self, url: &str, token: &TokenCache) -> std::io::Result<()> {
+        let mut entries = self.read();
+        let key = credential_key(url);
+        let held = entries
+            .get(&key)
+            .and_then(|entry| serde_json::from_value::<SharedCredential>(entry.clone()).ok())
+            .filter(|held| held.token == token.access_token);
+        let credential = SharedCredential {
+            token: token.access_token.clone(),
+            token_id: held.as_ref().and_then(|held| held.token_id.clone()),
+            username: held.as_ref().and_then(|held| held.username.clone()),
+            created_utc: held.map(|held| held.created_utc).unwrap_or_else(Utc::now),
+            expires_utc: token.expires_at,
+            renews: token.renews,
+            scope: Some(token.scope.clone()),
+        };
+        entries.insert(key, serde_json::to_value(credential).unwrap_or_default());
+        self.write(&entries)
+    }
+
+    /// Forgets the credential of a control plane; the others stay.
+    pub fn clear(&self, url: &str) -> std::io::Result<()> {
+        let mut entries = self.read();
+        if entries.remove(&credential_key(url)).is_some() {
+            self.write(&entries)?;
+        }
+        Ok(())
+    }
+
+    /// The control plane the file holds, when it holds exactly one: who signed in to one has said which they mean.
+    pub fn only_url(&self) -> Option<String> {
+        let entries = self.read();
+        let mut urls = entries.keys();
+        match (urls.next(), urls.next()) {
+            (Some(url), None) => Some(url.clone()),
+            _ => None,
+        }
+    }
+}
+
+/// The key a control plane's credential is kept under: scheme and host in lower case, a default port left out and no
+/// trailing slash, as the CLI's `CredentialStore.Normalize` makes it, so both name one entry.
+pub fn credential_key(url: &str) -> String {
+    let key = match reqwest::Url::parse(url) {
+        Ok(parsed) => format!("{}{}", parsed.origin().ascii_serialization(), parsed.path()),
+        Err(_) => url.to_string(),
+    };
+    key.trim_end_matches('/').to_lowercase()
+}
+
 /// Where one server keeps its control-plane URL and its token: `<prefix>-config.json` and
 /// `<prefix>-token.json` under `~/.sqlflow/`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -242,6 +375,71 @@ fn restrict_permissions(_path: &std::path::Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The file both this server and the CLI read, in one format (`CredentialStoreTests` reads the same one).
+    fn fixture() -> SharedCredentials {
+        SharedCredentials::at(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/shared-credentials.json"))
+    }
+
+    fn scratch(name: &str) -> SharedCredentials {
+        let path = std::env::temp_dir().join(format!("sqlflow-mcp-{}-{name}.json", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        SharedCredentials::at(path)
+    }
+
+    #[test]
+    fn the_shared_file_reads_a_cli_token_and_a_servers_session() {
+        let token = fixture().load("https://CONTROL.example.com/").expect("the CLI's entry");
+        assert_eq!(token.access_token, "sqlf_a-personal-access-token");
+        assert!(!token.renews);
+        let session = fixture().load("http://localhost:5000").expect("the session's entry");
+        assert_eq!(session.access_token, "a.session.token");
+        assert!(session.renews);
+        assert_eq!(session.scope, "read operate author");
+        assert!(fixture().load("https://other.example.com").is_none());
+    }
+
+    #[test]
+    fn one_key_names_a_control_plane_however_its_url_is_written() {
+        assert_eq!(credential_key("https://Host.example.com/"), "https://host.example.com");
+        assert_eq!(credential_key("https://host.example.com:443"), "https://host.example.com");
+        assert_eq!(credential_key("http://localhost:5000/"), "http://localhost:5000");
+    }
+
+    #[test]
+    fn a_control_plane_keeps_its_own_credential_and_leaves_the_others() {
+        let store = scratch("own");
+        let token = |value: &str| TokenCache { access_token: value.to_string(), scope: "read".to_string(), expires_at: None, renews: true };
+        store.save("https://a.example.com", &token("a")).unwrap();
+        store.save("https://b.example.com", &token("b")).unwrap();
+
+        assert_eq!(store.load("https://a.example.com").unwrap().access_token, "a");
+        assert_eq!(store.load("https://b.example.com").unwrap().access_token, "b");
+
+        store.clear("https://a.example.com").unwrap();
+        assert!(store.load("https://a.example.com").is_none());
+        assert_eq!(store.load("https://b.example.com").unwrap().access_token, "b");
+        assert_eq!(store.only_url().as_deref(), Some("https://b.example.com"));
+    }
+
+    #[test]
+    fn a_session_renewing_keeps_who_it_is_only_when_it_is_the_same_token() {
+        let store = scratch("renew");
+        let session = TokenCache { access_token: "a".to_string(), scope: "read".to_string(), expires_at: None, renews: true };
+        store.save("https://a.example.com", &session).unwrap();
+        let first = store.read();
+        store.save("https://a.example.com", &session).unwrap();
+        assert_eq!(first["https://a.example.com"]["createdUtc"], store.read()["https://a.example.com"]["createdUtc"]);
+    }
+
+    #[test]
+    fn a_file_that_is_missing_or_not_json_holds_nothing() {
+        let store = scratch("missing");
+        assert!(store.load("https://a.example.com").is_none());
+        assert!(store.only_url().is_none());
+        std::fs::write(&store.path, "not json").unwrap();
+        assert!(store.load("https://a.example.com").is_none());
+    }
 
     /// A signature-less JWT carrying the given claims payload; only the payload segment is ever read.
     fn jwt(claims: &serde_json::Value) -> String {

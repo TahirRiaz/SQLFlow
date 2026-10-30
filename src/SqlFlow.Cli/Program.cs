@@ -2520,7 +2520,7 @@ internal static class Program
             stdout to the raw API shapes. Exit codes: 0 ok, 1 error or a followed run that did not succeed,
             130 on Ctrl+C.
               sqlflow health                     Probe /health/live and /health/ready (anonymous). Exit 0 when both pass.
-              sqlflow login    [--username <u>] [--device] [--with-token]
+              sqlflow login    [--device] [--username <u>] [--with-token]
                                [--token-name <n>] [--expires-days <N>|--no-expiry] [--scopes "read operate"] [--no-store]
                                                  Sign in and store a personal access token for the URL. Default path:
                                                  username + password (hidden prompt or piped stdin; never a flag); the

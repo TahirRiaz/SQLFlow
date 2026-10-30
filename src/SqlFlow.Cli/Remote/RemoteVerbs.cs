@@ -77,9 +77,14 @@ internal static partial class RemoteVerbs
 
             string subject;
             string grantedScopes;
-            if (args.Contains("--device"))
+
+            // Signing in is the browser's, where a person signs in as they do in the GUI, Microsoft single sign-on included
+            // and approves. --device is that with the link printed alone, for a machine with no browser of its own; a
+            // password is the local accounts' path, which naming a user asks for.
+            var named = Program.GetOption(args, "--username");
+            if (args.Contains("--device") || (named is null && !Console.IsInputRedirected))
             {
-                var granted = await SignInWithDeviceGrantAsync(client, args, ct).ConfigureAwait(false);
+                var granted = await SignInWithDeviceGrantAsync(client, args, openBrowser: !args.Contains("--device"), ct).ConfigureAwait(false);
                 if (granted is null)
                 {
                     return 1; // the poll loop already explained the denial/expiry
@@ -91,16 +96,10 @@ internal static partial class RemoteVerbs
             }
             else
             {
-                var username = Program.GetOption(args, "--username");
-                if (username is null && !Console.IsInputRedirected)
-                {
-                    Console.Write("Username: ");
-                    username = Console.ReadLine();
-                }
-
+                var username = named;
                 if (string.IsNullOrWhiteSpace(username))
                 {
-                    Console.Error.WriteLine("ERROR  a username is required: pass --username <name> (the password is read from a hidden prompt or piped stdin, never a flag).");
+                    Console.Error.WriteLine("ERROR  nothing here can sign in: pass --device to approve in a browser, or --username <name> (the password is read from a hidden prompt or piped stdin, never a flag).");
                     return 1;
                 }
 
@@ -169,7 +168,7 @@ internal static partial class RemoteVerbs
                 Console.Error.WriteLine($"WARN  could not revoke the token server-side ({SecretHygiene.RedactedMessage(ex)}); removing it locally anyway. Revoke it from the GUI's token page if it is still active.");
             }
         }
-        else
+        else if (!stored.Renews)
         {
             Console.Error.WriteLine("NOTE  the stored token was pasted without a known server-side id; revoke it from the GUI's token page if it is still active.");
         }
@@ -768,12 +767,17 @@ internal static partial class RemoteVerbs
         return 0;
     }
 
-    private static async Task<DeviceTokenResponse?> SignInWithDeviceGrantAsync(ControlPlaneClient client, string[] args, CancellationToken ct)
+    private static async Task<DeviceTokenResponse?> SignInWithDeviceGrantAsync(ControlPlaneClient client, string[] args, bool openBrowser, CancellationToken ct)
     {
         var scope = Program.GetOption(args, "--scopes") ?? "read operate";
         var authorization = await client.StartDeviceAuthorizationAsync(scope, ct).ConfigureAwait(false);
         Console.WriteLine($"To sign in, open   {authorization.VerificationUriComplete}");
         Console.WriteLine($"and confirm code   {authorization.UserCode}");
+        if (openBrowser)
+        {
+            OpenInBrowser(authorization.VerificationUriComplete);
+        }
+
         Console.WriteLine($"Waiting for approval (expires in {authorization.ExpiresIn}s; Ctrl+C aborts)...");
 
         var interval = TimeSpan.FromSeconds(Math.Max(1, authorization.Interval));
@@ -809,6 +813,25 @@ internal static partial class RemoteVerbs
         return null;
     }
 
+    /// <summary>Opens the approval page in the person's browser. Its address came from the server, so only an http(s) one
+    /// is opened; and it has been printed, so a machine that cannot open one has lost nothing.</summary>
+    private static void OpenInBrowser(string address)
+    {
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var url) || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException)
+        {
+            Console.Error.WriteLine($"NOTE  could not open a browser here ({ex.Message}); open the address above.");
+        }
+    }
+
     private static IReadOnlyList<string>? ParseScopes(string[] args)
     {
         var raw = Program.GetOption(args, "--scopes");
@@ -825,14 +848,15 @@ internal static partial class RemoteVerbs
 
     // ---- shared plumbing ----------------------------------------------------------------------------------
 
-    /// <summary>The control-plane URL from <c>--url</c> or <c>SQLFLOW_URL</c>; absolute http(s) only, so a
-    /// mistyped host fails here with guidance instead of as a DNS error three calls later.</summary>
+    /// <summary>The control-plane URL from <c>--url</c> or <c>SQLFLOW_URL</c>, else the one the credential file holds when
+    /// it holds one; absolute http(s) only, so a mistyped host fails here with guidance instead of as a DNS error three
+    /// calls later.</summary>
     internal static Uri RequireUrl(string[] args)
     {
         var raw = Program.GetOption(args, "--url") ?? Environment.GetEnvironmentVariable("SQLFLOW_URL");
         if (string.IsNullOrWhiteSpace(raw))
         {
-            throw new SqlFlowException(
+            return CredentialStore.OnlyUrl() ?? throw new SqlFlowException(
                 "no control plane is configured: pass --url <https://host> or set SQLFLOW_URL (e.g. in the git-ignored .sqlflow/env file).");
         }
 
@@ -849,7 +873,35 @@ internal static partial class RemoteVerbs
     internal static string? ResolveToken(Uri url, string[] args)
         => Program.GetOption(args, "--token")
            ?? Environment.GetEnvironmentVariable("SQLFLOW_TOKEN")
-           ?? CredentialStore.Load(url)?.Token;
+           ?? StoredToken(url);
+
+    /// <summary>The credential stored for a URL. A session an editor or an MCP server signed in with is short-lived, so one
+    /// close to lapsing is rolled here first and kept for every client of the file, on the same schedule those keep. A
+    /// session that cannot roll stays in use until it lapses, and the control plane's 401 then says how to sign in.</summary>
+    private static string? StoredToken(Uri url)
+    {
+        var stored = CredentialStore.Load(url);
+        if (stored is not { Renews: true, ExpiresUtc: { } expires } || expires.ToUniversalTime() - DateTime.UtcNow > SessionRenewLead)
+        {
+            return stored?.Token;
+        }
+
+        try
+        {
+            using var client = new ControlPlaneClient(url) { BearerToken = stored.Token };
+            var session = client.RenewSessionAsync(CancellationToken.None).GetAwaiter().GetResult();
+            CredentialStore.Save(url, stored with { Token = session.AccessToken, ExpiresUtc = DateTime.UtcNow.AddSeconds(session.ExpiresIn) });
+            return session.AccessToken;
+        }
+        catch (Exception ex) when (ex is SqlFlowException or HttpRequestException or TaskCanceledException)
+        {
+            Console.Error.WriteLine($"NOTE  could not renew the stored session ({SecretHygiene.RedactedMessage(ex)}); using it as it stands.");
+            return stored.Token;
+        }
+    }
+
+    /// <summary>How long before it lapses a session is rolled: the lead the GUI and the MCP server keep.</summary>
+    private static readonly TimeSpan SessionRenewLead = TimeSpan.FromMinutes(5);
 
     /// <summary>A client carrying the resolved bearer credential: <c>--token</c>, then <c>SQLFLOW_TOKEN</c>,
     /// then the stored credential for the URL. No credential is not an error here; the server's 401 (decorated

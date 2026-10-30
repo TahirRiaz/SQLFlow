@@ -191,6 +191,46 @@ public sealed class CliControlPlaneBinaryTests : IDisposable
         }
     }
 
+    /// <summary>The sign-in is shared: a session an editor or an MCP server left in the credential file serves the command
+    /// line with nothing more to do, and one close to lapsing is rolled here and kept for every client of the file.</summary>
+    [SkippableFact]
+    public async Task A_session_another_client_signed_in_with_serves_the_command_line_and_renews_there()
+    {
+        var (dll, url, cs) = await RequireAsync();
+        var (username, password) = await SeedOperatorAsync(cs);
+
+        try
+        {
+            using var client = new ControlPlaneClient(new Uri(url));
+            var session = await client.LoginAsync(username, password, CancellationToken.None);
+            var file = Path.Combine(_dir, "credentials.json");
+            var lapsing = DateTime.UtcNow.AddMinutes(1);
+            File.WriteAllText(file, JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                [CredentialStore.Normalize(new Uri(url))] = new
+                {
+                    token = session.AccessToken,
+                    createdUtc = DateTime.UtcNow,
+                    expiresUtc = lapsing,
+                    renews = true,
+                    scope = "read operate",
+                },
+            }));
+
+            var list = await CliBinary.RunAsync(dll, ["runs", "list"], env: CliEnv(url), workingDirectory: _dir);
+
+            Assert.True(list.Exit == 0, list.AllOutput);
+            using var held = JsonDocument.Parse(File.ReadAllText(file));
+            var entry = held.RootElement.EnumerateObject().Single().Value;
+            Assert.True(entry.GetProperty("expiresUtc").GetDateTime() > lapsing.AddMinutes(5), "the session was not renewed");
+            Assert.True(entry.GetProperty("renews").GetBoolean());
+        }
+        finally
+        {
+            await CleanupUserAsync(cs, username);
+        }
+    }
+
     [SkippableFact]
     public async Task Login_DeviceGrant_ApprovedFromTheBrowserSide_StoresAPat()
     {

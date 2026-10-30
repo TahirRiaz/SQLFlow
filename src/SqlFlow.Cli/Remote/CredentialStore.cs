@@ -4,18 +4,22 @@ using SqlFlow.Core;
 
 namespace SqlFlow.Cli.Remote;
 
-/// <summary>One stored control-plane credential: the personal access token, its server-side id (so logout can
-/// revoke it; null when the token was pasted and its id could not be matched), and who minted it.</summary>
+/// <summary>One stored control-plane credential: the token, its server-side id (so logout can revoke it; null when the
+/// token was pasted, or is a session, which has none), and who minted it. <see cref="Renews"/> marks an interactive
+/// session an MCP server keeps, which rolls at <c>/auth/renew</c> before it lapses, with the scopes it was approved for
+/// in <see cref="Scope"/>; a personal access token lives as long as it was minted for.</summary>
 internal sealed record StoredCredential(
-    string Token, Guid? TokenId, string? Username, DateTime CreatedUtc, DateTime? ExpiresUtc);
+    string Token, Guid? TokenId, string? Username, DateTime CreatedUtc, DateTime? ExpiresUtc, bool Renews = false, string? Scope = null);
 
 /// <summary>
-/// The CLI's credential file: <c>~/.sqlflow/credentials.json</c>, a map from normalized control-plane URL to a
-/// personal access token. Only PATs land here (revocable server-side at any time); a password is never written
-/// anywhere, and short-lived session JWTs are not persisted. On Unix the file is chmod 600; on Windows the
-/// user-profile directory's ACL is the protection (the same model the .NET SDK and gh CLI use). Precedence at
-/// use time is --token, then SQLFLOW_TOKEN (which the git-ignored .sqlflow/env can supply), then this store,
-/// so automation never needs the file.
+/// The credential file: <c>~/.sqlflow/credentials.json</c>, a map from normalized control-plane URL to the credential a
+/// person signed in with. It is shared: the MCP server reads and writes it too, so signing in with the CLI, an editor or
+/// an assistant signs in the others (<c>tools/sqlflow-mcp/tests/shared-credentials.json</c> holds both readers to one
+/// format). This command line stores personal access tokens, revocable server-side at any time; a server stores the
+/// session a person approved, which rolls. A password is never written anywhere. On Unix the file is chmod 600; on
+/// Windows the user-profile directory's ACL is the protection (the same model the .NET SDK and gh CLI use). Precedence at
+/// use time is --token, then SQLFLOW_TOKEN (which the git-ignored .sqlflow/env can supply), then this store, so automation
+/// never needs the file.
 /// </summary>
 internal static class CredentialStore
 {
@@ -59,6 +63,14 @@ internal static class CredentialStore
 
         WriteAll(credentials);
         return true;
+    }
+
+    /// <summary>The control plane the file holds, when it holds exactly one: whoever signed in to one has said which they
+    /// mean, so a script needs no <c>--url</c>. Null with none or several.</summary>
+    public static Uri? OnlyUrl()
+    {
+        var credentials = ReadAll();
+        return credentials.Count == 1 && Uri.TryCreate(credentials.Keys.First(), UriKind.Absolute, out var url) ? url : null;
     }
 
     /// <summary>The stable per-URL key: scheme and host case-insensitive, default ports elided by
@@ -107,6 +119,8 @@ internal static class CredentialStore
     private static void WriteAll(Dictionary<string, StoredCredential> credentials)
     {
         var path = FilePath;
+        // Written beside it and moved over it: another client reads this file at any moment, and must never meet half of it.
+        var staged = path + ".new";
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -114,7 +128,7 @@ internal static class CredentialStore
             {
                 // Create-then-restrict leaves a window where the default umask applies; create the file with
                 // owner-only mode up front instead, then write through the handle.
-                using var stream = new FileStream(path, new FileStreamOptions
+                using var stream = new FileStream(staged, new FileStreamOptions
                 {
                     Mode = FileMode.Create,
                     Access = FileAccess.Write,
@@ -125,8 +139,10 @@ internal static class CredentialStore
             }
             else
             {
-                File.WriteAllText(path, JsonSerializer.Serialize(credentials, FileJson));
+                File.WriteAllText(staged, JsonSerializer.Serialize(credentials, FileJson));
             }
+
+            File.Move(staged, path, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
