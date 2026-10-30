@@ -595,6 +595,17 @@ pub fn registered_flow_types() -> Vec<String> {
         .collect()
 }
 
+/// The documents modules registered a census for, by their `documentType`.
+pub fn registered_document_types() -> Vec<String> {
+    registered_kinds()
+        .into_iter()
+        .filter_map(|k| match k {
+            CensusKind::DocumentType(t) => Some(t),
+            CensusKind::FlowType(_) => None,
+        })
+        .collect()
+}
+
 fn registered_census(kind: &CensusKind) -> Option<ModuleCensus> {
     registry().read().ok()?.get(kind).cloned()
 }
