@@ -12,7 +12,8 @@ const POLL_MS = 5500;
 
 /**
  * Who is signed in. The sign-in belongs to the MCP server: it keeps the session, renews it and sends it with every call,
- * so a person signs in once for this extension and for every assistant that uses the same server. Signing in here is the
+ * in the file `sqlflow login` keeps, so a person signs in once for this extension, for every assistant that uses the same
+ * server and for the command line, whichever of them they sign in with. Signing in here is the
  * server's device grant with the browser in front of it: the browser opens the control plane's approval, which goes on
  * to the GUI, where the person signs in the way they always do (Microsoft Entra single sign-on, or an account), and
  * approves the code this editor shows.
@@ -24,14 +25,13 @@ export class SignIn implements vscode.Disposable {
     readonly changed = this.onChange.event;
     private person: string | undefined;
     private readonly watch: fs.FSWatcher | undefined;
-    private readonly tokenFile: string;
 
-    constructor(mcp: McpServer, product: string, statePrefix: string) {
+    constructor(mcp: McpServer, product: string) {
         this.mcp = mcp;
         this.product = product;
-        this.tokenFile = path.join(STATE_FOLDER, `${statePrefix}-token.json`);
-        // Another window, or an assistant's copy of the server, may sign in or out: every server reads the same file.
-        this.watch = watchFile(this.tokenFile, () => void this.tokenChanged());
+        // Another window, an assistant or `sqlflow login` may sign in or out: every client keeps the same file, and a
+        // server takes up what changed there on its next call.
+        this.watch = watchFile(credentialFile(), () => void this.check());
     }
 
     dispose(): void {
@@ -61,15 +61,6 @@ export class SignIn implements vscode.Disposable {
         void vscode.commands.executeCommand('setContext', 'sqlflow.signedIn', person !== undefined);
         if (changed) {
             this.onChange.fire();
-        }
-    }
-
-    /** A server here holds the sign-in it read when it started, so one made or ended elsewhere needs a new session. A
-     * file that only changed is a session renewing, which every server does for itself. */
-    private async tokenChanged(): Promise<void> {
-        if (fs.existsSync(this.tokenFile) !== (this.person !== undefined)) {
-            this.mcp.restart();
-            await this.check();
         }
     }
 
@@ -154,8 +145,10 @@ export class SignIn implements vscode.Disposable {
     }
 }
 
-/** Where every server of this machine keeps its address and its sign-in. */
-const STATE_FOLDER = path.join(os.homedir(), '.sqlflow');
+/** The file every client of a control plane shares a person's sign-in through, the CLI and the MCP server included. */
+function credentialFile(): string {
+    return process.env.SQLFLOW_CREDENTIALS_FILE?.trim() || path.join(os.homedir(), '.sqlflow', 'credentials.json');
+}
 
 /** Watches a file by its folder, which outlives it. A folder that is not there yet means nobody has signed in on this
  * machine; the sign-in here makes it, and this window already knows. */

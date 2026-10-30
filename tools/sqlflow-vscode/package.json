@@ -88,9 +88,9 @@
         },
         "sqlflow.cliPath": {
           "type": "string",
-          "default": "sqlflow",
+          "default": "",
           "scope": "machine",
-          "description": "The command line, for the verbs that run on this machine against the working copy."
+          "description": "The sqlflow command line. Empty uses the one this extension carries, else sqlflow on the PATH."
         },
         "sqlflow.recognizeDocuments": {
           "type": "boolean",

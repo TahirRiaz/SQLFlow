@@ -76,7 +76,12 @@ function stableCopy(binary: string): string {
     }
     fs.copyFileSync(binary, target);
     for (const name of fs.readdirSync(folder).filter((file) => file.endsWith('.old'))) {
-        fs.rmSync(path.join(folder, name), { force: true, maxRetries: 0 });
+        try {
+            fs.rmSync(path.join(folder, name), { force: true, maxRetries: 0 });
+        } catch {
+            // Still running somewhere: the next copy clears it.
+            continue;
+        }
     }
     return target;
 }
@@ -121,6 +126,11 @@ export async function connectAssistant(registration: McpRegistration, mcp: McpSe
     let stable: string;
     try {
         stable = stableCopy(binary);
+        // The command line goes beside it, where the server finds it, so the assistant can script with it too.
+        const cli = path.join(path.dirname(binary), process.platform === 'win32' ? 'sqlflow.exe' : 'sqlflow');
+        if (fs.existsSync(cli)) {
+            stableCopy(cli);
+        }
     } catch (err) {
         void vscode.window.showErrorMessage(`${registration.product}: the server could not be copied to ~/.sqlflow/bin. ${err instanceof Error ? err.message : err}`);
         return;

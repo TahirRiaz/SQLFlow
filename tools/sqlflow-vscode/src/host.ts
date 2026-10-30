@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { cliCommand, offerCliInTerminals } from './cli';
 import { Docs } from './docs/docs';
 import { DocumentIndex, IndexedDocument, recogniseOpenedDocuments } from './documents/documentIndex';
 import { keyPathAtLine } from './documents/yamlPath';
@@ -23,7 +24,7 @@ import { connectAssistant, registerWithEditor } from './mcp/mcpSetup';
 import { McpServer } from './mcp/mcpServer';
 import { SignIn } from './mcp/signIn';
 import { SignInNeeded } from './mcp/toolAnswer';
-import { RunParameter, runFlow, showRun } from './runs/runFlow';
+import { RunParameter, RunPayloadReader, runFlow, showRun } from './runs/runFlow';
 import { DataStreamPanel } from './views/dataStreamPanel';
 import { builtInSections, DocumentViewProvider, RepositoryViewProvider } from './views/documentViews';
 import { PanelContent, PanelSection } from './views/panelContent';
@@ -54,8 +55,6 @@ export interface VscodeHost {
     mcp: {
         /** Its program. */
         program: string;
-        /** Where its sign-in is kept: the state prefix of `<prefix>-token.json`. */
-        statePrefix: string;
         /** The id of the manifest's `mcpServerDefinitionProviders`. */
         providerId: string;
         /** Build folders to look in when running from a checkout. */
@@ -100,6 +99,8 @@ export interface ModuleContext {
     addRunSections(sections: (run: Run) => Promise<PanelSection[]>): void;
     /** The parameters a run of a flow takes, when a module knows them. */
     addRunParameters(parameters: (pipeline: Pipeline, document: IndexedDocument | undefined) => Promise<RunParameter[] | undefined>): void;
+    /** What a run of a kind may be given beyond its operation and parameters. */
+    addRunPayload(payload: RunPayloadReader): void;
 }
 
 /** Composes the extension for a host. */
@@ -119,7 +120,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
         output,
     });
     const estate = new Estate(mcp);
-    const signIn = new SignIn(mcp, host.product, host.mcp.statePrefix);
+    const signIn = new SignIn(mcp, host.product);
     const documents = new DocumentIndex(output);
     const panels = new Panels();
     const docs = new Docs(host.docCorpora(extensionPath), mcp);
@@ -171,6 +172,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
                 || event.affectsConfiguration('sqlflow.mcpBinaryPath')) {
                 mcp.restart();
                 onServerChange.fire();
+                offerCliInTerminals(context, host.product);
                 void signIn.check();
             }
         })
@@ -203,6 +205,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
 
     const runSections: ((run: Run) => Promise<PanelSection[]>)[] = [];
     const runParameters: ((pipeline: Pipeline, document: IndexedDocument | undefined) => Promise<RunParameter[] | undefined>)[] = [];
+    let runPayload: RunPayloadReader = async () => undefined;
 
     register('sqlflow.signIn', async () => {
         await signIn.signIn();
@@ -243,7 +246,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
         }
     });
     command('sqlflow.validateRepository', () => validation.run());
-    command('sqlflow.runVerb', () => runCliVerb(host.cliVerbs, documents));
+    command('sqlflow.runVerb', () => runCliVerb(host.cliVerbs, documents, cliCommand(extensionPath)));
 
     register('sqlflow.searchDocs', () => docs.search());
     register('sqlflow.openDocsForKey', async () => {
@@ -314,7 +317,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
         for (const reader of runParameters) {
             parameters = (await reader(resolved.pipeline, resolved.document)) ?? parameters;
         }
-        await runFlow(estate, host.product, resolved.pipeline, parameters, () => {
+        await runFlow(estate, host.product, resolved.pipeline, parameters, runPayload, () => {
             runs.refresh();
             documentView.refresh();
             lenses.refresh();
@@ -464,7 +467,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
         vscode.languages.registerDefinitionProvider(DOCUMENT_SELECTOR, references),
         vscode.languages.registerCodeLensProvider(DOCUMENT_SELECTOR, lenses),
         vscode.workspace.registerTextDocumentContentProvider(SYNCED_SCHEME, new SyncedDefinitions(estate)),
-        vscode.tasks.registerTaskProvider(TASK_TYPE, cliTaskProvider()),
+        vscode.tasks.registerTaskProvider(TASK_TYPE, cliTaskProvider(() => cliCommand(extensionPath))),
         registerWithEditor(
             { providerId: host.mcp.providerId, product: host.product, program: host.mcp.program, version },
             mcp,
@@ -486,6 +489,9 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
         refreshed: onRefresh.event,
         addRunSections: (sections) => runSections.push(sections),
         addRunParameters: (parameters) => runParameters.push(parameters),
+        addRunPayload: (payload) => {
+            runPayload = payload;
+        },
     };
     for (const module of host.modules ?? []) {
         module.activate(moduleContext);
@@ -497,6 +503,7 @@ export async function activateHost(context: vscode.ExtensionContext, host: Vscod
         censusDirectories: host.censusDirectories(extensionPath),
     });
 
+    offerCliInTerminals(context, host.product);
     void signIn.check();
     output.info(`${host.product} extension activated.`);
     return { estate };

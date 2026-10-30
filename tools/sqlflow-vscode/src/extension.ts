@@ -12,7 +12,6 @@ const SQLFLOW: VscodeHost = {
     product: 'SQLFlow',
     mcp: {
         program: 'sqlflow-mcp',
-        statePrefix: 'mcp',
         providerId: 'sqlflow.mcp',
         searchPaths: buildFolders,
     },

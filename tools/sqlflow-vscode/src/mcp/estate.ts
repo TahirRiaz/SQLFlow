@@ -155,6 +155,19 @@ export interface Datasource {
     targetPipelines: number;
 }
 
+/** Where an AI context stands, as an admin sees it. */
+export interface AiContext {
+    name: string;
+    status: string;
+    currentVersion?: string | null;
+    approvedVersion?: string | null;
+    approvedBy?: string | null;
+    approvedUtc?: string | null;
+    tableCount?: number;
+    servedTableCount?: number;
+    problemCount?: number;
+}
+
 export interface FlowKindOperation {
     name: string;
     label: string;
@@ -334,6 +347,10 @@ export class Estate {
 
     async datasources(): Promise<Datasource[]> {
         return items(await this.remembered<Paged<Datasource> | Datasource[]>('list_datasources'));
+    }
+
+    async aiContexts(): Promise<AiContext[]> {
+        return (await this.remembered<{ contexts: AiContext[] }>('list_ai_contexts')).contexts;
     }
 
     flowKinds(): Promise<FlowKinds> {

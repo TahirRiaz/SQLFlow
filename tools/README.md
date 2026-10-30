@@ -73,7 +73,11 @@ sees what an assistant sees, under the same rules, and it holds no REST client. 
 signs in through its `login` tool: the browser opens the control plane's approval, which goes on to the GUI, so an account
 that signs in with Microsoft Entra approves there. The server keeps the session, and an assistant registered with the same
 program shares it. The extension registers the server with VS Code's own assistants, once per mode, and
-**Connect an AI Assistant** prints another client's registration from the server's `install`.
+**Connect an AI Assistant** prints another client's registration from the server's `install`. A package may carry the
+`sqlflow` command line beside the server, as `bin/sqlflow`: the extension puts it on the PATH of every integrated terminal,
+the server finds it there and `get_cli` tells an assistant, so what would be a person clicking can be a script. A person
+signs in once: `~/.sqlflow/credentials.json`, the file `sqlflow login` keeps per control plane, is shared by the command line
+and the server, which reads what another client wrote on its next call.
 
 A YAML file is a pipeline document by what it holds (`src/documents/recognition.ts`, which follows
 `FlowDocumentRecognition` and the engine's document kinds), since a repository's flows are plain `*.yaml` files. What one
@@ -87,7 +91,7 @@ own that compiles these sources in place and calls `activateHost`:
 export async function activate(context: vscode.ExtensionContext) {
     return activateHost(context, {
         product: 'Widget',
-        mcp: { program: 'widget-mcp', statePrefix: 'widget-mcp', providerId: 'widget.mcp', searchPaths: () => [] },
+        mcp: { program: 'widget-mcp', providerId: 'widget.mcp', searchPaths: () => [] },
         lspSearchPaths: () => [],
         censusDirectories: (extensionPath) => [path.join(extensionPath, 'dist', 'census')],
         docCorpora: (extensionPath) => [path.join(extensionPath, 'dist', 'reference')],
@@ -104,7 +108,7 @@ export async function activate(context: vscode.ExtensionContext) {
 | References | `references.register` | What a key may hold and the file a value refers to, as completion, links and go to definition. |
 | Lenses | `lenses.register` | Actions at the top of a document. |
 | Commands | `command` | A command that reads the estate: a failure is shown, a missing sign-in offers one. |
-| A run's panel and form | `addRunSections`, `addRunParameters` | What it knows of a run of its kinds. |
+| A run's panel and form | `addRunSections`, `addRunParameters`, `addRunPayload` | What it knows of a run of its kinds. |
 
 VS Code reads a manifest as a file, so a host's `package.json` restates what this one contributes under the same `sqlflow.*`
 ids, and a host's extension replaces this one rather than sitting beside it.

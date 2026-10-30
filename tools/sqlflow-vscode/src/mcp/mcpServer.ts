@@ -30,6 +30,10 @@ export function serverEnvironment(): Record<string, string> {
     if (gui !== '') {
         env.SQLFLOW_GUI_URL = gui;
     }
+    const cli = config.get<string>('cliPath', '').trim();
+    if (cli !== '') {
+        env.SQLFLOW_CLI = cli;
+    }
     return env;
 }
 

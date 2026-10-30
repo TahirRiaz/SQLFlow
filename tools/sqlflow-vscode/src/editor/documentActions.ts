@@ -220,8 +220,7 @@ interface CliTaskDefinition extends vscode.TaskDefinition {
 }
 
 /** A verb on a file as a task: the CLI reads the working copy on this machine, so it answers for what is not yet pushed. */
-function cliTask(definition: CliTaskDefinition, scope: vscode.WorkspaceFolder | vscode.TaskScope): vscode.Task {
-    const cli = vscode.workspace.getConfiguration('sqlflow').get<string>('cliPath', 'sqlflow').trim() || 'sqlflow';
+function cliTask(cli: string, definition: CliTaskDefinition, scope: vscode.WorkspaceFolder | vscode.TaskScope): vscode.Task {
     const execution = new vscode.ShellExecution(cli, [definition.verb, { value: definition.file, quoting: vscode.ShellQuoting.Strong }]);
     const task = new vscode.Task(definition, scope, `${definition.verb} ${path.basename(definition.file)}`, TASK_TYPE, execution);
     task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, clear: true };
@@ -229,7 +228,7 @@ function cliTask(definition: CliTaskDefinition, scope: vscode.WorkspaceFolder | 
 }
 
 /** Offers a document's verbs and runs the one picked. */
-export async function runCliVerb(verbs: CliVerb[], documents: DocumentIndex): Promise<void> {
+export async function runCliVerb(verbs: CliVerb[], documents: DocumentIndex, cli: string): Promise<void> {
     const uri = vscode.window.activeTextEditor?.document.uri;
     const document = uri ? await documents.at(uri) : undefined;
     if (!uri || !document) {
@@ -242,17 +241,17 @@ export async function runCliVerb(verbs: CliVerb[], documents: DocumentIndex): Pr
     );
     if (chosen) {
         const scope = vscode.workspace.getWorkspaceFolder(uri) ?? vscode.TaskScope.Workspace;
-        await vscode.tasks.executeTask(cliTask({ type: TASK_TYPE, verb: chosen.verb, file: uri.fsPath }, scope));
+        await vscode.tasks.executeTask(cliTask(cli, { type: TASK_TYPE, verb: chosen.verb, file: uri.fsPath }, scope));
     }
 }
 
 /** Resolves a task `tasks.json` declares, so a verb can be bound to a key or a build. */
-export function cliTaskProvider(): vscode.TaskProvider {
+export function cliTaskProvider(cli: () => string): vscode.TaskProvider {
     return {
         provideTasks: () => [],
         resolveTask: (task) => {
             const definition = task.definition as CliTaskDefinition;
-            return definition.verb && definition.file ? cliTask(definition, task.scope ?? vscode.TaskScope.Workspace) : undefined;
+            return definition.verb && definition.file ? cliTask(cli(), definition, task.scope ?? vscode.TaskScope.Workspace) : undefined;
         },
     };
 }

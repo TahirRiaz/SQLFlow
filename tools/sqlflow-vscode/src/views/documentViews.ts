@@ -163,6 +163,24 @@ export function builtInSections(estate: Estate): DocumentSection[] {
             ],
         },
         {
+            label: 'Approval',
+            icon: 'verified',
+            expanded: true,
+            applies: ({ document }) => document.kind === 'ai-context',
+            rows: async ({ document }) => {
+                const context = (await estate.aiContexts()).find((candidate) => candidate.name === document.name);
+                if (!context) {
+                    return [{ label: 'Not synced', description: 'push it and sync the repository, then an admin can approve it', icon: 'circle-slash' }];
+                }
+                return [
+                    { label: 'Status', description: context.status, icon: 'verified' },
+                    ...(context.approvedBy ? [{ label: 'Approved by', description: `${context.approvedBy} ${ago(context.approvedUtc)}`, icon: 'account' }] : []),
+                    { label: 'Tables served', description: `${context.servedTableCount ?? 0} of ${context.tableCount ?? 0}`, icon: 'table' },
+                    ...(context.problemCount ? [{ label: 'Problems', description: String(context.problemCount), icon: 'warning' }] : []),
+                ];
+            },
+        },
+        {
             label: 'Latest Runs',
             icon: 'history',
             expanded: true,
