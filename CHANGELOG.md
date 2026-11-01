@@ -160,6 +160,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- A node whose run slots were all full sat out its long poll when a run ended, up to 30 seconds, whenever it had a free
+  compute slot, so short flows ran in bursts. The poll it already has parked now takes the next run the moment one is
+  reported finished ([worker](docs/reference/cli/worker.md#the-poll)).
 - A repo's folders stay shut until they are opened. Opening a project on a repo's page or the Pipelines page unfolded
   every folder that held a flow, with every file beside it, so a repository keeping thousands of files beside its
   flows listed them all; a project now opens onto its top-level folders, each opening one level at a time. A search

@@ -29,6 +29,9 @@ public sealed class DispatchState
     private readonly Dictionary<string, SortedSet<TaskEntry>> _queuedTasksByPool = new(StringComparer.Ordinal);
     private readonly List<Waiter> _waiters = [];
 
+    // The runs and tasks each node has reported an outcome for and may still list as held: a node reports, then frees the slot.
+    private readonly Dictionary<string, HashSet<Guid>> _reportedByNode = new(StringComparer.Ordinal);
+
     /// <summary>Normalizes a pool reference to its key: the empty string for the untargeted pool.</summary>
     public static string PoolKey(string? pool) => string.IsNullOrWhiteSpace(pool) ? string.Empty : pool.Trim();
 
@@ -183,6 +186,20 @@ public sealed class DispatchState
     {
         lock (_gate)
         {
+            return RemoveRunLocked(runId);
+        }
+    }
+
+    /// <summary>Removes a run whose holder has reported its outcome, as <see cref="RemoveRun"/> does, and remembers that the
+    /// node is freeing the slot, so a poll of that node parked with the count it arrived with can use it
+    /// (<see cref="FreedSlots"/>). Only an outcome frees a slot: a run that left memory any other way may still be executing
+    /// on its node.</summary>
+    public bool RemoveReportedRun(Guid runId, string node)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        lock (_gate)
+        {
+            RememberReportedLocked(node, runId);
             return RemoveRunLocked(runId);
         }
     }
@@ -566,6 +583,50 @@ public sealed class DispatchState
         }
     }
 
+    /// <summary>The compute-task twin of <see cref="RemoveReportedRun"/>. Removing a task frees no gate of its own, so nothing
+    /// else wakes the node's parked poll for the slot.</summary>
+    public bool RemoveReportedTask(Guid taskId, string node)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        lock (_gate)
+        {
+            RememberReportedLocked(node, taskId);
+            var removed = RemoveTaskLocked(taskId);
+            WakeNodeLocked(node);
+            return removed;
+        }
+    }
+
+    /// <summary>
+    /// How many of the runs and tasks a poll lists as held the node has since reported finished: slots it counted as taken
+    /// and is freeing. A poll's free slots are counted once, when it arrives, so without these a node whose run slots were all
+    /// full would sit out its long poll beside runs it could take. What the node no longer lists it has freed, and counts in
+    /// its free slots itself, so that is forgotten here and no slot is counted twice.
+    /// </summary>
+    public (int Runs, int Tasks) FreedSlots(string node, IReadOnlyList<HeldRun> runs, IReadOnlyList<Guid> tasks)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        ArgumentNullException.ThrowIfNull(runs);
+        ArgumentNullException.ThrowIfNull(tasks);
+        lock (_gate)
+        {
+            if (!_reportedByNode.TryGetValue(node, out var reported))
+            {
+                return (0, 0);
+            }
+
+            var freedRuns = runs.Count(r => reported.Contains(r.RunId));
+            var freedTasks = tasks.Count(reported.Contains);
+            reported.IntersectWith(runs.Select(r => r.RunId).Concat(tasks));
+            if (reported.Count == 0)
+            {
+                _reportedByNode.Remove(node);
+            }
+
+            return (freedRuns, freedTasks);
+        }
+    }
+
     /// <summary>Removes a task only if the given node holds it (its outcome write was dropped by the fence).</summary>
     public bool RemoveTaskIfHeldBy(Guid taskId, string node)
     {
@@ -857,6 +918,7 @@ public sealed class DispatchState
             _groups.Clear();
             _tasks.Clear();
             _queuedTasksByPool.Clear();
+            _reportedByNode.Clear();
             foreach (var waiter in _waiters)
             {
                 waiter.Signal.TrySetResult(PollWake.Signal);
@@ -1197,6 +1259,16 @@ public sealed class DispatchState
         {
             group.Running--;
         }
+    }
+
+    private void RememberReportedLocked(string node, Guid id)
+    {
+        if (!_reportedByNode.TryGetValue(node, out var reported))
+        {
+            _reportedByNode[node] = reported = [];
+        }
+
+        reported.Add(id);
     }
 
     private void RequeueLocked(RunEntry entry)

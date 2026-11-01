@@ -307,6 +307,123 @@ public sealed class DispatcherTests
     }
 
     [Fact]
+    public async Task Poll_ANodeWithItsRunSlotsFull_TakesTheNextRunTheMomentItReportsOne()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var finished = Make.Run(T0);
+        var next = Make.Run(T0.AddSeconds(1));
+        ledger.AddQueued(finished);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1, runSlots: 1), CancellationToken.None);
+        ledger.AddQueued(next);
+        dispatcher.NotifyRunsEnqueued([next]);
+
+        // Every run slot is taken but a compute slot is free, so the poll wants work and the node will not cancel it.
+        var parked = dispatcher.PollAsync(
+            Make.Poll("n1", freeRuns: 0, freeTasks: 1, runSlots: 1, holding: [new HeldRun(finished.RunId, 1)], waitSeconds: 10),
+            CancellationToken.None);
+        await Wait.UntilAsync(() => dispatcher.Snapshot().Waiters == 1);
+        Assert.False(parked.IsCompleted);
+
+        await dispatcher.RecordRunOutcomeAsync(
+            finished.RunId, new RunOutcomeRequest("n1", 1, RunOutcomeKind.Completed, null, Make.Artifact), CancellationToken.None);
+
+        var response = await parked.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(next.RunId, Assert.Single(response.Runs).RunId);
+    }
+
+    [Fact]
+    public async Task Poll_ARunThatLeftOtherThanByItsOutcome_FreesNoSlot()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var gone = Make.Run(T0);
+        var next = Make.Run(T0.AddSeconds(1));
+        ledger.AddQueued(gone);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1, runSlots: 1), CancellationToken.None);
+        ledger.AddQueued(next);
+        dispatcher.NotifyRunsEnqueued([next]);
+
+        // A row ended behind the node's back: the node may still be executing the run, so its slot stays taken.
+        dispatcher.Queue.RemoveRun(gone.RunId);
+
+        var poll = await dispatcher.PollAsync(
+            Make.Poll("n1", freeRuns: 0, freeTasks: 1, runSlots: 1, holding: [new HeldRun(gone.RunId, 1)]), CancellationToken.None);
+        Assert.Empty(poll.Runs);
+    }
+
+    [Fact]
+    public async Task Poll_ANodeThatReportedNoFreeSlotAtAll_IsHandedNothing_SinceItCancelsThatPollForTheFreedSlot()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var finished = Make.Run(T0);
+        var next = Make.Run(T0.AddSeconds(1));
+        ledger.AddQueued(finished);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1, runSlots: 1), CancellationToken.None);
+        ledger.AddQueued(next);
+        dispatcher.NotifyRunsEnqueued([next]);
+        await dispatcher.RecordRunOutcomeAsync(
+            finished.RunId, new RunOutcomeRequest("n1", 1, RunOutcomeKind.Completed, null, Make.Artifact), CancellationToken.None);
+
+        var poll = await dispatcher.PollAsync(
+            Make.Poll("n1", freeRuns: 0, freeTasks: 0, runSlots: 1, holding: [new HeldRun(finished.RunId, 1)]), CancellationToken.None);
+
+        Assert.Empty(poll.Runs);
+    }
+
+    [Fact]
+    public async Task Poll_AFreedSlotIsCountedOnce_ANodeThatFreedItCountsItItself()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var finished = Make.Run(T0);
+        ledger.AddQueued(finished);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1, runSlots: 2), CancellationToken.None);
+        await dispatcher.RecordRunOutcomeAsync(
+            finished.RunId, new RunOutcomeRequest("n1", 1, RunOutcomeKind.Completed, null, Make.Artifact), CancellationToken.None);
+        for (var i = 1; i <= 3; i++)
+        {
+            var queued = Make.Run(T0.AddSeconds(i));
+            ledger.AddQueued(queued);
+            dispatcher.NotifyRunsEnqueued([queued]);
+        }
+
+        // The node has freed the slot and no longer lists the run: the one slot it reports is the whole of what it has.
+        var poll = await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1, runSlots: 2), CancellationToken.None);
+
+        Assert.Single(poll.Runs);
+    }
+
+    [Fact]
+    public async Task Poll_ANodeWithItsTaskSlotsFull_TakesTheNextTaskTheMomentItReportsOne()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var finished = Make.Task(T0);
+        var next = Make.Task(T0.AddSeconds(1));
+        ledger.AddQueuedTask(finished);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 0, freeTasks: 1), CancellationToken.None);
+        ledger.AddQueuedTask(next);
+        dispatcher.NotifyTaskEnqueued(next);
+
+        var parked = dispatcher.PollAsync(
+            Make.Poll("n1", freeRuns: 1, freeTasks: 0, holdingTasks: [finished.TaskId], waitSeconds: 10), CancellationToken.None);
+        await Wait.UntilAsync(() => dispatcher.Snapshot().Waiters == 1);
+
+        await dispatcher.RecordTaskOutcomeAsync(
+            finished.TaskId, new TaskOutcomeRequest("n1", TaskOutcomeKind.Succeeded, null, "{}"), CancellationToken.None);
+
+        var response = await parked.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(next.TaskId, Assert.Single(response.Tasks).TaskId);
+    }
+
+    [Fact]
     public async Task Poll_ASaturatedNodeIsWokenByACancelForARunItHolds()
     {
         var ledger = new FakeLedger();
