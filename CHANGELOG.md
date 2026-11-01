@@ -160,6 +160,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- Flows running side by side on a fresh database no longer fail on the schema they share. Each found it missing and created it, and
+  all but the first failed with "There is already an object named ...", so a first run depended on timing.
+- A copy flow with a relative location runs from the repository on a node, as a file flow does. It ran from a snapshot of its YAML
+  alone, where the files it names are not there ([cpy](docs/reference/flow/cpy.md)).
 - An unquoted decimal in a flow keeps what the document wrote. Where a document holds a value of any shape (a stored
   procedure or invoke parameter, a translate template's constant) it was read in single precision, so 0.1 reached the run as
   0.100000001 and a value past about seven significant digits moved.- A copy flow's relative locations resolve against the flow file's own folder, as every other kind's do. They resolved

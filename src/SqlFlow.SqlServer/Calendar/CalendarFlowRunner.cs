@@ -161,7 +161,13 @@ public sealed class CalendarFlowRunner
         var db = CalendarTable.Quote(flow.Table.Database);
         var schemaSql = $"""
             IF NOT EXISTS (SELECT 1 FROM {db}.sys.schemas WHERE name = @schema)
+            BEGIN TRY
                 EXEC {db}.sys.sp_executesql N'CREATE SCHEMA {CalendarTable.Quote(flow.Table.Schema)}';
+            END TRY
+            BEGIN CATCH
+                -- Another flow made it between the look and the create, which is what was wanted.
+                IF NOT EXISTS (SELECT 1 FROM {db}.sys.schemas WHERE name = @schema) THROW;
+            END CATCH;
             """;
         trace("target.schema", schemaSql);
         await using (var command = new SqlCommand(schemaSql, connection) { CommandTimeout = 0 })

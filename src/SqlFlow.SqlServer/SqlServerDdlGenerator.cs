@@ -58,15 +58,7 @@ public sealed class SqlServerDdlGenerator : IDdlGenerator
 
     private static string Escape(string identifier) => identifier.Replace("]", "]]", StringComparison.Ordinal);
 
-    /// <summary>An idempotent CREATE SCHEMA guarded by SCHEMA_ID, matching the pattern the ingestion runner
-    /// and control-plane provisioning already use. CREATE SCHEMA must be the first (only) statement in its
-    /// batch, so it is wrapped in EXEC to run inside the shared DDL transaction.</summary>
-    private static string EnsureSchemaStatement(string schema)
-    {
-        var literal = schema.Replace("'", "''", StringComparison.Ordinal);
-        var escaped = schema.Replace("]", "]]", StringComparison.Ordinal);
-        return $"IF SCHEMA_ID(N'{literal}') IS NULL EXEC(N'CREATE SCHEMA [{escaped}]');";
-    }
+    private static string EnsureSchemaStatement(string schema) => Schema.SchemaStatements.Ensure(schema);
 
     private static string Column(ColumnDefinition column, bool forNewTable)
     {

@@ -33,7 +33,7 @@ public sealed class EvolutionDdlGeneratorTests
         var ensure = batch.Statements[0];
         Assert.False(ensure.IsCreateTable);
         Assert.Equal(DdlCost.MetadataOnly, ensure.Cost);
-        Assert.Equal("IF SCHEMA_ID(N'dbo') IS NULL EXEC(N'CREATE SCHEMA [dbo]');", ensure.Text);
+        Assert.Equal(SqlFlow.SqlServer.Schema.SchemaStatements.Ensure("dbo"), ensure.Text);
 
         var statement = batch.Statements[1];
         Assert.True(statement.IsCreateTable);

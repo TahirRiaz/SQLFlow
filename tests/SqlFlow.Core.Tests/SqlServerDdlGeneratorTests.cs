@@ -25,7 +25,7 @@ public sealed class SqlServerDdlGeneratorTests
         var sql = Generator.Generate(Target, delta);
 
         Assert.Equal(2, sql.Count);
-        Assert.Equal("IF SCHEMA_ID(N'dbo') IS NULL EXEC(N'CREATE SCHEMA [dbo]');", sql[0]);
+        Assert.Equal(SqlFlow.SqlServer.Schema.SchemaStatements.Ensure("dbo"), sql[0]);
         Assert.Contains("CREATE TABLE [dbo].[Orders]", sql[1], StringComparison.Ordinal);
         Assert.Contains("[OrderId] BIGINT NOT NULL", sql[1], StringComparison.Ordinal);
         Assert.Contains("[Amount] DECIMAL(38, 6) NULL", sql[1], StringComparison.Ordinal);
@@ -44,7 +44,7 @@ public sealed class SqlServerDdlGeneratorTests
         var sql = Generator.Generate(target, delta);
 
         Assert.Equal(2, sql.Count);
-        Assert.Equal("IF SCHEMA_ID(N'pre') IS NULL EXEC(N'CREATE SCHEMA [pre]');", sql[0]);
+        Assert.Equal(SqlFlow.SqlServer.Schema.SchemaStatements.Ensure("pre"), sql[0]);
         Assert.Contains("CREATE TABLE [pre].[Boatbooking_detail]", sql[1], StringComparison.Ordinal);
     }
 
