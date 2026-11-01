@@ -24,5 +24,5 @@ subscribers:
     queries:
       - name: OrderSummary
         sql: |
-          SELECT OrderId, Country, Amount
+          SELECT customer_id, country, total_amount
           FROM   SqlFlowCatalogTests.demo.Fact_OrderSummary
