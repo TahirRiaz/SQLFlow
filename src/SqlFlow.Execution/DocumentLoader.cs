@@ -1,3 +1,4 @@
+using SqlFlow.Core.Copy;
 using SqlFlow.Core.Export;
 using SqlFlow.Core.Model;
 using SqlFlow.Core.Secrets;
@@ -26,6 +27,7 @@ public static class DocumentLoader
             FileFlowDocument doc => new FileFlowDocument { Flow = ResolveRelativeLocation(doc.Flow, file) },
             ExportFlowDocument doc => new ExportFlowDocument { Document = ResolveRelativeExportPath(doc.Document, file) },
             TranslateFlowDocument doc => new TranslateFlowDocument { Document = ResolveRelativeTranslatePath(doc.Document, file) },
+            CopyFlowDocument doc => doc with { Flow = ResolveRelativeCopyLocations(doc.Flow, file) },
             var other => other,
         };
 
@@ -86,6 +88,22 @@ public static class DocumentLoader
                 onSecretWarning(SecretHygiene.Warning(alias, file));
             }
         }
+    }
+
+    /// <summary>Resolves each step's local locations against the flow file's own directory, as a file flow's location is,
+    /// so a copy flow in a repository runs wherever its node materialized it. Absolute paths, storage URIs and references
+    /// are left alone.</summary>
+    private static CopyFlow ResolveRelativeCopyLocations(CopyFlow flow, string file)
+    {
+        var baseDir = Path.GetDirectoryName(Path.GetFullPath(file)) ?? Directory.GetCurrentDirectory();
+        CopyEndpoint Resolve(CopyEndpoint endpoint)
+            => endpoint.Location.Contains("://", StringComparison.Ordinal)
+               || Core.Engine.SourceLocations.NamesReference(endpoint.Location)
+               || Path.IsPathRooted(endpoint.Location)
+                ? endpoint
+                : endpoint with { Location = Path.GetFullPath(Path.Combine(baseDir, endpoint.Location)) };
+
+        return flow with { Steps = [.. flow.Steps.Select(s => s with { Source = Resolve(s.Source), Target = Resolve(s.Target) })] };
     }
 
     private static TranslateDocument ResolveRelativeTranslatePath(TranslateDocument document, string file)

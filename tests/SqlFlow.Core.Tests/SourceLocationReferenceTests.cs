@@ -3,6 +3,7 @@ using SqlFlow.Core.Engine;
 using SqlFlow.Core.Model;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Execution;
+using SqlFlow.Yaml;
 using Xunit;
 
 namespace SqlFlow.Tests;
@@ -16,6 +17,40 @@ namespace SqlFlow.Tests;
 public sealed class SourceLocationReferenceTests
 {
     private const string Landing = "abfss://landing@estate.dfs.core.windows.net/drops";
+
+    [Fact]
+    public void ACopyFlowsRelativeLocations_ResolveAgainstItsOwnFolder_AndNothingElseMoves()
+    {
+        var folder = Directory.CreateTempSubdirectory("copy-paths").FullName;
+        try
+        {
+            var file = Path.Combine(folder, "copy.flow.yaml");
+            File.WriteAllText(file, """
+                flowType: cpy
+                name: Copy_Paths
+                operation: zip
+                items:
+                  - source: { location: ./data, pattern: "*.csv" }
+                    target: { location: ../out/archive }
+                  - source: { location: abfss://raw@account.dfs.core.windows.net/orders }
+                    target: { location: "${env:COPY_TARGET}/orders" }
+                options:
+                  zipName: bundle.zip
+                """);
+
+            var flow = Assert.IsType<CopyFlowDocument>(DocumentLoader.Load(YamlDocumentLoader.CreateDefault([], []), file)).Flow;
+
+            Assert.Equal(Path.Combine(folder, "data"), flow.Steps[0].Source.Location);
+            Assert.Equal(Path.GetFullPath(Path.Combine(folder, "..", "out", "archive")), flow.Steps[0].Target.Location);
+            Assert.Equal("*.csv", flow.Steps[0].Source.Pattern);
+            Assert.Equal("abfss://raw@account.dfs.core.windows.net/orders", flow.Steps[1].Source.Location);
+            Assert.Equal("${env:COPY_TARGET}/orders", flow.Steps[1].Target.Location);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
 
     private static readonly SecretResolver Node = new([new NoEnvironment()]);
 

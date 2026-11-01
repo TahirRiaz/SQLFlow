@@ -118,6 +118,7 @@ Path fixups applied per kind:
 
 - A file flow's `source.location` resolves against the document's directory at load time unless it is already rooted.
 - An export flow's target path resolves against the document's directory at load time, skipped when the value contains `://` or is already rooted.
+- A translate flow's output path and a copy flow's local source and target locations resolve the same way, skipped when the value contains `://`, names a `${...}` reference (copy) or is already rooted.
 - An scm flow's `repository.path` resolves the same way at execution time in `DocumentExecutor`, with the same `://` and rooted-path bypass.
 
 Every load, on `validate` and `run` alike, also runs the secret-hygiene check: a connection value that looks like an embedded credential produces a loud warning naming the canonical alternatives (`${env:NAME}`, `${keyvault:vault/secret}`, or a bare connection name). The value itself is never echoed.

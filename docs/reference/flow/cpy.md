@@ -66,7 +66,7 @@ A flow declares **either** a single top-level `source`/`target` pair **or** an `
 
 | Key | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `location` | string | yes | | A local/UNC path or an Azure storage URI (`abfss://fs@account.dfs.core.windows.net/path` or the https form). |
+| `location` | string | yes | | A local/UNC path or an Azure storage URI (`abfss://fs@account.dfs.core.windows.net/path` or the https form). A relative local path resolves against the flow file's own folder. |
 | `pattern` | string | no | `*` | Source only: file-name glob selecting which files copy. |
 | `recursive` | bool | no | `true` | Source only: recurse into subfolders. |
 | `modifiedWithinDays` | int | no | `0` | Source only: only copy files modified within this many days; 0 = all. |

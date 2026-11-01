@@ -160,6 +160,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- A copy flow's relative locations resolve against the flow file's own folder, as every other kind's do. They resolved
+  against the working directory, so a copy flow in a repository failed on a node
+  ([cpy](docs/reference/flow/cpy.md)).
 - A node whose run slots were all full sat out its long poll when a run ended, up to 30 seconds, whenever it had a free
   compute slot, so short flows ran in bursts. The poll it already has parked now takes the next run the moment one is
   reported finished ([worker](docs/reference/cli/worker.md#the-poll)).
