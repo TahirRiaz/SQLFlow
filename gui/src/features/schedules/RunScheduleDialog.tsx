@@ -530,7 +530,8 @@ export function RunScheduleDialog({ schedule, onClose }: RunScheduleDialogProps)
                   <div className="text-[13px] font-medium">Backfill window (optional)</div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Reprocess this source for a date range: the integration flows re-land the files modified in the
-                    window and the silver flows re-pull from the source minimum. Leave empty to run normally.
+                    window, file flows dated by file name or path read that same window, and the silver flows re-pull
+                    from the source minimum. Leave empty to run normally.
                   </p>
                   <div className="mt-2">
                     <DateRangeCalendar

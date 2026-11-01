@@ -791,8 +791,9 @@ export function TriggerRunDialog({
                   {renderable.map(renderParameter)}
                   {paramsScope === "node" && (
                     <p className="text-xs text-muted-foreground" data-testid="trigger-node-backfill-note">
-                      The parent applies this window; its descendants read from the source minimum for this run, so the
-                      back-dated rows are picked up instead of stopping at staging.
+                      The parent applies this window, as do file descendants dated by file name or path; relational
+                      descendants read from the source minimum for this run, so the back-dated rows are picked up
+                      instead of stopping at staging.
                     </p>
                   )}
                   {windowError !== null && (

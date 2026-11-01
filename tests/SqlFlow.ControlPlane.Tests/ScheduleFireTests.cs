@@ -198,6 +198,58 @@ public sealed class ScheduleFireTests
     }
 
     [SkippableFact]
+    public async Task Fire_WithBackfillWindow_NameDatedFileFlow_TakesTheWindow()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+        string copy = $"cpy_{suffix}", file = $"file_{suffix}", silver = $"ing_{suffix}";
+        const string nameDated = """
+            name: orders_01_csv
+            source:
+              type: csv
+              location: https://lake.dfs.core.windows.net/data/orders/
+              options:
+                srcFile: "orders*.csv"
+                fileDate.from: "name"
+                fileDate.pattern: '(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})'
+            target:
+              connection: Server=.;Database=dw
+              schema: pre
+              table: orders
+            incremental:
+              dateColumn: FileDate_DW
+            """;
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await SeedPipelineAsync(db, repoId, copy, wave: 0, batch: "BB", kind: "cpy");
+            await SeedPipelineAsync(db, repoId, file, wave: 1, batch: "BB", kind: "file", yaml: nameDated);
+            await SeedPipelineAsync(db, repoId, silver, wave: 2, batch: "BB", kind: "ing");
+
+            var schedule = await SeedScheduleAsync(db, repoId, $"daily_{suffix}", [copy, file, silver]);
+            var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var to = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+            await ScheduleFire.EnqueueAsync(
+                db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default,
+                backfillWindow: new SqlFlow.Core.Runs.RunParameters { BackfillFrom = from, BackfillTo = to });
+
+            var runs = await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync();
+            var fileRun = Assert.Single(runs, r => r.FlowName == file);
+
+            // A re-landed file keeps the date in its name, so its watermark would skip it at defaults.
+            Assert.Equal(from, fileRun.BackfillFrom);
+            Assert.Equal(to, fileRun.BackfillTo);
+            Assert.True(runs.Single(r => r.FlowName == silver).ReprocessFromSourceMin);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
     public async Task Fire_NoRunnableMember_EnqueuesNothing()
     {
         var cs = CatalogTestDb.Require();
@@ -313,7 +365,8 @@ public sealed class ScheduleFireTests
     }
 
     private static async Task SeedPipelineAsync(
-        CatalogDbContext db, Guid repoId, string name, int wave, string batch, string? mode = null, string kind = "ing")
+        CatalogDbContext db, Guid repoId, string name, int wave, string batch, string? mode = null, string kind = "ing",
+        string yaml = "")
     {
         db.Pipelines.Add(new CatalogPipeline
         {
@@ -323,6 +376,7 @@ public sealed class ScheduleFireTests
             Kind = kind,
             Batch = batch,
             RelativePath = $"flows/{name}.flow.yaml",
+            Yaml = yaml,
             Active = true,
             Wave = wave,
             ExecutionMode = mode ?? PipelineExecutionModes.Auto,

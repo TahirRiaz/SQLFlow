@@ -67,7 +67,7 @@ A whole-source backfill fixes both, per role, in one run.
 | Role | Kinds | What the backfill does |
 |---|---|---|
 | Integration | `cpy`, `api`, `sftp` | Selects source files by **modified date** in the from/to window and **force re-lands** them: unchanged-detection is turned off, so every selected file is re-written with a **fresh timestamp**, even when byte-identical. Acquire additionally **ignores its stored watermark** so it re-fetches history rather than staying capped at the last point. |
-| File ingestion | `file` | A **root** file flow (one that reads external files directly) takes the window and reads the files whose date falls in it, with its watermark suppressed. An **intermediate** file flow (one that reads a root's re-landed output) runs at defaults: the re-landed files are the newest at its source, so its own normal incremental picks them up. |
+| File ingestion | `file` | A **root** file flow (one that reads external files directly) takes the window and reads the files whose date falls in it, with its watermark suppressed. An **intermediate** file flow (one that reads a root's re-landed output) depends on where it dates its files. Dated from the **name or path** (`fileDate.from: name` or `path`), it also takes the window, because a re-landed file keeps that old date and its watermark would filter it out. Dated by **modified time**, it runs at defaults: the re-landed files are the newest at its source, so its own normal incremental picks them up. |
 | Silver | `ing` | Reads `WHERE date_col >= MIN(source)` instead of `> MAX(target)`, so the back-dated rows the file layer just re-landed are re-pulled and upserted. |
 
 Two mechanisms sit underneath that table:
@@ -80,13 +80,17 @@ Two mechanisms sit underneath that table:
   source minimum, even when the source holds nothing older than the target, so the reprocess is never silently
   narrowed back to the target's high-water mark. See `IncrementalWindowResolver`.
 
-### Why the window lives only at the integration layer
+### Where the window is re-applied downstream
 
-The from/to window is a **modified-date** selection, and a modified date only exists meaningfully at the external
-source. Once a file is re-landed it carries a fresh timestamp, so an old date window can no longer select it. That is
-why the window is applied at the integration roots and **not** re-applied downstream: the file layer re-reads what
-re-landed through its normal incremental, and the silver layer re-pulls by source minimum. Trying to re-enforce the
-same past window on a freshly re-landed file would select nothing.
+At the integration roots the from/to window is a **modified-date** selection, and a modified date only exists
+meaningfully at the external source. Once a file is re-landed it carries a fresh timestamp, so an old date window can no
+longer select it: a modified-dated file flow downstream runs at defaults and re-reads what re-landed through its normal
+incremental. Re-enforcing the same past window there would select nothing.
+
+A file flow that dates its files from their **name or path** is the opposite case. Re-landing does not change that date,
+so the files stay below the flow's watermark and its normal incremental would skip them. Such a flow takes the window
+wherever it sits in the set, and the window selects the files by the date they carry. The silver layer re-pulls by source
+minimum in both cases.
 
 ## How to run it
 
@@ -94,7 +98,8 @@ same past window on a freshly re-landed file would select nothing.
 
 In the GUI, open **Trigger run**, choose **This flow + descendants**, pick the source's entry flow (its copy or
 acquire), and set the **Backfill window** From/To. The anchor takes the window and force-re-lands; its descendants are
-routed automatically (silver descendants to min-from-source, intermediate file/copy descendants to defaults).
+routed automatically (silver descendants to min-from-source, file descendants dated from the name or path to the
+window, other file/copy descendants to defaults).
 
 The same over the API (`POST /api/v1/runs`):
 
@@ -113,7 +118,10 @@ The same over the API (`POST /api/v1/runs`):
 "Whole batch" is not a run scope in SQLFlow; a whole source is expressed as a **schedule** (the flows that joined it
 with `schedule: <name>`). To backfill the entire source, open its schedule's **Run schedule** board, set the
 **Backfill window**, and start. Firing the schedule with a window reprocesses every member in wave order: its wave-0
-integration/file roots take the window, its silver flows take min-from-source, everything else runs at defaults.
+integration/file roots and any file flow dated from the name or path take the window, its silver flows take
+min-from-source, everything else runs at defaults. The window applies to this schedule's own members: a schedule chained
+behind it (`after:`) fires as a normal run when this one finishes, so hold the chain back or backfill each link on its
+own.
 
 The same over the API (`POST /api/v1/schedules/{id}/run`):
 
@@ -169,7 +177,7 @@ run still shows `target MAX`, it was executed by a worker that does not yet have
 | `cpy` | Copy files between locations | Window + force re-land |
 | `api` | Acquire from an API | Window + force re-land + stored-watermark bypass |
 | `sftp` | SFTP transfer | Modified-date window + force re-land |
-| `file` | Load files into the database | Root: window (file-date, watermark suppressed). Intermediate: default |
+| `file` | Load files into the database | Root, or dated from name/path: window (file-date, watermark suppressed). Otherwise: default |
 | `ing` | Relational (silver) load | Min-from-source (unconditional for an explicit backfill) |
 | `exp` `sp` `hc` `inv` `scm` `batch` | Export, stored proc, health check, inventory, source-control, batch document | Not part of a backfill; run as defined |
 
