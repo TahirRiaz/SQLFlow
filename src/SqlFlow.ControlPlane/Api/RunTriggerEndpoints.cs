@@ -298,14 +298,13 @@ public static class RunTriggerEndpoints
                 title: "Not found");
         }
 
-        // A node backfill scopes the WINDOW to the anchor only (the flow the operator picked): a from/to window is a
-        // modified-date selection at the source, which cannot be re-enforced downstream (re-copying a file stamps it
-        // with today's timestamp, never a past one), so the anchor is the single place it applies. Its descendants
-        // then just reprocess whatever the anchor re-lands: a relational descendant takes MIN-from-source (its rows
-        // carry old business dates that MAX-from-target would filter out), while a file/copy descendant takes default
-        // parameters and picks up the freshly re-landed files through its own normal incremental (their fresh
-        // timestamps beat its watermark). A member left out of the map runs with defaults. The window is validated
-        // here, at the trust boundary. A batch/schedule fire never reaches here (it runs its members as defined).
+        // A node backfill starts its WINDOW at the anchor (the flow the operator picked). Its descendants then
+        // reprocess whatever the anchor re-lands: a relational descendant takes MIN-from-source (its rows carry old
+        // business dates that MAX-from-target would filter out), a file descendant dated from the file's name or path
+        // takes the window (a re-landed file keeps that old date, so its watermark would filter it out too), and any
+        // other file/copy descendant takes default parameters and picks up the re-landed files through its own normal
+        // incremental (their fresh timestamps beat its watermark). See BackfillRouting. The window is validated here,
+        // at the trust boundary. A schedule fire never reaches here; it routes through ScheduleFire.
         Dictionary<string, RunParameters>? memberParameters = null;
         if (scope == RunScope.Node && (request.BackfillFrom is not null || request.BackfillTo is not null))
         {
@@ -320,22 +319,10 @@ public static class RunTriggerEndpoints
                     detail: ex.Message, statusCode: StatusCodes.Status400BadRequest, title: "Invalid run parameters");
             }
 
-            var reprocess = new RunParameters { ReprocessFromSourceMin = true };
-            memberParameters = new Dictionary<string, RunParameters>(StringComparer.Ordinal);
-            foreach (var member in expansion.Members)
-            {
-                if (string.Equals(member.FlowName, expansion.Anchor, StringComparison.Ordinal))
-                {
-                    memberParameters[member.FlowName] = window;
-                }
-                else if (string.Equals(member.FlowKind, "ing", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Only a relational (silver) descendant re-pulls from the source minimum; that override affects
-                    // no other kind. A file/copy descendant is left at defaults (it catches the re-landed files
-                    // through its own incremental), and a kind with no backfill role (sp, hc, exp, ...) runs as defined.
-                    memberParameters[member.FlowName] = reprocess;
-                }
-            }
+            memberParameters = SqlFlow.ControlPlane.Background.BackfillRouting.ForNode(
+                expansion.Members, expansion.Anchor, window,
+                await SqlFlow.ControlPlane.Background.BackfillRouting
+                    .FileDatedMembersAsync(db, documents, request.RepoId, expansion.Members, ct).ConfigureAwait(false));
 
             // Each routed member's parameters pass the loader's one rule for its kind, as a single flow's do: an anchor
             // of a registered kind decides itself whether it takes the window, and refuses it here, before anything is
