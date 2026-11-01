@@ -45,6 +45,7 @@ public sealed class YamlTranslateFlowLoader
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithExactDecimals()
         .Build();
 
     public TranslateDocument LoadFile(string path)

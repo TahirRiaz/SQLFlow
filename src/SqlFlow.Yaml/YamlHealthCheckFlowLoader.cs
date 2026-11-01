@@ -36,6 +36,7 @@ public sealed class YamlHealthCheckFlowLoader
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithExactDecimals()
         .Build();
 
     public HealthCheckDocument LoadFile(string path)

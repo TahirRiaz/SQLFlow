@@ -160,7 +160,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
-- A copy flow's relative locations resolve against the flow file's own folder, as every other kind's do. They resolved
+- An unquoted decimal in a flow keeps what the document wrote. Where a document holds a value of any shape (a stored
+  procedure or invoke parameter, a translate template's constant) it was read in single precision, so 0.1 reached the run as
+  0.100000001 and a value past about seven significant digits moved.- A copy flow's relative locations resolve against the flow file's own folder, as every other kind's do. They resolved
   against the working directory, so a copy flow in a repository failed on a node
   ([cpy](docs/reference/flow/cpy.md)).
 - A node whose run slots were all full sat out its long poll when a run ended, up to 30 seconds, whenever it had a free

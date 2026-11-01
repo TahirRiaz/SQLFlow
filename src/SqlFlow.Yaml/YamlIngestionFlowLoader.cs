@@ -56,6 +56,7 @@ public sealed class YamlIngestionFlowLoader
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithExactDecimals()
         .Build();
 
     public IngestionDocument LoadFile(string path)

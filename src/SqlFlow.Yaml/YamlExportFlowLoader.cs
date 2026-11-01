@@ -45,6 +45,7 @@ public sealed class YamlExportFlowLoader
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithExactDecimals()
         .Build();
 
     public ExportDocument LoadFile(string path)

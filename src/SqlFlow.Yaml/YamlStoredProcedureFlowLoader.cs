@@ -44,6 +44,7 @@ public sealed class YamlStoredProcedureFlowLoader
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithExactDecimals()
         .Build();
 
     public StoredProcedureDocument LoadFile(string path)
