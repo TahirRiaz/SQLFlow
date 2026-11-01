@@ -178,7 +178,7 @@
         "form",
         "json"
       ],
-      "description": "How the token request body is encoded: form (application/x-www-form-urlencoded, the OAuth2 default) or json (e.g. Entur's {client_id, client_secret, audience} body or easypark's {refreshToken}).",
+      "description": "How the token request body is encoded: form (application/x-www-form-urlencoded, the OAuth2 default) or json (e.g. Entur's {client_id, client_secret, audience} body or a vendor's {refreshToken}).",
       "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (BuildTokenRequest)"
     },
     {
@@ -232,7 +232,7 @@
       "type": "string",
       "required": false,
       "default": "Authorization",
-      "description": "The data-request header the resolved token is applied to. easypark uses the non-standard X-Authorization.",
+      "description": "The data-request header the resolved token is applied to. A vendor uses the non-standard X-Authorization.",
       "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
     },
     {

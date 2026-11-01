@@ -890,7 +890,7 @@ public sealed class EngineTests
     [Fact]
     public async Task Soap_flow_discovers_records_over_xml_binds_two_variables_and_pages_in_the_body()
     {
-        // The whole SOAP shape in one run, as the Questback integration service presents it: credentials live
+        // The whole SOAP shape in one run, as a SOAP survey service presents it: credentials live
         // inside the envelope, the discovery call answers in XML and yields two values per record (the entity id
         // AND its per-entity security token), and paging is an element in the request body rather than a query
         // parameter. Page 0 of each entity returns records, page 1 returns none and ends that entity's loop.

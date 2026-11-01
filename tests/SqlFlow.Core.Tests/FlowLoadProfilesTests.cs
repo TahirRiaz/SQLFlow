@@ -8,7 +8,7 @@ namespace SqlFlow.Tests;
 /// The load profile is what the control plane hands an assistant or an operator instead of the raw YAML, so its
 /// statements must be exactly what the engine does. These cases are the production shapes that were misread when
 /// the profile did not exist: a keyed full read mistaken for an incremental load because it had an upsert key, and
-/// a failing flow whose last success went unreported. The YAML mirrors the Reisefrihet flows in dwh-pipelines-prod.
+/// a failing flow whose last success went unreported. The YAML mirrors the Reisefrihet flows in dwh-pipelines.
 /// </summary>
 public sealed class FlowLoadProfilesTests
 {

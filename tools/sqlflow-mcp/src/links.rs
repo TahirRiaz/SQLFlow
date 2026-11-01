@@ -868,15 +868,15 @@ mod tests {
     fn a_file_source_links_to_its_catalog_node_and_graph() {
         let links = GuiLinks::new("");
         let mut payload = json!([{
-            "key": "dwdatalakeprod/raw/cyclehire/history/bikes/2026-08-25.json",
-            "originKind": "AzureStorage", "origin": "dwdatalakeprod", "container": "raw",
+            "key": "dwacct/raw/cyclehire/history/bikes/2026-08-25.json",
+            "originKind": "AzureStorage", "origin": "dwacct", "container": "raw",
             "path": "cyclehire/history/bikes", "name": "2026-08-25.json"
         }]);
         links.decorate(&mut payload);
 
         assert_eq!(
             links_of(&payload, "/0/links/page"),
-            json!("/catalog?node=obj%3Adwdatalakeprod%252Fraw%252Fcyclehire%252Fhistory%252Fbikes%252F2026-08-25.json")
+            json!("/catalog?node=obj%3Adwacct%252Fraw%252Fcyclehire%252Fhistory%252Fbikes%252F2026-08-25.json")
         );
         assert_ne!(links_of(&payload, "/0/links/lineage"), Value::Null);
     }
@@ -886,9 +886,9 @@ mod tests {
         let links = GuiLinks::new("");
         // A repo source is joined to its repo by NAME, so its own id is not a repo id.
         let mut payload = json!([
-            { "id": "r-1", "name": "dwh-pipelines-prod", "remoteUrl": "https://bitbucket.org/contoso/dwh.git",
+            { "id": "r-1", "name": "dwh-pipelines", "remoteUrl": "https://bitbucket.org/contoso/dwh.git",
               "rootPath": null, "firstSeenUtc": "2026-01-01T00:00:00Z", "lastSyncUtc": "2026-08-25T04:00:00Z" },
-            { "id": "s-1", "name": "dwh-pipelines-prod", "remoteUrl": "https://bitbucket.org/contoso/dwh.git",
+            { "id": "s-1", "name": "dwh-pipelines", "remoteUrl": "https://bitbucket.org/contoso/dwh.git",
               "branch": "main", "enabled": true, "syncIntervalSeconds": 300,
               "lastSyncUtc": "2026-08-25T04:00:00Z" }
         ]);
@@ -948,8 +948,8 @@ mod tests {
     fn a_project_opens_the_graph_scoped_to_it_and_a_repo_reference_opens_the_repo() {
         let links = GuiLinks::new("");
         let mut payload = json!([
-            { "repoId": "r-1", "repoName": "dwh-pipelines-prod", "project": "Cyclehire", "flowCount": 9 },
-            { "repoId": "r-1", "repoName": "dwh-pipelines-prod", "edgeCount": 14, "writes": true }
+            { "repoId": "r-1", "repoName": "dwh-pipelines", "project": "Cyclehire", "flowCount": 9 },
+            { "repoId": "r-1", "repoName": "dwh-pipelines", "edgeCount": 14, "writes": true }
         ]);
         links.decorate(&mut payload);
 

@@ -1,0 +1,44 @@
+# OAuth2 refresh-token exchange (idToken applied under a NON-standard X-Authorization header), a day-by-day date
+# window, and a static operator-id fan-out. Lands raw JSON per (day, operator) so the downstream json flow types it.
+flowType: api
+name: Parking_Sessions
+batch: parking
+
+source:
+  transport: http
+  baseUrl: https://api.parking.example
+  auth:
+    type: oauth2_refresh_token
+    token:
+      url: https://api.parking.example/api/get-jwt
+      bodyKind: json
+      body:
+        refreshToken: ${keyvault:my-vault/parking-refresh-token}
+      tokenPath: idToken
+      applyHeaderName: X-Authorization
+      applyPrefix: "Bearer "
+  request:
+    method: GET
+    path: /api/export/operator-sessions
+    query:
+      operatorId: "{operatorId}"
+      from: "{window.from:yyyy-MM-ddTHH:mm:ss}+0000"
+      to: "{window.to:yyyy-MM-ddTHH:mm:ss}+0000"
+  iterate:
+    - kind: date_window
+      granularity: day
+      from: yesterday
+      to: today
+    - kind: list
+      variable: operatorId
+      values: ["101", "102", "103"]
+  reliability:
+    timeoutSeconds: 120
+    rateLimitRps: 5
+    urlAllowlist: ["*.parking.example"]
+
+landing:
+  target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/parking/sessions
+  pathTemplate: "history/{window.from:yyyy}/sessions_{window.from:yyyyMMdd}_{operatorId}"
+  format: json
+  skipEmpty: true

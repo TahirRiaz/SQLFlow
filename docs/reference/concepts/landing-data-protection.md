@@ -51,15 +51,15 @@ Each landing (top-level or per item) carries its own `protect:` list; rules appl
 
 ```yaml
 landing:
-  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/hentmeg/api/requests
-  pathTemplate: "history/{window.from:yyyy}/hentmeg_{window.from:yyyyMMdd}"
+  target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/rides/api/requests
+  pathTemplate: "history/{window.from:yyyy}/rides_{window.from:yyyyMMdd}"
   format: json
   protect:
     - { path: "$.data[*].rider",                   action: remove }
     - { path: "$.data[*].scheduledPickupAddress",  action: remove }
     - { path: "$.data[*].scheduledDropoffAddress", action: remove }
     - { path: "$.data[*].phone",   action: redact, mode: phone }
-    - { path: "$.data[*].riderId", action: hmac, secret: "${keyvault:sqlflow-v3-secrets/hentmeg-pii-key}", outputLength: 16 }
+    - { path: "$.data[*].riderId", action: hmac, secret: "${keyvault:sqlflow-v3-secrets/rides-pii-key}", outputLength: 16 }
 ```
 
 ## Path semantics per format

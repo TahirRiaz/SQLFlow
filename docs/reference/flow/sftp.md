@@ -33,7 +33,7 @@ direction: download
 server:
   host: sftp.vendor.com
   username: svc
-  passwordRef: ${keyvault:dw-keyvault-prod/vendor-sftp-password}
+  passwordRef: ${keyvault:my-vault/vendor-sftp-password}
 remotePath: /outbound
 local: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/vendor
 pattern: "*.xml"
@@ -92,7 +92,7 @@ direction: download
 server:
   host: sftp.vendor.com
   username: svc
-  passwordRef: ${keyvault:dw-keyvault-prod/vendor-sftp-password}
+  passwordRef: ${keyvault:my-vault/vendor-sftp-password}
 items:
   - remotePath: /outbound/orders
     local: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/vendor/orders
@@ -116,7 +116,7 @@ direction: download
 server:
   host: sftp.vendor.com
   username: svc
-  passwordRef: ${keyvault:dw-keyvault-prod/vendor-sftp-password}
+  passwordRef: ${keyvault:my-vault/vendor-sftp-password}
 remotePath: /outbound
 local: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/vendor/inbound
 outputs:

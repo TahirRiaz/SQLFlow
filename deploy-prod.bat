@@ -32,9 +32,9 @@ REM ============================================================================
 
 cd /d "%~dp0"
 
-set "RG=datawarehouse-west-rg-prod-v2"
-set "ACR=sqlflowv3acrprod"
-set "SUB=83731164-2cea-4291-b78d-7e2e69eea8a6"
+set "RG=rg-sqlflow-prod"
+set "ACR=sqlflowacrprod"
+set "SUB=00000000-0000-0000-0000-000000000000"
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
 

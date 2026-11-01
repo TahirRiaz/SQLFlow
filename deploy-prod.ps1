@@ -53,7 +53,7 @@
         contain your changes. Pass -Force if that is genuinely what you want.
 
     NOT handled here: creating the container apps (they must already exist, with their
-    identity/secrets/env wired), and the pipeline YAML in the dwh-pipelines-prod repo.
+    identity/secrets/env wired), and the pipeline YAML in the dwh-pipelines repo.
 
 .EXAMPLE
     .\deploy-prod.ps1
@@ -103,9 +103,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
-$Rg  = 'datawarehouse-west-rg-prod-v2'
-$Acr = 'sqlflowv3acrprod'
-$Sub = '83731164-2cea-4291-b78d-7e2e69eea8a6'
+$Rg  = 'rg-sqlflow-prod'
+$Acr = 'sqlflowacrprod'
+$Sub = '00000000-0000-0000-0000-000000000000'
 
 # The two naming schemes an app can live under, newest first. The ACR repository name is
 # always sqlflow-v3-<app> regardless of what the container app resource is called.

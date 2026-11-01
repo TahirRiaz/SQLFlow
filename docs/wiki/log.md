@@ -44,7 +44,7 @@ Wrote [decisions/string-first-landing.md](decisions/string-first-landing.md), re
 rationale, the Parquet exception, and the downstream consequence that a ported predicate written
 against a legacy empty-string convention silently changes meaning.
 
-## [2026-09-09] ingest | Production pattern estate (dwh-pipelines-prod)
+## [2026-09-09] ingest | Production pattern estate (dwh-pipelines)
 
 Source: the production pipeline repository, 751 flow documents across 39 source folders, harvested
 structurally rather than sampled (669 distinct key paths, 0 parse errors).

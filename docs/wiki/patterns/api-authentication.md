@@ -97,7 +97,7 @@ the period you asked about breaks a run that acquires one token and then fans ou
 ## Applying the token
 
 Two vendors in the estate reject the standard header. `token.applyHeaderName` sets the header the
-resolved token goes into (`easypark/` uses the non-standard `X-Authorization`) and
+resolved token goes into (`parking/` uses the non-standard `X-Authorization`) and
 `token.applyPrefix` sets the value prefix. Absent both, the token is applied as
 `Authorization: Bearer <token>`.
 
@@ -119,7 +119,7 @@ response shape, and whether the issuer scopes the token per window.
 | `entur/` | `oauth2_client_credentials`, JSON body with `audience` |
 | `voi/` | `basicAuthClient`, `refreshPerIteration` |
 | `cyclehire/`, `fleetreg/` | `rawBody` held whole in Key Vault; `fleetreg` also uses `discoveryUrl` |
-| `easypark/` | `token_exchange` with a refresh token, applied to `X-Authorization` |
+| `parking/` | `token_exchange` with a refresh token, applied to `X-Authorization` |
 | `ticketapp/` | `oauth2_client_credentials`, form body |
 | `hjh_bedrifter/` | `api_key_query` |
-| `Norled/`, `fjord1/`, `hentmeg/` | `bearer` with a single `secretRef` |
+| `Norled/`, `ferry/`, `hentmeg/` | `bearer` with a single `secretRef` |

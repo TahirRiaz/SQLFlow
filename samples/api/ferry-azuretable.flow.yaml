@@ -1,0 +1,24 @@
+# An Azure Storage Table query with a day-by-day window. The matched entities are landed as a single raw JSON array
+# per day (the downstream json flow explodes the embedded Payload field).
+flowType: api
+name: Ferry_Apc
+batch: ferry
+
+source:
+  transport: azuretable
+  baseUrl: https://myaccount.table.core.windows.net
+  options:
+    accountUrl: https://myaccount.table.core.windows.net
+    sasToken: ${keyvault:my-vault/table-sas}
+    tableName: ferryapcrawdata
+    filter: "PartitionKey eq 'FerryRaw-{window.from:yyyy}' and RowKey ge '{window.from:yyyy-MM-dd}' and RowKey lt '{window.to:yyyy-MM-dd}'"
+  iterate:
+    - kind: date_window
+      granularity: day
+      from: yesterday
+      to: today
+
+landing:
+  target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/ferry
+  pathTemplate: "history/{window.from:yyyy}/ferry_{window.from:yyyyMMdd}"
+  format: json

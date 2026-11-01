@@ -125,7 +125,7 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
         => report.ExecutionPlan.Waves.Single(w => w.Flows.Contains(flow)).Wave;
 
     // The vendor drop the copy reads and the lake target it writes, and the https form the ingestion reads it back in.
-    private const string Vendor = "abfss://boatbooking@dwstorageboatbookingprod.dfs.core.windows.net/DETAIL";
+    private const string Vendor = "abfss://boatbooking@vendor.dfs.core.windows.net/DETAIL";
     private const string LakeAbfss = "abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history/detail";
     private const string LakeHttps = "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/detail/";
 

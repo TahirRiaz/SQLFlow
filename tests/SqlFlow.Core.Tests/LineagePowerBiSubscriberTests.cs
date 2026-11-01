@@ -86,7 +86,7 @@ public sealed class LineagePowerBiSubscriberTests : IDisposable
         "subscribers:",
         "  Revenue_Report:",
         "    type: PowerBI",
-        "    owner: analyse@kolumbus.no",
+        "    owner: analyse@contoso.example",
         "    description: Revenue dashboard",
         "    server: dwh",
         $"    pbix: {pbix}") + '\n';

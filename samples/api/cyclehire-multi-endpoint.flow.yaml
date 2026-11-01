@@ -1,6 +1,4 @@
-# Consolidates several Cyclehire Azure Automation runbooks into ONE api flow. Each legacy runbook
-# (cyclehires-bikes.ps1, cyclehire_Inventory.ps1, cyclehire_issue_categories.ps1, cyclehire_alerts.ps1, ...) hit the
-# same host under the same token; here they are one flow with a shared connection envelope under `source` and one
+# Several endpoints of one host under one token, as ONE api flow: a shared connection envelope under `source` and one
 # `items:` entry per endpoint. Each item lands to its own raw path, so the matching downstream file/pre flow binds
 # to it and lineage stays intact (one acquisition pipeline -> several downstream loads).
 flowType: api
@@ -34,7 +32,7 @@ items:
       path: /api/Bikes
       headers: { Accept: application/json }
     landing:
-      target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/bikes
+      target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/cyclehire/api/bikes
       pathTemplate: "history/{yyyy}/{MM}/cyclehire_bikes_{yyyyMMdd}"
       format: json
 
@@ -44,7 +42,7 @@ items:
       path: /api/Inventory
       headers: { Accept: application/json }
     landing:
-      target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/inventory
+      target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/cyclehire/api/inventory
       pathTemplate: "history/{yyyy}/cyclehire_inventory_{yyyyMMdd}"
       format: json
 
@@ -54,7 +52,7 @@ items:
       path: /api/issue/categories
       headers: { Accept: application/json }
     landing:
-      target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/issue_categories
+      target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/cyclehire/api/issue_categories
       pathTemplate: "history/{yyyy}/cyclehire_issue_categories_{yyyyMMdd}"
       format: json
 
@@ -81,6 +79,6 @@ items:
           headers: { Accept: application/json }
         idPath: $[*].BikeId
     landing:
-      target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/alert
+      target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/cyclehire/api/alert
       pathTemplate: "history/{window.from:yyyy}/cyclehire_alerts_{window.from:yyyyMMdd}_bike{bikeId}"
       format: json

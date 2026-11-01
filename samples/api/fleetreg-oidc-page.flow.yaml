@@ -1,4 +1,4 @@
-# Ports the vehicle-registry runbook: OAuth2 client-credentials with OIDC discovery (the token endpoint is resolved from
+# OAuth2 client-credentials with OIDC discovery (the token endpoint is resolved from
 # the .well-known document), plus page-number pagination.
 flowType: api
 name: Fleetreg_Vehicles
@@ -15,7 +15,7 @@ source:
       body:
         grant_type: client_credentials
         client_id: tenant-internal-dwh-1
-        client_secret: ${keyvault:dw-keyvault-prod/fleetreg-client-secret}
+        client_secret: ${keyvault:my-vault/fleetreg-client-secret}
         scope: fleetregApi
       tokenPath: access_token
   request:
@@ -34,6 +34,6 @@ source:
     urlAllowlist: ["*.fleetreg.example"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/contoso/fleetreg
+  target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/contoso/fleetreg
   pathTemplate: "history/{yyyy}/vehicles_{yyyyMMdd}_{page}"
   format: json

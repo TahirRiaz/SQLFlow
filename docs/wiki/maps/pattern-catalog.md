@@ -35,7 +35,7 @@ points at the production flow that already does it.
 
 ## Where the patterns came from
 
-Harvested structurally from the production pipeline repository (`dwh-pipelines-prod`): 751 flow
+Harvested structurally from the production pipeline repository (`dwh-pipelines`): 751 flow
 documents across 39 source folders, 669 distinct key paths, parsed rather than sampled. Frequencies
 quoted on the pattern pages are counts from that harvest, so "10 folders" means ten independent
 sources reached for the same construct.

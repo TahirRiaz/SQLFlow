@@ -55,7 +55,7 @@ public sealed class HttpExecutor
 {
     static HttpExecutor()
     {
-        // Some APIs serve text/JSON in a legacy single-byte code page (e.g. Fjord1's Shiplog feed returns
+        // Some APIs serve text/JSON in a legacy single-byte code page (e.g. a ferry operator's feed returns
         // application/json; charset=ISO-8859-1). Register the code-page provider so those charsets resolve
         // and the body can be normalized to UTF-8 before landing (see NormalizeToUtf8).
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);

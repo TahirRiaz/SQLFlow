@@ -36,10 +36,10 @@ source:                       # shared envelope: applied to every item
 items:
   - name: bikes
     request: { path: /api/Bikes }
-    landing: { target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/bikes, pathTemplate: "history/{yyyy}/{MM}/cyclehire_bikes_{yyyyMMdd}", format: json }
+    landing: { target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/cyclehire/api/bikes, pathTemplate: "history/{yyyy}/{MM}/cyclehire_bikes_{yyyyMMdd}", format: json }
   - name: inventory
     request: { path: /api/Inventory }
-    landing: { target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/inventory, pathTemplate: "history/{yyyy}/cyclehire_inventory_{yyyyMMdd}", format: json }
+    landing: { target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/cyclehire/api/inventory, pathTemplate: "history/{yyyy}/cyclehire_inventory_{yyyyMMdd}", format: json }
 ```
 
 The engine resolves the HTTP client and the token **once per run**, then fetches every item in order,
@@ -87,11 +87,11 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | Static bearer token (shiplog, norled, ryde, hentmeg) | `auth.type: bearer` + `secretRef` |
 | API key header, custom name (App Insights `X-Api-Key`) | `auth.type: api_key_header` + `headerName` |
 | Token as query param (Skynet `?token=`) | `auth.type: api_key_query` + `paramName` |
-| Non-standard bearer header (easypark `X-Authorization`) | `token.applyHeaderName` + `applyPrefix` |
+| Non-standard bearer header (parking `X-Authorization`) | `token.applyHeaderName` + `applyPrefix` |
 | OAuth2 client-credentials, form body (Voi, fleetreg) | `auth.type: oauth2_client_credentials`, `token.bodyKind: form` |
 | OAuth2 client-credentials, JSON body + audience (Entur) | `token.bodyKind: json`, `token.body` |
 | OAuth2 Basic-auth client (Voi id:secret) | `token.basicAuthClient: true` |
-| OAuth2 refresh-token exchange (easypark) | `auth.type: oauth2_refresh_token` |
+| OAuth2 refresh-token exchange (parking) | `auth.type: oauth2_refresh_token` |
 | OIDC discovery for the token endpoint (fleetreg) | `token.discoveryUrl` |
 | Custom token exchange, pre-formed form body in KV (Cyclehire) | `auth.type: token_exchange`, `token.rawBody` |
 | Per-window token refresh (Voi) | `token.refreshPerIteration: true` |
@@ -108,7 +108,7 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | Cursor-in-body pagination | `pagination.strategy: cursor_body` + `cursorPath` |
 | Link-header pagination (GitHub-style, SVV NVDB next-href) | `pagination.strategy: link_header` |
 | Keyset / `idAfter` resume, stop on sentinel status (Entur) | `pagination.strategy: keyset`, `stopOnStatus` |
-| Date window day-by-day (easypark, fjord1, shiplog) | `iterate: date_window`, `granularity: day` |
+| Date window day-by-day (parking, ferry, shiplog) | `iterate: date_window`, `granularity: day` |
 | Hourly sub-window (Voi, Ryde 24x/day) | `granularity: hour` |
 | Monthly window (svv_index) | `granularity: month` |
 | Static list fan-out (operatorIds, routes, lines) | `iterate: list` + `values` |
@@ -122,17 +122,17 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | Rate limiting / request budget (svv batching) | `reliability.rateLimitRps` |
 | Per-request timeout (60/120/300s) | `reliability.timeoutSeconds` |
 | PII scrubbed before landing (hentmeg's GDPR blanking of rider/addresses) | `landing.protect` rules (remove/redact/mask/hash/hmac/tokenize/encrypt/generalize) |
-| Empty-data skip (easypark, voi) | `landing.skipEmpty` |
+| Empty-data skip (parking, voi) | `landing.skipEmpty` |
 | Unchanged-file skip (same fetch, no rewrite) | `landing.skipUnchanged` (default true) |
 | History path with year/month/day + id tokens | `landing.pathTemplate` |
-| Raw JSON passthrough (fjord1/norled json) | `landing.format: json` (or `auto`) |
+| Raw JSON passthrough (ferry/norled json) | `landing.format: json` (or `auto`) |
 | Binary/XLSX response (Entur report) | `landing.format: auto` (lands `.bin`/declared ext) |
 | gzip on landing | `landing.compression: gzip` |
 | Incremental resume from lake state (Entur lastReportId) | `incremental` + keyset |
 | Resume from what was LOADED, not from a run record (survives redeploys) | `incremental.source: sql` + `connection` + `query` |
 | Per-entity high-water marks, so one lagging entity does not refetch them all | two-column watermark `query` + `keyVariable` |
 | SFTP download, modified-within window (Cyclehire settlement, Ferde) | `transport: sftp` |
-| Azure Storage Table query (fjord1, apc) | `transport: azuretable` + OData `filter` |
+| Azure Storage Table query (ferry, apc) | `transport: azuretable` + OData `filter` |
 | Secrets from Key Vault, never inline | `${keyvault:vault/secret}` refs |
 | SSRF safety (block metadata/private IPs) | `reliability.urlAllowlist` + built-in IP guard |
 

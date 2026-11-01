@@ -15,7 +15,7 @@ source:
   baseUrl: https://api.github.com
   auth:
     type: bearer
-    secretRef: ${keyvault:dw-keyvault-prod/github-token}
+    secretRef: ${keyvault:my-vault/github-token}
   request:
     method: GET
     path: /repos/{owner}/{repo}/issues
@@ -39,7 +39,7 @@ source:
     urlAllowlist: ["api.github.com"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/github/issues
+  target: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/github/issues
   pathTemplate: "history/{yyyy}/{MM}/issues_{window.from:yyyyMMdd}"
   format: json
   compression: gzip

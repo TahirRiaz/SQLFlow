@@ -67,7 +67,7 @@ source:
   baseUrl: https://api.vendor.com
   auth:
     type: bearer
-    secretRef: ${keyvault:dw-keyvault-prod/vendor-token}
+    secretRef: ${keyvault:my-vault/vendor-token}
   request:
     method: GET
     path: /v1/trips

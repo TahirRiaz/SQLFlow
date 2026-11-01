@@ -70,7 +70,7 @@ iterate:
     values: [voi, ryde, tier]
 ```
 
-Used when the set is stable and small enough to state. Exemplars: `Norled/`, `easypark/`.
+Used when the set is stable and small enough to state. Exemplars: `Norled/`, `parking/`.
 
 ## ids_from: a discovered set
 
@@ -122,4 +122,4 @@ in practice means an archive or the prior system, backfilled separately.
 | `svv/` | `date_window` monthly re-read, plus `ids_from` with `batchSize: 50` |
 | `cyclehire/` | `ids_from` (bikes then per-bike sessions), `overlapMinutes` |
 | `questback/` | `ids_from` with `idBindings` carrying a per-entity lock |
-| `Norled/`, `easypark/` | `list` over a fixed operator or route set |
+| `Norled/`, `parking/` | `list` over a fixed operator or route set |

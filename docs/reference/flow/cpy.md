@@ -98,9 +98,9 @@ options:
   overwrite: true
   preserveStructure: true
 items:
-  - source: { location: abfss://boatbooking@dwstorageboatbookingprod.dfs.core.windows.net/DETAIL, pattern: "*.json", modifiedWithinDays: 14 }
+  - source: { location: abfss://boatbooking@vendor.dfs.core.windows.net/DETAIL, pattern: "*.json", modifiedWithinDays: 14 }
     target: { location: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/boatbooking/history/detail }
-  - source: { location: abfss://boatbooking@dwstorageboatbookingprod.dfs.core.windows.net/SESS, pattern: "*.json", modifiedWithinDays: 14 }
+  - source: { location: abfss://boatbooking@vendor.dfs.core.windows.net/SESS, pattern: "*.json", modifiedWithinDays: 14 }
     target: { location: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/boatbooking/history/sess }
 ```
 

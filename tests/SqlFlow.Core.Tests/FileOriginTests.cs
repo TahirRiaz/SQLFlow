@@ -14,10 +14,10 @@ public sealed class FileOriginTests
     [Fact]
     public void Azure_CanonicalIdentity_SplitsAccountContainerFolderLeaf()
     {
-        var origin = FileOrigin.Parse("az://dwdatalakeprod/datalakev2/raw/boatbooking/history/detail");
+        var origin = FileOrigin.Parse("az://dwacct/datalakev2/raw/boatbooking/history/detail");
 
         Assert.Equal(FileOriginKind.AzureStorage, origin.Kind);
-        Assert.Equal("dwdatalakeprod", origin.Origin);
+        Assert.Equal("dwacct", origin.Origin);
         Assert.Equal("datalakev2", origin.Container);
         Assert.Equal("raw/boatbooking/history", origin.Path);
         Assert.Equal("detail", origin.Name);
@@ -26,9 +26,9 @@ public sealed class FileOriginTests
     [Fact]
     public void Azure_LeafDirectlyUnderContainer_HasNoPath()
     {
-        var origin = FileOrigin.Parse("az://dwstorageboatbookingprod/boatbooking/DETAIL");
+        var origin = FileOrigin.Parse("az://vendor/boatbooking/DETAIL");
 
-        Assert.Equal("dwstorageboatbookingprod", origin.Origin);
+        Assert.Equal("vendor", origin.Origin);
         Assert.Equal("boatbooking", origin.Container);
         Assert.Null(origin.Path);
         Assert.Equal("DETAIL", origin.Name);
@@ -48,15 +48,15 @@ public sealed class FileOriginTests
     [Theory]
     // Raw ADLS/Blob spellings all fold to the same account/container identity, so a copy target written in
     // abfss and read back over https group as one origin.
-    [InlineData("abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/x")]
-    [InlineData("https://dwdatalakeprod.blob.core.windows.net/datalakev2/raw/x")]
-    [InlineData("wasbs://datalakev2@dwdatalakeprod.blob.core.windows.net/raw/x")]
+    [InlineData("abfss://datalakev2@dwacct.dfs.core.windows.net/raw/x")]
+    [InlineData("https://dwacct.blob.core.windows.net/datalakev2/raw/x")]
+    [InlineData("wasbs://datalakev2@dwacct.blob.core.windows.net/raw/x")]
     public void Azure_RawSpellings_FoldToTheCanonicalAccountAndContainer(string location)
     {
         var origin = FileOrigin.Parse(location);
 
         Assert.Equal(FileOriginKind.AzureStorage, origin.Kind);
-        Assert.Equal("dwdatalakeprod", origin.Origin);
+        Assert.Equal("dwacct", origin.Origin);
         Assert.Equal("datalakev2", origin.Container);
         Assert.Equal("x", origin.Name);
     }

@@ -7,13 +7,13 @@
 #
 # WHY IT READS CONTAINER APP SECRETS, NOT KEY VAULT: the Key Vault copies of these connection
 # strings (dw-sqlflow-prod, dw-pre-prod, dw-dwh-prod) were stale in BOTH host and password. They
-# named dw-sql-mi-prod, a managed instance that NO LONGER EXISTS; the estate runs on dw-mi-sql-prod.
+# named sql-mi-retired, a managed instance that NO LONGER EXISTS; the estate runs on sql-mi-prod.
 # Using them gets a connection that fails with a misleading "transient failure ... consider
 # EnableRetryOnFailure" error. The container apps' own secrets are what the running system uses, so
 # they are the only trustworthy source.
 $ErrorActionPreference = "Stop"
 
-$rg = "datawarehouse-west-rg-prod-v2"
+$rg = "rg-sqlflow-prod"
 $app = "sqlflow-v3-control-plane"
 $worker = "sqlflow-v3-worker"
 # The SPA app registration backing the GUI's Microsoft sign-in button, looked up by display name.
@@ -82,7 +82,7 @@ $content = @"
 # same pre/ods databases, the same lake. You are debugging the live system, locally.
 #
 # EVERY value comes from CONTAINER APP SECRETS, never Key Vault: the Key Vault copies were stale in
-# both host and password, naming the retired dw-sql-mi-prod instance.
+# both host and password, naming the retired sql-mi-retired instance.
 
 # --- Catalog: the real Azure catalog, byte-identical to what the container app uses ---
 SQLFLOW_CATALOG_DB=$catalog

@@ -313,7 +313,7 @@ public sealed class XmlPathReaderTests
         <?xml version="1.0"?>
         <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
           <s:Body>
-            <GetQuestsResponse xmlns="https://integration.questback.com/2011/03">
+            <GetQuestsResponse xmlns="https://integration.survey.example/2011/03">
               <GetQuestsResult>
                 <Quests>
                   <Quest><QuestId>1</QuestId><SecurityLock>aaa</SecurityLock></Quest>
