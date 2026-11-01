@@ -253,6 +253,24 @@ public sealed class FlowVersionSnapshotTests
         Assert.True(RunWorker.RequiresRepoTree(doc));
     }
 
+    [Fact]
+    public void An_environment_can_keep_its_checkouts_to_itself()
+    {
+        var before = Environment.GetEnvironmentVariable(GitMaterializer.CacheRootVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(GitMaterializer.CacheRootVariable, null);
+            Assert.Equal(Path.Combine(Path.GetTempPath(), "sqlflow", "node-cache"), GitMaterializer.DefaultCacheRoot);
+
+            Environment.SetEnvironmentVariable(GitMaterializer.CacheRootVariable, "C:/environments/one/node-cache");
+            Assert.Equal("C:/environments/one/node-cache", GitMaterializer.DefaultCacheRoot);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(GitMaterializer.CacheRootVariable, before);
+        }
+    }
+
     [Theory]
     [InlineData("./data/orders", "abfss://out@account.dfs.core.windows.net/orders", true)]
     [InlineData("abfss://in@account.dfs.core.windows.net/orders", "./out/archive", true)]

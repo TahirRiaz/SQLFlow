@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- `SQLFLOW_NODE_CACHE` names where a node keeps its checkouts and staged flow versions. Each flow's run history sits there, and an
+  incremental flow reads its watermark from it, so two environments on one machine that share the default folder share that history
+  ([environment variables](docs/reference/concepts/environment-variables.md)).
 - A repo's page shows a file's code. A click on a flow or any other file opens it in a code window that slides in from
   the left over the page, coloured by its kind (YAML, JSON, SQL, Markdown, scripts and configuration), resized by
   dragging its edge and maximized to read the code alone; a flow's file offers Open pipeline. It reads

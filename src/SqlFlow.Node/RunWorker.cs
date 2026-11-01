@@ -1069,8 +1069,7 @@ public sealed partial class RunWorker : IDisposable
     // (those are keyed by a 16-char remote-URL hash). Stability matters: runs of the same version share the
     // directory, so the run history written next to the flow file accumulates across runs exactly as it does in a
     // per-commit git checkout.
-    private static readonly string SnapshotCacheRoot =
-        Path.Combine(Path.GetTempPath(), "sqlflow", "node-cache", "yaml");
+    private static readonly string SnapshotCacheRoot = Path.Combine(GitMaterializer.DefaultCacheRoot, "yaml");
 
     /// <summary>
     /// Stages the run's snapshotted YAML version into the local version cache and returns the directory to execute
