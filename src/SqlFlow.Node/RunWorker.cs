@@ -1177,7 +1177,7 @@ public sealed partial class RunWorker : IDisposable
 
     /// <summary>True when the document cannot execute from a bare single-file snapshot because it addresses
     /// sibling files in the repo tree: a relative local source location (a file flow reading committed sample
-    /// data), a relative export target path, or a relative source-control working directory. These resolve
+    /// data), a relative export target path, a copy flow's relative location, or a relative source-control working directory. These resolve
     /// against the flow file's own directory, which only a full git materialization populates. Cloud URIs
     /// (<c>scheme://</c>) and absolute local paths resolve identically under either root and stay snapshot-safe.
     /// Internal for the test suite; only the staging path above calls it in production.</summary>
@@ -1186,6 +1186,7 @@ public sealed partial class RunWorker : IDisposable
         {
             FileFlowDocument doc => IsLocalRelative(doc.Flow.Source.Location),
             ExportFlowDocument doc => IsLocalRelative(doc.Document.Flow.TrgPath),
+            CopyFlowDocument doc => doc.Flow.Steps.Any(s => IsLocalRelative(s.Source.Location) || IsLocalRelative(s.Target.Location)),
             SourceControlFlowDocument doc => IsLocalRelative(doc.Document.Flow.Repository.WorkingDirectory),
             RegisteredFlowDocument doc => doc.RequiresRepoTree,
             _ => false,

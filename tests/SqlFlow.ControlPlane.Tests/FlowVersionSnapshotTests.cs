@@ -253,6 +253,23 @@ public sealed class FlowVersionSnapshotTests
         Assert.True(RunWorker.RequiresRepoTree(doc));
     }
 
+    [Theory]
+    [InlineData("./data/orders", "abfss://out@account.dfs.core.windows.net/orders", true)]
+    [InlineData("abfss://in@account.dfs.core.windows.net/orders", "./out/archive", true)]
+    [InlineData("abfss://in@account.dfs.core.windows.net/orders", "abfss://out@account.dfs.core.windows.net/orders", false)]
+    public void A_copy_flow_with_a_relative_location_needs_the_repository(string source, string target, bool needs)
+    {
+        var doc = Loader.Parse($"""
+            flowType: cpy
+            name: Copy_Tree
+            source:
+              location: {source}
+            target:
+              location: {target}
+            """);
+        Assert.Equal(needs, RunWorker.RequiresRepoTree(doc));
+    }
+
     [Fact]
     public void FileFlow_WithACloudLocation_ExecutesFromABareSnapshot()
     {
