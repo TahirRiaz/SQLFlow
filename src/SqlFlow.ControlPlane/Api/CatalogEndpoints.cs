@@ -590,8 +590,10 @@ public static class CatalogEndpoints
             query = query.Where(c => c.OccurredUtc >= from);
         }
 
+        // Ordered by the key, before the projection: a constructor's arguments are not members SQL can order by.
         var rows = await query
             .GroupBy(c => c.Database)
+            .OrderBy(g => g.Key)
             .Select(g => new SchemaChangeDatabaseDto(
                 g.Key,
                 g.Count(),
@@ -599,7 +601,6 @@ public static class CatalogEndpoints
                 g.Count(c => c.ChangeType == SchemaChangeKinds.Changed),
                 g.Count(c => c.ChangeType == SchemaChangeKinds.Deleted),
                 g.Max(c => c.OccurredUtc)))
-            .OrderBy(d => d.Database)
             .ToListAsync(ct).ConfigureAwait(false);
         return TypedResults.Ok((IReadOnlyList<SchemaChangeDatabaseDto>)rows);
     }

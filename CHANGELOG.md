@@ -163,6 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- The Schema changes page lists its databases. `GET /api/v1/schema-changes/databases` answered 500 on every catalog, because its
+  ordering could not be translated to SQL.
 - Flows running side by side on a fresh database no longer fail on the schema they share. Each found it missing and created it, and
   all but the first failed with "There is already an object named ...", so a first run depended on timing.
 - A copy flow with a relative location runs from the repository on a node, as a file flow does. It ran from a snapshot of its YAML
