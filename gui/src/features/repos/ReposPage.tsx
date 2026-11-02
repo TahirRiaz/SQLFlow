@@ -20,7 +20,7 @@ import { GitCredentialGlyph } from "./GitCredentialChip";
 import { GitCredentialsSheet } from "./GitCredentialsSheet";
 import { RegisterSourceDialog } from "./RegisterSourceDialog";
 import { RepoDeleteDialog } from "./RepoDeleteDialog";
-import { useSyncTracePanel } from "./useSyncTracePanel";
+import { useFollowSyncTrace, useSyncTracePanel } from "./useSyncTracePanel";
 import { announceSyncOutcome, repoSourcesRefetchInterval } from "./syncOutcome";
 
 // Repos and their git sources are two facets of one thing, joined by name: a source is the git registration that
@@ -78,6 +78,7 @@ export default function ReposPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const openSyncTrace = useSyncTracePanel();
+  const followSyncTrace = useFollowSyncTrace();
   const [registerOpen, setRegisterOpen] = useState(false);
   const [editSource, setEditSource] = useState<RepoSource | null>(null);
   const [attachRepo, setAttachRepo] = useState<Repo | null>(null);
@@ -267,7 +268,7 @@ export default function ReposPage() {
                 e.stopPropagation();
                 if (row.source !== undefined) {
                   syncNow.mutate(row.source.id);
-                  openSyncTrace(row.source.id, row.source.name);
+                  followSyncTrace(row.source.id, row.source.name);
                 }
               }}
               data-testid="source-sync-now"

@@ -189,7 +189,7 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 
 ```
 +------------------------------------------------------------------+
-| Title bar (36px): brand |            palette, theme, account      |
+| Title bar (36px): brand |    traces, palette, theme, account      |
 +---+--------------------------------------------------------------+
 | A | Side bar (resizable | Tab strip (35px)                       |
 | c | 200-320px):         +----------------------------------------+
@@ -202,11 +202,21 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 +------------------------------------------------------------------+
 ```
 
-- **Title bar** (`h-9`, `bg-activity-bar`): logo + product name left, everything else right: the command
+- **Title bar** (`h-9`, `bg-activity-bar`): logo + product name left, everything else right: the trace
+  indicator while the trace tray holds a trace (testid `trace-indicator`, below), the controls modules add, the command
   palette button (testid `command-palette-button`, a `Ctrl K` chip), the theme toggle (testid
   `theme-toggle`) and the account menu (testids `account-menu-button`, `account-subject`,
   `account-tokens`, `account-notifications`, `account-logout`). Nothing floats in the middle: the bar
   carries chrome only, never a content control. On mobile a hamburger opens the nav sheet.
+- **Trace indicator**: the operation traces the trace tray holds (`useTraceTray()`). It comes first on the right, so
+  its coming and going moves no other control. While a trace runs, an arc in the one blue turns around a terminal
+  icon, lengthening and shortening as it goes, the icon breathes and two rings spread from it; a trace that ends while
+  not shown leaves a badge on the icon's corner (a check, an exclamation mark or a cross, in the status hue) and sends
+  the rings out twice, without end for a failure, until it is opened (`data-running`, `data-attention`). Every mark
+  reads the dark tokens (`dark` scope), since the bar is dark chrome in both modes. A click opens the one trace in
+  the bottom panel or closes it; with several held it lists them newest first (testids `trace-tray`,
+  `trace-tray-item`, `trace-tray-dismiss`), an unread one with a blue dot. A trace that has been read and closed
+  leaves the tray, and the indicator goes with the last one.
 - **Activity bar** (`w-12`): one icon per nav group, Settings gear pinned at the bottom. Active group
   shows a 2px left indicator + full-intensity icon. Click: reveal the group in the side bar; click on
   the active group toggles the side bar. Tooltips on the right.
@@ -242,8 +252,11 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   Detail pages set real titles via `useTabTitle(...)` once data loads.
 - **Editor**: the routed page inside a scroll container with the measure cap. Pages never add their own
   outer padding.
-- **Bottom panel** (resizable 15-70%, closable): live surfaces opened by features through `usePanel()`
-  (e.g. a run's streaming trace). Header: a 36px `card` bar under a 2px `primary` top edge (the accent the
+- **Bottom panel** (resizable from 15% to the editor's whole height, closable): live surfaces opened by features
+  through `usePanel()`. An operation's trace never opens it by itself: the operation follows its trace in the trace
+  tray (`follow`), which keeps it streaming out of view behind the title bar's indicator, and the panel shows it when
+  someone asks (the indicator, a failed sync's badge, a run's Trace button: `open`). A trace that leaves the panel
+  keeps streaming in the tray until it has ended and been read. Header: a 36px `card` bar under a 2px `primary` top edge (the accent the
   active tab wears), uppercase 11px title in `foreground` + close; while it is open, the page above fades into a
   shade along its bottom edge, so the panel reads as a surface of its own rather than one more grid header of the
   page. A detail shown there leads with a sticky header carrying its actions, then bordered cards. One content at
@@ -457,7 +470,10 @@ The old GUI's central failure was silence. These rules bind every feature:
 ## 9. Motion
 
 120ms ease-out for hovers and reveals, 150-200ms for sheets/panels sliding, no bounce, no scale-up
-entrances. `tw-animate-css` utilities only. Anything animating layout must be interruptible.
+entrances. `tw-animate-css` utilities only. Anything animating layout must be interruptible. The one exception is the
+title bar's trace indicator (section 6), whose arc, breathing and rings are keyframes of `index.css` (`trace-turn`,
+`trace-arc`, `trace-breathe`, `trace-ripple`), drawn under `motion-safe:` only: without motion the arc holds still as
+a quarter ring, and the badge carries the outcome.
 
 ## 10. Accessibility
 

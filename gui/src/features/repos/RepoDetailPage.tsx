@@ -25,7 +25,7 @@ import { fetchAllPipelines } from "../pipelines/fetchAllPipelines";
 import { groupByProject, pipelineMatches, ProjectGroup } from "../pipelines/ProjectGroup";
 import { projectOf } from "./project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
-import { useSyncTracePanel } from "./useSyncTracePanel";
+import { useFollowSyncTrace, useSyncTracePanel } from "./useSyncTracePanel";
 import { GitCredentialChip } from "./GitCredentialChip";
 import { useRepoAccessCheck } from "./useRepoAccessCheck";
 import { useRepoFileWindow } from "./RepoFileWindow";
@@ -296,6 +296,7 @@ export default function RepoDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const openSyncTrace = useSyncTracePanel();
+  const followSyncTrace = useFollowSyncTrace();
   const [triggerOpen, setTriggerOpen] = useState(false);
   const [runBatchFlow, setRunBatchFlow] = useState<string | null>(null);
   const [pipelineFilter, setPipelineFilter] = useState("");
@@ -412,7 +413,7 @@ export default function RepoDetailPage() {
                   disabled={!source.enabled || syncNow.isPending || source.syncPending}
                   onClick={() => {
                     syncNow.mutate(source.id);
-                    openSyncTrace(source.id, repo.name);
+                    followSyncTrace(source.id, repo.name);
                   }}
                   data-testid="repo-sync-now"
                 >

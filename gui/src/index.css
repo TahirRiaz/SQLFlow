@@ -280,6 +280,57 @@
 }
 
 /*
+  The title bar's trace indicator (layout/workbench/TraceIndicator.tsx), used under motion-safe only. While a trace runs,
+  an arc turns around the icon, lengthening and shortening as it goes (its circle is drawn with pathLength 100, so the
+  lengths here are shares of the ring), the icon breathes, and rings spread from it; an outcome sends out the rings once.
+*/
+@keyframes trace-turn {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes trace-arc {
+  0% {
+    stroke-dasharray: 1 200;
+    stroke-dashoffset: 0;
+  }
+
+  50% {
+    stroke-dasharray: 62 200;
+    stroke-dashoffset: -24;
+  }
+
+  100% {
+    stroke-dasharray: 62 200;
+    stroke-dashoffset: -99;
+  }
+}
+
+@keyframes trace-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes trace-ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+/*
   React Flow (lineage graph) draws from the workbench tokens in both modes. The library ships a palette of its own per
   color mode (neutral grays in dark) behind `--xy-*-default` variables, and its stylesheet loads with the graph's
   chunk, after this one, so a rule here on one of its classes loses to it. The unsuffixed variables below are the

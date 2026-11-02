@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Ban, CircleCheck, CircleSlash, CircleX, Clock3, GitBranch, KeyRound, Loader2, Power, PowerOff, type LucideIcon,
@@ -11,7 +10,7 @@ import type {
   ExternalTriggerKind, TriggerRequest, TriggerRequestSchedule, TriggerRequestState, TriggerScheduleState, TriggerSyncOutcome,
 } from "../../api/types";
 import { IconBadge } from "../../components/StatusBadge";
-import { usePanel } from "../../layout/workbench/PanelContext";
+import { useTraceTray } from "../../layout/workbench/TraceTray";
 import { ActivityTracePanel } from "../activity/ActivityTracePanel";
 
 /** One error-to-text mapping for every toast on the page (the API's detail wins over a generic title). */
@@ -137,24 +136,21 @@ export function shortSha(sha: string | null): string {
 
 /**
  * Opens the workbench bottom panel on a request's live trace (its sync's lines, each fire, each run as it starts and
- * ends), the same panel a repository's sync streams into; the request's lists refresh when it ends.
+ * ends), held in the trace tray as a repository's sync is, so closing the panel on a request still running leaves it
+ * streaming behind the title bar's trace indicator; the request's lists refresh when it ends.
  */
 export function useRequestTracePanel(): (request: Pick<TriggerRequest, "id" | "repoName">) => void {
-  const panel = usePanel();
+  const { open } = useTraceTray();
   const queryClient = useQueryClient();
-  const [nonce, setNonce] = useState(0);
 
   return (request) => {
-    const next = nonce + 1;
-    setNonce(next);
-    panel.open({
+    open({
       id: `trigger-request:${request.id}`,
       title: `Request · ${request.repoName}`,
       node: (
         <ActivityTracePanel
           kind={TRIGGER_REQUEST_KIND}
           subject={request.id}
-          nonce={next}
           onEnded={() => {
             void queryClient.invalidateQueries({ queryKey: ["trigger-requests"] });
             void queryClient.invalidateQueries({ queryKey: ["external-triggers"] });

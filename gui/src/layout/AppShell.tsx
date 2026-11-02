@@ -18,6 +18,7 @@ import { StatusBar } from "./workbench/StatusBar";
 import { TabsBar } from "./workbench/TabsBar";
 import { TabsProvider } from "./workbench/TabsContext";
 import { TitleBar } from "./workbench/TitleBar";
+import { TraceTrayProvider } from "./workbench/TraceTray";
 import { usePersistentLayout } from "./workbench/usePersistentLayout";
 
 const SIDEBAR_KEY = "sqlflow.workbench.sidebar";
@@ -120,7 +121,9 @@ function WorkbenchFrame() {
                 defaultLayout={verticalLayout.defaultLayout}
                 onLayoutChanged={verticalLayout.onLayoutChanged}
               >
-                <ResizablePanel id="editor-content" minSize="20">
+                {/* The page gives way to the panel all the way: a long trace can be read at the editor's whole height, and
+                    the handle, which stays under the tab strip, brings the page back. */}
+                <ResizablePanel id="editor-content" minSize="0">
                   <div className="relative h-full">
                     <main className="h-full overflow-y-auto bg-background" data-explain-scope>
                       <div className="mx-auto max-w-[1600px] p-4 md:p-6">
@@ -148,7 +151,7 @@ function WorkbenchFrame() {
                 {panelContent !== null && (
                   <>
                     <ResizableHandle />
-                    <ResizablePanel id="bottom-panel" defaultSize="35" minSize="15" maxSize="70">
+                    <ResizablePanel id="bottom-panel" defaultSize="35" minSize="15">
                       <PanelHost />
                     </ResizablePanel>
                   </>
@@ -173,7 +176,10 @@ export default function AppShell() {
         <ExplainProvider>
           <RepoFileWindowProvider>
             <RunDockProvider>
-              <WorkbenchFrame />
+              {/* Innermost, so a held trace's view has every provider the bottom panel's content has. */}
+              <TraceTrayProvider>
+                <WorkbenchFrame />
+              </TraceTrayProvider>
             </RunDockProvider>
           </RepoFileWindowProvider>
         </ExplainProvider>

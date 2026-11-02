@@ -18,8 +18,8 @@ function traceToText(entries: ActivityEvent[]): string {
 /**
  * The bottom-panel trace view for one control-plane operation (a repository sync, a lineage computation, ...):
  * subscribes to its live activity trace for (kind, subject) and renders it through the shared {@link TraceLog}, so
- * it looks identical to the pipeline run trace. Bumping `nonce` restarts the stream (a repeat trigger). Rendered
- * inside the workbench PanelHost via usePanel().
+ * it looks identical to the pipeline run trace. Held in the workbench's trace tray, which streams it out of view and
+ * shows it in the bottom panel when asked; a repeat trigger mounts it again, which restarts the stream.
  *
  * The stream replays the subject's last few attempts as scrollback before the live one, but the header reports the
  * newest attempt alone, the way a run's trace reports the run's own status: an earlier failure stays readable above
@@ -29,15 +29,13 @@ function traceToText(entries: ActivityEvent[]): string {
 export function ActivityTracePanel({
   kind,
   subject,
-  nonce,
   onEnded,
 }: {
   kind: string;
   subject: string;
-  nonce: number;
   onEnded?: () => void;
 }) {
-  const { entries, connected, ended } = useActivityTraceStream(kind, subject, nonce, onEnded);
+  const { entries, connected, ended } = useActivityTraceStream(kind, subject, onEnded);
 
   const lines = useMemo<TraceLine[]>(
     () => entries.map((e) => ({
