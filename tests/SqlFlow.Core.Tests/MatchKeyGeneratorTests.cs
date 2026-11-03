@@ -84,6 +84,30 @@ public sealed class MatchKeyGeneratorTests
     }
 
     [Fact]
+    public void Generate_UpdatedDateColumn_StampedOnResurrect_NotOnTag()
+    {
+        var options = DefaultTagOptions(["OrderId"]) with { UpdatedDateColumn = "UpdatedDate_DW", RowStatusColumn = "RowStatus_DW" };
+
+        var sql = MatchKeyGenerator.Generate(Target, KeyTable, options);
+
+        // Un-tagging writes the row, so it is stamped as the upsert stamps a row it updates; the tag's own moment is
+        // DeletedDate_DW, and it leaves the update column where the load put it.
+        Assert.Contains(
+            "UPDATE trg SET trg.[DeletedDate_DW] = NULL, trg.[UpdatedDate_DW] = SYSUTCDATETIME(), trg.[RowStatus_DW] = 'U'", sql, StringComparison.Ordinal);
+        Assert.Contains("UPDATE trg SET trg.[DeletedDate_DW] = SYSUTCDATETIME(), trg.[RowStatus_DW] = 'D' FROM", sql, StringComparison.Ordinal);
+        Assert.Single(sql.Split("[UpdatedDate_DW]").Skip(1));
+    }
+
+    [Fact]
+    public void Generate_NoUpdatedDateColumn_ResurrectStampsNothingElse()
+    {
+        var sql = MatchKeyGenerator.Generate(Target, KeyTable, DefaultTagOptions(["OrderId"]));
+
+        Assert.Contains("UPDATE trg SET trg.[DeletedDate_DW] = NULL\n", sql.ReplaceLineEndings("\n"), StringComparison.Ordinal);
+        Assert.DoesNotContain("UpdatedDate_DW", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generate_IgnoreWindow_AddsDatePredicate_CandidateOnly()
     {
         var options = new MatchKeyScriptOptions

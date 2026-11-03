@@ -173,7 +173,7 @@ The key table is dropped on success unless `load.keepStagingTable` keeps the flo
 - `matchKeys.action: delete` hard-deletes the row. Any other value fails validation: `'matchKeys.action' must be 'tag' or 'delete', got '<x>'.`
 - Tag mode requires the `DeletedDate_DW` system column. The YAML loader auto-enables it when the pass is on in tag mode; the runner guards the non-YAML paths with: `MatchKeys Tag mode soft-deletes by stamping DeletedDate_DW; enable the DeletedDate_DW system column.`
 - `matchKeys.thresholdPercent` (default 20, valid 0 to 100) is enforced: when more than N% of the target rows would be affected, the action is SKIPPED and a loud warning is logged (`WARNING: action SKIPPED ... A mass key disappearance is usually a broken source read; raise matchKeys.thresholdPercent to proceed.`). The legacy engine carried this column but never enforced it.
-- In tag mode, a previously tagged row whose key REAPPEARS in the source is un-tagged (resurrected): `DeletedDate_DW` is cleared and `RowStatus_DW` reset to `'U'`. Resurrection runs independently of the threshold, since un-deleting is always safe. Legacy never cleared `DeletedDate_DW`.
+- In tag mode, a previously tagged row whose key REAPPEARS in the source is un-tagged (resurrected): `DeletedDate_DW` is cleared, `UpdatedDate_DW` stamped `SYSUTCDATETIME()` and `RowStatus_DW` reset to `'U'`, as an update stamps a row, so a reader that windows on `UpdatedDate_DW` meets the row again. The tag itself leaves `UpdatedDate_DW` as it was. Resurrection runs independently of the threshold, since un-deleting is always safe. Legacy never cleared `DeletedDate_DW`.
 
 ### Scoping the pass
 

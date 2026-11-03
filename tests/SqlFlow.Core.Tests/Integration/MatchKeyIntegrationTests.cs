@@ -157,8 +157,9 @@ public sealed class MatchKeyIntegrationTests
             // Load both rows.
             var r1 = await runner.RunAsync(flow);
             Assert.True(r1.Success, r1.Error);
+            var loaded = await UpdatedDateAsync(cs, trg, 2);
 
-            // Remove row 2: second run tags it.
+            // Remove row 2: second run tags it, and leaves its update column where the load put it.
             await IntegrationDb.ExecuteAsync(cs, $"DELETE FROM [dbo].[{src}] WHERE Id = 2;");
             var r2 = await runner.RunAsync(flow);
             Assert.True(r2.Success, r2.Error);
@@ -167,8 +168,12 @@ public sealed class MatchKeyIntegrationTests
             var taggedAfterDelete = await IntegrationDb.ScalarAsync<int?>(cs,
                 $"SELECT COUNT(*) FROM [dbo].[{trg}] WHERE [DeletedDate_DW] IS NOT NULL");
             Assert.Equal(1, taggedAfterDelete);
+            Assert.Equal(loaded, await UpdatedDateAsync(cs, trg, 2));
+            var untouched = await UpdatedDateAsync(cs, trg, 1);
 
-            // Re-add row 2: third run should un-tag it (resurrection) and report no deleted rows.
+            // Re-add row 2 as it was: third run should un-tag it (resurrection) and report no deleted rows. The
+            // upsert finds nothing changed in it, so the resurrection alone stamps its update column, which is what
+            // lets a reader windowing on UpdatedDate_DW meet the row again.
             await IntegrationDb.ExecuteAsync(cs, $"INSERT INTO [dbo].[{src}] VALUES (2,'Bob');");
             var r3 = await runner.RunAsync(flow);
             Assert.True(r3.Success, r3.Error);
@@ -177,6 +182,8 @@ public sealed class MatchKeyIntegrationTests
             var taggedAfterResurrect = await IntegrationDb.ScalarAsync<int?>(cs,
                 $"SELECT COUNT(*) FROM [dbo].[{trg}] WHERE [DeletedDate_DW] IS NOT NULL");
             Assert.Equal(0, taggedAfterResurrect);
+            Assert.True(await UpdatedDateAsync(cs, trg, 2) > loaded, "a resurrected row is stamped updated");
+            Assert.Equal(untouched, await UpdatedDateAsync(cs, trg, 1));
         }
         finally
         {
@@ -498,6 +505,9 @@ public sealed class MatchKeyIntegrationTests
             await DropMatchKeyTablesAsync(cs);
         }
     }
+
+    private static Task<DateTime?> UpdatedDateAsync(string cs, string trg, int id)
+        => IntegrationDb.ScalarAsync<DateTime?>(cs, $"SELECT [UpdatedDate_DW] FROM [dbo].[{trg}] WHERE [Id] = {id}");
 
     private static Task DropMatchKeyTablesAsync(string cs)
         => IntegrationDb.ExecuteAsync(cs,

@@ -1110,6 +1110,7 @@ public sealed class IngestionFlowRunner
             DateColumn = windowDateColumn,
             TargetFilter = policy.TargetFilter,
             DeletedDateColumn = flow.SystemColumns.DeletedDate ? "DeletedDate_DW" : null,
+            UpdatedDateColumn = flow.SystemColumns.UpdatedDate ? "UpdatedDate_DW" : null,
             RowStatusColumn = flow.SystemColumns.RowStatus ? "RowStatus_DW" : null,
         });
         traceSql("matchkeys.apply", script);

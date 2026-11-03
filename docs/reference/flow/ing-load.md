@@ -186,7 +186,7 @@ Active only when `load.matchKeysInSourceAndTarget: true`. After the load, the en
 
 `tag` (default) soft-deletes by stamping `DeletedDate_DW = SYSUTCDATETIME()`, and `RowStatus_DW = 'D'` when the row-status column is on. `delete` hard-deletes the rows. Any other value fails validation: `'matchKeys.action' must be 'tag' or 'delete', got '<value>'.` Tag mode requires the `DeletedDate_DW` column; the loader auto-enables it (see `systemColumns.deletedDate`).
 
-Tag mode also reconciles resurrections: a tagged row whose key reappears in the source is un-tagged (`DeletedDate_DW` set back to NULL, `RowStatus_DW` reset to `'U'` when present), independent of the threshold, since un-deleting is always safe.
+Tag mode also reconciles resurrections: a tagged row whose key reappears in the source is un-tagged (`DeletedDate_DW` set back to NULL, and `UpdatedDate_DW` stamped `SYSUTCDATETIME()` and `RowStatus_DW` reset to `'U'` when present), independent of the threshold, since un-deleting is always safe. Un-tagging writes the row, so it is stamped as an update is: a reader that windows on `UpdatedDate_DW` meets the row again, rather than going on taking it for deleted. A tag leaves `UpdatedDate_DW` where the load put it; its moment is `DeletedDate_DW`.
 
 ### matchKeys.keyColumns
 
@@ -227,6 +227,7 @@ Behavior, from src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs, src/SqlFl
 - An existing column with the same name is not injected twice (case-insensitive existence check).
 - Every statement that inserts a row stamps it the same way, whichever load path it belongs to (the keyed upsert, the dataset-partitioned loop, the per-file reload of `load.reloadColumn`, or the keyless append of a flow without `keyColumns`): `InsertedDate_DW` and `UpdatedDate_DW` both get `SYSUTCDATETIME()`, and `RowStatus_DW` gets `'I'`. A new row therefore reads as changed when it arrived, so `MAX(UpdatedDate_DW)` advances on a table that is only ever inserted into.
 - On update, `UpdatedDate_DW` is stamped `SYSUTCDATETIME()` and `RowStatus_DW` `'U'`; a matched row whose `InsertedDate_DW` is NULL (it predates the column) is stamped the first time it is touched, and an existing value is preserved.
+- A match-keys resurrection stamps `UpdatedDate_DW` `SYSUTCDATETIME()` as an update does; a match-keys tag leaves it as it was.
 - With SCD2, the close of a current row and the insert of its new version both stamp the run's fixed as-of instant, so every row closed or opened in the run carries the same timestamp.
 - `RowStatus_DW` values written by the engine: `'I'` on insert, `'U'` on update (including SCD2 close and match-keys resurrection), `'D'` on a match-keys tag.
 - `deletedDate` is auto-enabled when `load.matchKeysInSourceAndTarget: true` with `matchKeys.action: tag`.

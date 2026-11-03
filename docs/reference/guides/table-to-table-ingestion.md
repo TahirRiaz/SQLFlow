@@ -149,7 +149,7 @@ The runner (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs) executes the
 
 Set `load.matchKeysInSourceAndTarget: true` to detect rows that vanished from the source. After each load the engine lands the full distinct source key set in the flow's canonical `mkey_` key table (in the `raw` schema, rebuilt per run) and compares it against the target in SQL on the target side; the key table is dropped in the same step as the staging table (governed by `load.keepStagingTable`). Target rows whose keys are gone from the source are handled per `matchKeys.action`:
 
-- `tag` (the default): soft delete by stamping the `DeletedDate_DW` system column, which this mode auto-enables so you do not need to set `systemColumns.deletedDate` yourself. A tagged row whose key reappears in the source is un-tagged (resurrected).
+- `tag` (the default): soft delete by stamping the `DeletedDate_DW` system column, which this mode auto-enables so you do not need to set `systemColumns.deletedDate` yourself. A tagged row whose key reappears in the source is un-tagged (resurrected) and stamped `UpdatedDate_DW`, so a reader of what changed meets it again.
 - `delete`: hard delete the row. Any other value fails validation with `'matchKeys.action' must be 'tag' or 'delete', got '<value>'.`
 
 ```yaml
