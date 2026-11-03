@@ -5,8 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { isApiError } from "./api/client";
 import { AuthProvider } from "./auth/AuthContext";
-import { isEntraSignInResponse } from "./auth/entraSignIn";
-import { relayEntraSignInResponse } from "./auth/msal";
+import { holdEntraSignInAnswer, isEntraSignInResponse } from "./auth/entraSignIn";
 import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { loadRuntimeConfig } from "./config/runtime";
@@ -44,11 +43,12 @@ export function renderApp(modules: readonly GuiModule[] = []): void {
     throw new Error("The page has no #root element to render the GUI into.");
   }
 
-  // Entra answers a sign-in by loading the GUI's origin in the sign-in popup. That load is MSAL's redirect bridge, not
-  // the workbench: it relays the answer to the window waiting on it before anything else starts or reads the URL.
+  // Entra answers a sign-in by loading the GUI's origin in the tab that left for it, with the answer in the URL fragment.
+  // The login page finishes the sign-in, so the answer is held for it and the address becomes the login page's before
+  // the router reads it, which also keeps the answer out of the address bar and the tab's history.
   if (isEntraSignInResponse(window.location.hash)) {
-    relayEntraSignInResponse(container);
-    return;
+    holdEntraSignInAnswer(window.location.hash);
+    window.history.replaceState(null, "", "/login");
   }
 
   registerModules(modules);

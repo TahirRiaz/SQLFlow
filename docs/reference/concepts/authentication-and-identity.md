@@ -41,6 +41,8 @@ sourceRefs:
   - src/SqlFlow.Catalog/UserStore.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs
+  - gui/src/auth/msal.ts
+  - gui/src/auth/LoginPage.tsx
 ---
 
 # Authentication and identity
@@ -178,7 +180,7 @@ opened to it; the trigger request endpoints are, and each reads only the request
 
 ## Microsoft Entra ID single sign-on
 
-Entra single sign-on turns on automatically once `ControlPlane:AzureAd:AllowedTenantIds` (at least one entry) and `ControlPlane:AzureAd:ClientId` are configured: supplying both credentials is the whole switch, with no separate enable flag to remember. (Set `ControlPlane:AzureAd:Enabled` explicitly only to override the default: `true` requires SSO and fails startup if a credential is missing, `false` forces it off even when credentials are present.) Local username/password sign-in is always available alongside it; enabling Entra only adds the "Sign in with Microsoft" option. When enabled, the SPA signs the user in against Entra with MSAL (authorization code + PKCE) and posts the resulting ID token to `POST /api/v1/auth/exchange` as `{ "token": "..." }`. The control plane validates the Entra token and issues its own SQLFlow session token, so downstream API calls use one token type regardless of sign-in method.
+Entra single sign-on turns on automatically once `ControlPlane:AzureAd:AllowedTenantIds` (at least one entry) and `ControlPlane:AzureAd:ClientId` are configured: supplying both credentials is the whole switch, with no separate enable flag to remember. (Set `ControlPlane:AzureAd:Enabled` explicitly only to override the default: `true` requires SSO and fails startup if a credential is missing, `false` forces it off even when credentials are present.) Local username/password sign-in is always available alongside it; enabling Entra only adds the "Sign in with Microsoft" option. When enabled, the SPA signs the user in against Entra with MSAL (authorization code + PKCE) in the same tab: the page goes to Microsoft's sign-in and Entra answers at the GUI origin, where the login page finishes the sign-in and goes on to the page it was asked for from. When the login form's Username holds an email address, the SPA sends it to Entra as the login hint, so Entra signs that account in without asking which account to use (the form keeps the last sign-in's name, so a returning user signs straight in); without one, Entra asks only when the browser holds more than one Microsoft account. The SPA then posts the resulting ID token to `POST /api/v1/auth/exchange` as `{ "token": "..." }`. The control plane validates the Entra token and issues its own SQLFlow session token, so downstream API calls use one token type regardless of sign-in method.
 
 ### More than one tenant
 

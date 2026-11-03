@@ -2,8 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { isApiError, setAuthToken, setUnauthorizedHandler } from "../api/client";
 import { authApi } from "../api/endpoints";
 import type { EntraProviderInfo } from "../api/types";
+import type { EntraSignInState } from "./entraSignIn";
 import { saveLoginPrefs } from "./loginPrefs";
-import { signInWithEntra } from "./msal";
+import { finishEntraSignIn, startEntraSignIn } from "./msal";
 
 /** The signed-in session as the GUI holds it. The token also lives in the API client for request headers. */
 export interface Session {
@@ -44,7 +45,10 @@ interface AuthContextValue {
   sessionEndedReason: string | null;
   hasScope: (scope: string) => boolean;
   loginLocal: (username: string, password: string, remember: boolean) => Promise<void>;
-  loginEntra: (entra: EntraProviderInfo, remember: boolean) => Promise<void>;
+  /** Leaves for Microsoft's sign-in in this tab; the promise only ever rejects (see startEntraSignIn). */
+  loginEntra: (entra: EntraProviderInfo, loginHint: string | undefined, state: EntraSignInState) => Promise<never>;
+  /** Finishes the sign-in Entra answered and begins its session; resolves to where the sign-in was asked for from. */
+  completeLoginEntra: (entra: EntraProviderInfo, answer: string) => Promise<string>;
   loginBootstrap: (secret: string) => Promise<void>;
   logout: () => void;
 }
@@ -275,16 +279,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, remember, true);
   }, [beginSession]);
 
-  const loginEntra = useCallback(async (entra: EntraProviderInfo, remember: boolean) => {
-    const idToken = await signInWithEntra(entra);
-    const response = await authApi.exchange(idToken);
+  const completeLoginEntra = useCallback(async (entra: EntraProviderInfo, answer: string) => {
+    const signIn = await finishEntraSignIn(entra, answer);
+    const response = await authApi.exchange(signIn.idToken);
     beginSession({
       token: response.accessToken,
       subject: response.subject,
       role: response.role,
       scopes: response.scopes,
       expiresAtMs: Date.now() + response.expiresIn * 1000,
-    }, remember, true);
+    }, signIn.state.remember, true);
+    return signIn.state.returnTo;
   }, [beginSession]);
 
   const loginBootstrap = useCallback(async (secret: string) => {
@@ -319,10 +324,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return scope === "admin" ? session.scopes.includes("admin") : true;
     },
     loginLocal,
-    loginEntra,
+    // Starting a sign-in touches no session: the page leaves, and completeLoginEntra begins the session on its return.
+    loginEntra: startEntraSignIn,
+    completeLoginEntra,
     loginBootstrap,
     logout,
-  }), [session, sessionEndedReason, loginLocal, loginEntra, loginBootstrap, logout]);
+  }), [session, sessionEndedReason, loginLocal, completeLoginEntra, loginBootstrap, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

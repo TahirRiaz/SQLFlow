@@ -10,11 +10,13 @@ compute fleet, and manages schedules, repo sources, and users.
 Three methods, all ending in the same SQLFlow-issued bearer token:
 
 - Regular SQLFlow users: username + password (`POST /auth/login`).
-- Azure single sign-on: "Sign in with Microsoft" (MSAL popup, then `POST /auth/exchange`). Shown when the
-  control plane has `ControlPlane:AzureAd` enabled; first sign-in provisions the user with the viewer role.
-  Entra answers in the popup at the GUI origin, the redirect URI the app registration names; that page load relays
-  the answer to the window waiting on it (MSAL's redirect bridge) instead of starting the GUI, so the GUI origin must
-  not be served with a `Cross-Origin-Opener-Policy` header.
+- Azure single sign-on: "Sign in with Microsoft" (MSAL redirect in the same tab, then `POST /auth/exchange`). Shown
+  when the control plane has `ControlPlane:AzureAd` enabled; first sign-in provisions the user with the viewer role.
+  When the Username field holds an email address it goes to Entra as the login hint, so Entra signs that account in
+  without asking which one to use (the field holds the last sign-in's name, so a returning user is signed straight
+  in); otherwise Entra asks only when the browser holds more than one account. Entra answers at the GUI origin, the
+  redirect URI the app registration names; that page load holds the answer for the login page, which finishes the
+  sign-in and goes on to the page it was asked for from.
 - Bootstrap secret (break-glass, behind "Advanced" on the login page). Use it once to provision real users.
 
 The token lives in memory + sessionStorage: a reload keeps the session, closing the tab ends it.

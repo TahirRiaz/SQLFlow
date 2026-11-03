@@ -647,7 +647,9 @@
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
         "src/SqlFlow.Catalog/UserStore.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
-        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs"
+        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs",
+        "gui/src/auth/msal.ts",
+        "gui/src/auth/LoginPage.tsx"
       ]
     },
     {
