@@ -87,6 +87,16 @@ describe("explainChangeQuestion", () => {
     assert.ok(question.includes("The earlier version:\n\n```yaml\na: 1\n```\n\nThe later version:\n\n```yaml\na: 2\n```"), question);
   });
 
+  it("introduces each version by the name its side carries, and asks what differs", () => {
+    const change = { original: "a: 1", modified: "a: 2", language: "yaml", sides: { original: "Rendered now", modified: "Stored version 7" } };
+    const question = explainChangeQuestion(change, PIPELINE, "SQLFlow");
+    assert.match(question, /What differs between these two versions of a YAML document, compared on the "welldb_wells" page/);
+    assert.ok(question.includes(
+      "The version shown as \"Rendered now\":\n\n```yaml\na: 1\n```\n\nThe version shown as \"Stored version 7\":\n\n```yaml\na: 2\n```",
+    ), question);
+    assert.ok(!question.includes("earlier"), question);
+  });
+
   it("fits two long versions into one question", () => {
     const long = Array.from({ length: 800 }, (_, index) => `line ${index} ${"y".repeat(60)}`).join("\n");
     const question = explainChangeQuestion({ original: long, modified: long, language: "sql" }, PIPELINE, "SQLFlow");

@@ -14,20 +14,60 @@ import "../lib/monacoSetup";
 import { useExplain } from "../features/chat/ExplainContext";
 import { ExplainIcon } from "../features/chat/ExplainIcon";
 
+/**
+ * What one side of a comparison is: its name, and a detail that tells it apart (a version, a path), shown quieter than
+ * the name so the name is what the eye finds.
+ */
+export type DiffSideLabel = string | { name: string; detail?: string };
+
+function sideName(label: DiffSideLabel): string {
+  return typeof label === "string" ? label : label.name;
+}
+
+function sideDetail(label: DiffSideLabel): string | null {
+  return typeof label === "string" || !label.detail ? null : label.detail;
+}
+
+/** The whole label as one line: its name, then its detail. */
+function sideText(label: DiffSideLabel): string {
+  const detail = sideDetail(label);
+  return detail === null ? sideName(label) : `${sideName(label)} ${detail}`;
+}
+
+/** The heading over one side: the name in the foreground, its detail muted beside it, cut short rather than wrapped. */
+function SideHeading({ label, mark, className, testId }: {
+  label: DiffSideLabel;
+  /** The patch's sign for the side ("-", "+"), inline, where the sides are lines of one patch rather than two panes. */
+  mark?: string;
+  className?: string;
+  testId: string;
+}) {
+  const detail = sideDetail(label);
+  return (
+    <div className={cn("flex min-w-0 items-baseline gap-2", className)} title={sideText(label)} data-testid={testId}>
+      {mark !== undefined && <span className="font-mono text-[13px] text-muted-foreground">{mark}</span>}
+      <span className="truncate text-[13px] font-semibold text-foreground">{sideName(label)}</span>
+      {detail !== null && <span className="flex-1 truncate text-[12px] tabular-nums text-muted-foreground">{detail}</span>}
+    </div>
+  );
+}
+
 interface DiffViewProps {
-  /** The earlier text: the left pane side by side, the removed lines inline. */
+  /** The left pane side by side, the removed lines inline: the earlier text, unless `sideLabels` names the sides. */
   original: string;
-  /** The later text: the right pane side by side, the added lines inline. */
+  /** The right pane side by side, the added lines inline: the later text, unless `sideLabels` names the sides. */
   modified: string;
   language: "yaml" | "json" | "sql" | "plaintext";
   height?: number | string;
   /** What the two sides ARE (a commit, a date). Rendered in the toolbar, left of the view controls. */
   caption?: ReactNode;
   /**
-   * A name for each side (a version, a release, a file): shown above its pane side by side, and as the removed and
-   * added side of the patch inline. For comparisons whose sides need naming one by one, where a caption would not do.
+   * A name for each side (a version, a release, a file): a heading over its pane side by side, and the removed and
+   * added side of the patch inline. For comparisons whose sides need naming one by one, where a caption would not do,
+   * and for two documents neither of which is the earlier: Explain and Copy then name the sides by these, not as the
+   * earlier and the later version.
    */
-  sideLabels?: { original: string; modified: string };
+  sideLabels?: { original: DiffSideLabel; modified: DiffSideLabel };
   /**
    * Folds the unchanged stretches away, so the differences are what is in view. For long documents that differ in a
    * few places; a folded stretch opens on demand.
@@ -92,9 +132,14 @@ export function DiffView({
   // "Explain": the assistant explains what changed between the two versions, wherever the assistant is configured.
   const explainer = useExplain();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const originalText = sideLabels === undefined ? null : sideText(sideLabels.original);
+  const modifiedText = sideLabels === undefined ? null : sideText(sideLabels.modified);
   const handleExplain = useCallback(() => {
-    explainer?.explainChange({ original, modified, language }, rootRef.current);
-  }, [explainer, original, modified, language]);
+    const sides = originalText === null || modifiedText === null ? {} : { sides: { original: originalText, modified: modifiedText } };
+    explainer?.explainChange({ original, modified, language, ...sides }, rootRef.current);
+  }, [explainer, original, modified, language, originalText, modifiedText]);
+  // What Copy takes: the right side, named as its heading names it where the sides are named.
+  const copied = sideLabels === undefined ? "the later version" : `"${sideName(sideLabels.modified)}"`;
 
   const handleCopy = useCallback(() => {
     void navigator.clipboard
@@ -149,36 +194,28 @@ export function DiffView({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Copy the later version to clipboard"
+                aria-label={`Copy ${copied} to clipboard`}
                 onClick={handleCopy}
                 data-testid="diff-view-copy"
               >
                 <Copy />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Copy the later version</TooltipContent>
+            <TooltipContent>{`Copy ${copied}`}</TooltipContent>
           </Tooltip>
         </div>
       </div>
       {sideLabels !== undefined && (sideBySide
         ? (
-          <div className="grid grid-cols-2 border-b border-border bg-muted/50 font-mono text-[11px] text-muted-foreground">
-            <div className="truncate px-3 py-1" title={sideLabels.original} data-testid={`${rootTestId}-original`}>
-              {sideLabels.original}
-            </div>
-            <div className="truncate border-l border-border px-3 py-1" title={sideLabels.modified} data-testid={`${rootTestId}-modified`}>
-              {sideLabels.modified}
-            </div>
+          <div className="grid grid-cols-2 border-b border-border bg-muted">
+            <SideHeading label={sideLabels.original} className="px-3 py-1.5" testId={`${rootTestId}-original`} />
+            <SideHeading label={sideLabels.modified} className="border-l border-border px-3 py-1.5" testId={`${rootTestId}-modified`} />
           </div>
         )
         : (
-          <div className="flex flex-col border-b border-border bg-muted/50 px-3 py-1 font-mono text-[11px] text-muted-foreground">
-            <div className="truncate" title={sideLabels.original} data-testid={`${rootTestId}-original`}>
-              {`- ${sideLabels.original}`}
-            </div>
-            <div className="truncate" title={sideLabels.modified} data-testid={`${rootTestId}-modified`}>
-              {`+ ${sideLabels.modified}`}
-            </div>
+          <div className="flex flex-col gap-0.5 border-b border-border bg-muted px-3 py-1.5">
+            <SideHeading label={sideLabels.original} mark="-" testId={`${rootTestId}-original`} />
+            <SideHeading label={sideLabels.modified} mark="+" testId={`${rootTestId}-modified`} />
           </div>
         ))}
       <DiffEditor

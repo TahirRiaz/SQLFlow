@@ -107,7 +107,9 @@ product, in a conversation followed up like any other. Explain wears one icon wh
   The question carries the code, its language, which lines of how many, and the page it is on; the code is its own
   context.
 - **A comparison** of two versions of a document: Explain in its toolbar explains what changed and what the change does,
-  with both versions in the question.
+  with both versions in the question. A comparison whose sides carry headings (a version, "as declared") introduces each
+  version by its heading and asks what differs, since two named sides need not be an earlier and a later one; Copy
+  names the side it copies the same way.
 - **A page**: Explain at the end of the tab strip explains what the page is for, what it shows and what a person does
   there. The question carries the page's title and route, what its navigation entry says the page is for (every entry
   of the menu, SQLFlow's and a module's, carries that description, and a page reached from an entry, a pipeline from
