@@ -219,7 +219,14 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   leaves the tray, and the indicator goes with the last one.
 - **Activity bar** (`w-12`): one icon per nav group, Settings gear pinned at the bottom. Active group
   shows a 2px left indicator + full-intensity icon. Click: reveal the group in the side bar; click on
-  the active group toggles the side bar. Tooltips on the right.
+  the active group toggles the side bar. Tooltips on the right. A module laying out the menu may name
+  shortcuts instead (`GuiModule.menu.shortcuts`, the paths of entries it lists): the bar is then a menu
+  button (testid `activity-menu`, `aria-expanded` while the side bar is shown) that shows the side bar
+  with the page shown's entry unfolded into view, or hides it, a hairline, and one icon per shortcut, the
+  entry's own icon and label (testid `activity-` plus the entry's testid, so `activity-nav-runs`). A
+  shortcut opens its page in one click; with the side bar shown, its entry's group and section unfold and
+  the row scrolls into view as the selected one. The shortcut whose page is shown wears the indicator
+  and `aria-current="page"`; a shortcut is shown to whoever its entry's group is shown to.
 - **Side bar** (resizable 12-35%, persisted): the global search first (`SearchInput`, testid
   `global-search`, Enter navigates to `/search?q=`), pinned above the scroll area on its own hairline so a
   long nav never scrolls it away; then the menu, one tree on the workbench's tree primitives (section

@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { layOutMenu, type MenuGroupLayout, type MenuLayout } from "../src/layout/menuLayout.ts";
+import { layOutMenu, layOutShortcuts, type MenuGroupLayout, type MenuLayout } from "../src/layout/menuLayout.ts";
 
 interface Entry {
   to: string;
@@ -130,6 +130,32 @@ describe("layOutMenu", () => {
 
     assert.throws(() => lay([MENU[2], MENU[0], MENU[1]]), {
       message: "lays out the top group 'operate' after the bottom group 'settings'.",
+    });
+  });
+});
+
+describe("layOutShortcuts", () => {
+  const placed = () => lay(MENU).flatMap((laid) => laid.items);
+
+  it("opens the entries the layout names, in its order, each as the layout placed it", () => {
+    const shortcuts = layOutShortcuts(placed(), ["/mappings", "/", "/tokens"], fail);
+
+    assert.deepEqual(shortcuts.map((item) => [item.to, item.section]), [["/mappings", "delivery"], ["/", undefined], ["/tokens", undefined]]);
+  });
+
+  it("names none for a layout without shortcuts, so the activity bar shows the groups", () => {
+    assert.deepEqual(layOutShortcuts(placed(), undefined, fail), []);
+  });
+
+  it("refuses an empty list, a path no entry has, and a shortcut named twice", () => {
+    assert.throws(() => layOutShortcuts(placed(), [], fail), {
+      message: "names no shortcut in its list of shortcuts; leave the list out for an activity bar of groups.",
+    });
+    assert.throws(() => layOutShortcuts(placed(), ["/runs", "/gone"], fail), {
+      message: "names the shortcut '/gone', which is not the path of a navigation entry.",
+    });
+    assert.throws(() => layOutShortcuts(placed(), ["/runs", "/mappings", "/runs"], fail), {
+      message: "names the shortcut '/runs' twice.",
     });
   });
 });

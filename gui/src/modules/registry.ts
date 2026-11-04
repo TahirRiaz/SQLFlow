@@ -93,7 +93,8 @@ export interface ModuleDetailTitle {
 /**
  * The whole menu, laid out by a module: its groups in the order the activity bar and the side bar show them, the top ones
  * first, each with the paths of the entries listed straight under it and its sections with theirs. It lists every entry,
- * SQLFlow's and the modules', exactly once, and its groups are the only ones shown.
+ * SQLFlow's and the modules', exactly once, and its groups are the only ones shown. It may name shortcuts, the entries
+ * the activity bar opens in one click in place of an icon per group.
  */
 export type ModuleMenu = MenuLayout<LucideIcon>;
 

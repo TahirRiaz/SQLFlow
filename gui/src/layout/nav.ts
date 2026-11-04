@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { branding } from "../modules/branding";
 import type { ModuleNavigation } from "../modules/registry";
-import { layOutMenu } from "./menuLayout";
+import { layOutMenu, layOutShortcuts } from "./menuLayout";
 
 export interface NavItem {
   label: string;
@@ -171,9 +171,27 @@ export const navGroups: NavGroup[] = [
   },
 ];
 
+/**
+ * The entries the activity bar opens in one click, in its order, when the module laying out the menu names them; empty,
+ * the activity bar shows an icon per group.
+ */
+export const navShortcuts: NavItem[] = [];
+
 /** Every nav item across the groups, in display order. */
 export function allNavItems(): NavItem[] {
   return navGroups.flatMap((group) => group.items);
+}
+
+/** The group listing the entry at this path, and the entry; null for a path no entry has. */
+export function navPlaceOf(path: string): { group: NavGroup; item: NavItem } | null {
+  for (const group of navGroups) {
+    const item = group.items.find((candidate) => candidate.to === path);
+    if (item !== undefined) {
+      return { group, item };
+    }
+  }
+
+  return null;
 }
 
 /** A group's entries as they are listed: those of no section first, then each section's in the group's order. */
@@ -260,7 +278,7 @@ export function routeTitle(pathname: string): { title: string; icon: LucideIcon 
  * menu, lists every entry, SQLFlow's and the modules', where its layout says. Called once by registerModules, before
  * the app renders; a group, section, entry or owned path that already exists, an anchor or section that does not, an
  * entry without a group while no module lays out the menu, and a second module laying it out fail with a message
- * naming the module.
+ * naming the module. The shortcuts a layout names become the activity bar's, each the entry the layout placed.
  */
 export function extendNavigation(contributions: readonly ModuleNavigation[]): void {
   const layouts = contributions.filter((contribution) => contribution.menu !== undefined);
@@ -390,9 +408,11 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
     return;
   }
 
-  const laidOut = layOutMenu([...allNavItems(), ...unplaced], owner.menu, (message): never => {
+  const failLayout = (message: string): never => {
     throw new Error(`GUI module '${owner.moduleId}' ${message}`);
-  });
+  };
+  const laidOut = layOutMenu([...allNavItems(), ...unplaced], owner.menu, failLayout);
+  navShortcuts.splice(0, navShortcuts.length, ...layOutShortcuts(laidOut.flatMap((group) => group.items), owner.menu.shortcuts, failLayout));
   navGroups.splice(0, navGroups.length, ...laidOut.map(({ group, sections, items }): NavGroup => ({
     id: group.id,
     label: group.label,

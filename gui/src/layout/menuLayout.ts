@@ -1,6 +1,6 @@
-// How a module lays out the whole menu: the groups the activity bar and the side bar show, in order, and the entries each
-// lists, straight under it or under one of its sections. Kept apart from the navigation model, with nothing to import, so
-// the unit suite reads it.
+// How a module lays out the whole menu: the groups the side bar shows, in order, the entries each lists, straight under it
+// or under one of its sections, and what the activity bar shows: an icon per group, or the shortcuts the layout names.
+// Kept apart from the navigation model, with nothing to import, so the unit suite reads it.
 
 /** A labelled part of a laid-out group: an id unique within the group, its label, and its entries' paths in order. */
 export interface MenuSectionLayout {
@@ -26,6 +26,12 @@ export interface MenuGroupLayout<Icon> {
 /** A whole menu: its groups, the top ones first, in the order the activity bar and the side bar show them. */
 export interface MenuLayout<Icon> {
   groups: readonly MenuGroupLayout<Icon>[];
+  /**
+   * The paths of the entries the activity bar opens in one click, in its order. A layout naming them gives the activity
+   * bar a button that shows and hides the side bar, then an icon per shortcut, in place of an icon per group; without
+   * them it shows the groups. Each names an entry the layout lists, once.
+   */
+  shortcuts?: readonly string[];
 }
 
 /** A group as the layout places it: its sections (without their entries) and its entries, each carrying its section. */
@@ -110,4 +116,35 @@ export function layOutMenu<Icon, Entry extends { to: string; section?: string }>
   }
 
   return laidOut;
+}
+
+/**
+ * The entries a layout's shortcuts open, in the layout's order, none when it names no shortcuts. Reports through `fail`,
+ * which throws, a shortcut whose path no entry has, one named twice, and an empty list, which would leave the activity
+ * bar with nothing but its side bar button.
+ */
+export function layOutShortcuts<Entry extends { to: string }>(
+  entries: readonly Entry[],
+  shortcuts: readonly string[] | undefined,
+  fail: (message: string) => never,
+): Entry[] {
+  if (shortcuts === undefined) {
+    return [];
+  }
+
+  if (shortcuts.length === 0) {
+    fail("names no shortcut in its list of shortcuts; leave the list out for an activity bar of groups.");
+  }
+
+  const byPath = new Map(entries.map((entry) => [entry.to, entry]));
+  const named = new Set<string>();
+  return shortcuts.map((path) => {
+    const entry = byPath.get(path) ?? fail(`names the shortcut '${path}', which is not the path of a navigation entry.`);
+    if (named.has(path)) {
+      fail(`names the shortcut '${path}' twice.`);
+    }
+
+    named.add(path);
+    return entry;
+  });
 }
