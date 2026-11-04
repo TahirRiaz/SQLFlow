@@ -98,6 +98,16 @@ export function decodeEntraSignInState(state: string | undefined): EntraSignInSt
 }
 
 /**
+ * Whether MSAL could not settle a sign-in an earlier page load left marked in progress because its request is not in the
+ * tab's storage. The popup sign-in of the GUI before this one marked itself in progress in session storage and kept its
+ * request in memory, so a page load while its popup was open (a reload, a dev server restart) left the mark with nothing
+ * behind it. MSAL clears the mark as it reports this, and that sign-in is gone either way, so a new one may start.
+ */
+export function isAbandonedSignIn(errorCode: string): boolean {
+  return errorCode === "no_token_request_cache_error" || errorCode === "unable_to_parse_token_request_cache_error";
+}
+
+/**
  * What each MSAL failure a sign-in can meet means. MSAL 5 no longer ships its error text (an error's message is a link
  * to its documentation), so the failures MSAL 3 described keep MSAL 3's sentences, and the ones MSAL 5 added have
  * sentences of their own. An error Entra itself returns carries Entra's description and is not listed.

@@ -1,6 +1,12 @@
 import { AuthError, PublicClientApplication, type AuthenticationResult } from "@azure/msal-browser";
 import type { EntraProviderInfo } from "../api/types";
-import { decodeEntraSignInState, encodeEntraSignInState, entraSignInFailureMessage, type EntraSignInState } from "./entraSignIn";
+import {
+  decodeEntraSignInState,
+  encodeEntraSignInState,
+  entraSignInFailureMessage,
+  isAbandonedSignIn,
+  type EntraSignInState,
+} from "./entraSignIn";
 
 // MSAL is created lazily from the providers discovery response (GET /auth/providers), so the SPA needs no
 // build-time Entra configuration: the control plane is the single source of the tenant/client ids.
@@ -53,6 +59,22 @@ function describeSignInFailure(error: unknown): unknown {
 }
 
 /**
+ * Settles a sign-in an earlier page load left marked in progress, since MSAL refuses another while one is. A redirect
+ * that never came back (Back on a page the browser loaded again) is settled by handling this load, which carries no
+ * answer. One whose request is gone from the tab (isAbandonedSignIn) is reported as a failure MSAL has already cleared,
+ * and is let go so the sign-in asked for now can start.
+ */
+async function settleEarlierSignIn(msal: PublicClientApplication): Promise<void> {
+  try {
+    await msal.handleRedirectPromise({ navigateToLoginRequestUrl: false });
+  } catch (error) {
+    if (!(error instanceof AuthError && isAbandonedSignIn(error.errorCode))) {
+      throw error;
+    }
+  }
+}
+
+/**
  * Starts the interactive Entra sign-in (auth code + PKCE under the hood) in this tab: the page leaves for Microsoft's
  * sign-in, and Entra answers by loading the GUI's origin again, carrying `state` back with it. Naming the account
  * (`loginHint`) lets Entra sign it in without asking which account to use when the browser already holds it, as Edge
@@ -66,10 +88,7 @@ export async function startEntraSignIn(
 ): Promise<never> {
   try {
     const msal = await getInstance(entra);
-    // A sign-in that left for Microsoft and never came back (Back on a page the browser loaded again) leaves its
-    // request marked in progress, and MSAL refuses another while one is. Settling this page load, which carries no
-    // answer, clears it.
-    await msal.handleRedirectPromise({ navigateToLoginRequestUrl: false });
+    await settleEarlierSignIn(msal);
     await msal.loginRedirect({ scopes: SIGN_IN_SCOPES, loginHint, state: encodeEntraSignInState(state) });
   } catch (error) {
     throw describeSignInFailure(error);

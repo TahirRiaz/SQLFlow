@@ -10,6 +10,7 @@ import {
   entraLoginHint,
   entraSignInFailureMessage,
   holdEntraSignInAnswer,
+  isAbandonedSignIn,
   isEntraSignInResponse,
   sameAppPath,
   takeEntraSignInAnswer,
@@ -107,6 +108,19 @@ describe("Entra sign-in state", () => {
     const none = { remember: false, returnTo: "/" };
     for (const state of [undefined, "", "not json", "null", "42", "[]", JSON.stringify({ remember: "yes", returnTo: 7 })]) {
       assert.deepEqual(decodeEntraSignInState(state), none, String(state));
+    }
+  });
+});
+
+describe("isAbandonedSignIn", () => {
+  it("reads a sign-in mark with no request behind it as an abandoned sign-in", () => {
+    assert.equal(isAbandonedSignIn("no_token_request_cache_error"), true);
+    assert.equal(isAbandonedSignIn("unable_to_parse_token_request_cache_error"), true);
+  });
+
+  it("reads every other failure as one to show", () => {
+    for (const code of ["interaction_in_progress", "state_mismatch", "access_denied", "user_cancelled", ""]) {
+      assert.equal(isAbandonedSignIn(code), false, code);
     }
   });
 });
