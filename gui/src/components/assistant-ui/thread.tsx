@@ -79,6 +79,21 @@ export type ThreadComponents = {
    */
   AnswerFooter?: ComponentType | undefined;
   /**
+   * Rendered in every assistant answer's footer row, beside the action bar and never hidden with it: where a host marks
+   * an answer as AI-generated, and by which model.
+   */
+  AnswerMark?: ComponentType | undefined;
+  /**
+   * Shown under the composer for as long as the thread is open: what a person is told about who writes the answers,
+   * from their first question on.
+   */
+  disclosure?: string | undefined;
+  /**
+   * Turns an answer into the Markdown "Export as Markdown" saves, given the answer's text and its message's custom
+   * metadata, so a host can mark the saved file as generated. Without it the answer is saved as the chat shows it.
+   */
+  markExport?: ((content: string, custom: Readonly<Record<string, unknown>>) => string) | undefined;
+  /**
    * Whether a SQL block the assistant hands back can be run from the thread itself (the chat
    * capability of the same name). Read by the SQL code-block renderer, which lives in the shared
    * markdown component rather than here, so it is carried on this same host-supplied context
@@ -168,6 +183,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
             <Composer />
+            <ThreadDisclosure />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
             </AuiIf>
@@ -215,6 +231,20 @@ const ThreadWelcome: FC = () => {
         and just ask.
       </p>
     </div>
+  );
+};
+
+const ThreadDisclosure: FC = () => {
+  const { disclosure } = useContext(ThreadComponentsContext);
+  if (!disclosure) return null;
+  return (
+    <p
+      data-slot="aui_thread-disclosure"
+      data-testid="chat-disclosure"
+      className="text-muted-foreground -mt-2 px-4 text-center text-[11px] leading-4"
+    >
+      {disclosure}
+    </p>
   );
 };
 
@@ -355,6 +385,7 @@ const AssistantMessage: FC = () => {
     ToolGroup,
     ReasoningGroup,
     AnswerFooter,
+    AnswerMark,
   } = useContext(ThreadComponentsContext);
 
   const ACTION_BAR_PT = "pt-1.5";
@@ -452,15 +483,32 @@ const AssistantMessage: FC = () => {
 
       <div
         data-slot="aui_assistant-message-footer"
-        className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
+        className={cn("ms-2 flex items-center gap-2", ACTION_BAR_HEIGHT)}
       >
+        {AnswerMark && <AnswerMark />}
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
   );
 };
 
+/** Saves an exported answer as a Markdown file, as the export primitive does when no host marks it. */
+function downloadMarkdown(content: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: "text/markdown" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `message-${Date.now()}.md`;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 40_000);
+}
+
 const AssistantActionBar: FC = () => {
+  const { markExport } = useContext(ThreadComponentsContext);
+  const custom = useAuiState((s) => s.message.metadata.custom);
+  const onExport = markExport ? (content: string) => downloadMarkdown(markExport(content, custom)) : undefined;
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -492,7 +540,7 @@ const AssistantActionBar: FC = () => {
           sideOffset={6}
           className="aui-action-bar-more-content bg-popover/95 text-popover-foreground data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:animate-out data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] overflow-hidden rounded-xl border p-1.5 shadow-lg backdrop-blur-sm"
         >
-          <ActionBarPrimitive.ExportMarkdown asChild>
+          <ActionBarPrimitive.ExportMarkdown asChild onExport={onExport}>
             <ActionBarMorePrimitive.Item className="aui-action-bar-more-item hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none">
               <DownloadIcon className="size-4" />
               Export as Markdown

@@ -217,20 +217,28 @@ public static class SubscriberQuestionEnrichment
         QuestionGenerator generator, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(generator);
-        return EnrichAsync(db, repoId, before, generator.GenerateQuestionsAsync, ct);
+        return EnrichAsync(db, repoId, before, generator.GenerateQuestionsAsync, generator.Model, ct);
     }
 
     /// <summary><see cref="EnrichAsync(CatalogDbContext, Guid, IReadOnlyDictionary{string, string}, QuestionGenerator, CancellationToken)"/>
     /// over any question source, so the replacement rules can be exercised without a model. Every question is generated
     /// before anything is written, and every replacement is then written in one transaction: a generation that fails or
-    /// is cancelled part of the way through leaves every visual with the questions it had.</summary>
+    /// is cancelled part of the way through leaves every visual with the questions it had. Each question written records
+    /// <paramref name="model"/>, the model that wrote it.</summary>
     internal static async Task<IReadOnlyList<string>> EnrichAsync(
         CatalogDbContext db, Guid repoId, IReadOnlyDictionary<string, string> before,
-        Func<VisualQuestionContext, CancellationToken, Task<IReadOnlyList<string>>> generate, CancellationToken ct)
+        Func<VisualQuestionContext, CancellationToken, Task<IReadOnlyList<string>>> generate, string model,
+        CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(generate);
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+        var author = model.Trim();
+        if (author.Length > CatalogChatMessage.MaxModelLength)
+        {
+            author = author[..CatalogChatMessage.MaxModelLength];
+        }
 
         // Only the visuals of a subscriber whose library asks for generated questions (generateQuestions: true): a visual
         // reaches its subscriber through its page.
@@ -351,6 +359,7 @@ public static class SubscriberQuestionEnrichment
                         Ordinal = ordinal,
                         Question = question,
                         Origin = SubscriberQuestionOrigin.Generated,
+                        Model = author,
                     });
                 }
             }

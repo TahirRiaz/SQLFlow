@@ -2219,6 +2219,9 @@ export interface SemanticReportQuestion {
   origin: ReportQuestionOrigin;
   updatedBy: string | null;
   updatedUtc: string | null;
+  /** For a generated question, the model that wrote it; null for a person's and for one generated before questions
+   * recorded it. */
+  model: string | null;
 }
 
 /** One visual the last sync served for a report: the fields it shows and its business questions. `questions` is the
@@ -3451,6 +3454,11 @@ export interface RunQueryResult {
 export interface ChatCapabilities {
   enabled: boolean;
   provider: string;
+  /** The model that answers, which every answer records as its author; empty when the assistant is off. */
+  model: string;
+  /** The sentence the chat shows where a conversation starts: an AI language model writes the answers, which one, and
+   * that they can be wrong. Empty when the assistant is off. */
+  disclosure: string;
   images: boolean;
   transcription: boolean;
   maxImages: number;
@@ -3482,6 +3490,13 @@ export interface ChatToolCall {
   status: string;
 }
 
+/** The model that wrote an answer: its provider's configuration name, its own name, and both as a person reads them. */
+export interface ChatModel {
+  provider: string;
+  model: string;
+  label: string;
+}
+
 export interface ChatMessage {
   id: number;
   ordinal: number;
@@ -3490,6 +3505,8 @@ export interface ChatMessage {
   images: string[];
   toolCalls: ChatToolCall[];
   createdUtc: string;
+  /** The model that wrote an answer; null for a person's message and for an answer stored before answers recorded it. */
+  model: ChatModel | null;
 }
 
 export interface ChatAskRequest {
@@ -3516,6 +3533,8 @@ export interface ChatStreamDone {
   ordinal: number;
   text: string;
   toolCalls: ChatToolCall[];
+  /** The model that wrote the answer. */
+  model: ChatModel;
 }
 
 export interface ChatStreamError {

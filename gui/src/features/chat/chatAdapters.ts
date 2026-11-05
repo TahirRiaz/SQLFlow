@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { chatApi } from "../../api/endpoints";
 import { isApiError, type SseFrame } from "../../api/client";
 import { parseUtc } from "../../lib/time";
+import { answerMetadata } from "./answerProvenance";
 import type {
   ChatMessage, ChatStreamConversation, ChatStreamDelta, ChatStreamDone, ChatStreamError, ChatToolCall,
 } from "../../api/types";
@@ -173,6 +174,7 @@ export function createChatModelAdapter(session: ChatSession): ChatModelAdapter {
       yield {
         content: buildContent(toolCalls, done.text),
         status: { type: "complete", reason: "stop" },
+        metadata: { custom: answerMetadata(done.model) },
       };
     },
   };
@@ -342,6 +344,7 @@ export function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
       role: message.role,
       content: parts,
       createdAt: parseUtc(message.createdUtc),
+      ...(message.role === "assistant" ? { metadata: { custom: answerMetadata(message.model) } } : {}),
     };
   });
 }

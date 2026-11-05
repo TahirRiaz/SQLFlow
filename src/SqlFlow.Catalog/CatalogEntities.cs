@@ -1048,6 +1048,10 @@ public class CatalogSubscriberReportVisualQuestion
 
     /// <summary>When it was last added or edited by a person; null for a generated question.</summary>
     public DateTime? UpdatedUtc { get; set; }
+
+    /// <summary>For a generated question, the model that wrote it, so a stored question says what generated it; null for
+    /// a person's question and for one generated before questions recorded it.</summary>
+    public string? Model { get; set; }
 }
 
 /// <summary>Where a <see cref="CatalogSubscriberReportVisualQuestion"/> came from, named once so the generator, the
@@ -3395,6 +3399,10 @@ public static class ChatMessageRoles
 /// </summary>
 public class CatalogChatMessage
 {
+    /// <summary>The longest model name stored, here and with a generated question: a deployment's or a model's name is
+    /// far shorter, and a longer one is cut rather than refused, since the answer it marks is already written.</summary>
+    public const int MaxModelLength = 128;
+
     /// <summary>The append-only, monotonically increasing id (SQL Server IDENTITY).</summary>
     public long Id { get; set; }
 
@@ -3423,6 +3431,15 @@ public class CatalogChatMessage
     /// <c>estate</c>), so the next message starts from it even when the assistant switched without a command; null for
     /// a person's message and for an answer recorded before modes were.</summary>
     public string? AssistantMode { get; set; }
+
+    /// <summary>For an assistant answer, the provider of the model that wrote it (an <c>AssistantProvider</c> name, such
+    /// as <c>AzureFoundry</c>), so a stored answer says it was generated and by what; null for a person's message and
+    /// for an answer stored before answers recorded it.</summary>
+    public string? ModelProvider { get; set; }
+
+    /// <summary>For an assistant answer, the model that wrote it (the Foundry deployment's name, or the OpenAI or
+    /// Anthropic model id); null for a person's message and for an answer stored before answers recorded it.</summary>
+    public string? Model { get; set; }
 
     public DateTime CreatedUtc { get; set; }
 }

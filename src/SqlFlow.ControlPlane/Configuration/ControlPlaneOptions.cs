@@ -1124,6 +1124,10 @@ public sealed class AssistantChatOptions
     /// which is correct when the chat renders inside the GUI itself.</summary>
     public string GuiBaseUrl { get; set; } = "";
 
+    /// <summary>The model that answers under <see cref="Provider"/>, which every answer records as its author and the chat
+    /// names to the person asking.</summary>
+    public string Model => SqlFlow.Assistant.AssistantSettings.ModelFor(Provider, Foundry, OpenAI, Anthropic);
+
     /// <summary>Maps the bound configuration onto the shared assistant settings the gateways
     /// consume (GUI surface). The nested option instances are shared, not copied.</summary>
     public SqlFlow.Assistant.AssistantSettings ToAssistantSettings() => new()

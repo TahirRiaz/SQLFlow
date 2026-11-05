@@ -416,6 +416,7 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(q => q.Origin).HasMaxLength(16).IsRequired()
                 .HasDefaultValue(SubscriberQuestionOrigin.Generated);
             entity.Property(q => q.UpdatedBy).HasMaxLength(256);
+            entity.Property(q => q.Model).HasMaxLength(CatalogChatMessage.MaxModelLength);
             entity.HasIndex(q => q.VisualKey);
             entity.HasIndex(q => q.RepoId);
         });
@@ -1035,6 +1036,8 @@ public sealed class CatalogDbContext : DbContext
             entity.HasKey(m => m.Id);
             entity.Property(m => m.Role).HasMaxLength(16).IsRequired();
             entity.Property(m => m.AssistantMode).HasMaxLength(16);
+            entity.Property(m => m.ModelProvider).HasMaxLength(32);
+            entity.Property(m => m.Model).HasMaxLength(CatalogChatMessage.MaxModelLength);
             // Text / ImagesJson / ToolCallsJson are nvarchar(max): an answer, a set of pasted
             // screenshots, or a long tool trail has no useful column bound.
             entity.Property(m => m.Text).IsRequired();

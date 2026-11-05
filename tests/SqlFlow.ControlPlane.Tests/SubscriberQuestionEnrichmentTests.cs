@@ -47,7 +47,7 @@ public sealed class SubscriberQuestionEnrichmentTests
                 calls++;
                 return Task.FromResult<IReadOnlyList<string>>(["A generated question?"]);
             },
-            CancellationToken.None);
+            "test-model", CancellationToken.None);
         Assert.Empty(warnings);
         Assert.Equal(0, calls);
 
@@ -110,17 +110,19 @@ public sealed class SubscriberQuestionEnrichmentTests
                 return Task.FromResult<IReadOnlyList<string>>(
                     ["What are sales by country?", "which country grew FASTEST?"]);
             },
-            CancellationToken.None);
+            "test-model", CancellationToken.None);
 
         Assert.Empty(warnings);
         Assert.Equal(1, calls);
         var rows = await scope.RowsAsync();
+        // A generated question records the model that wrote it, so it is marked as generated and by what; a person's
+        // records none.
         Assert.Equal(
             [
-                ("Which country grew fastest?", SubscriberQuestionOrigin.Manual, 2),
-                ("What are sales by country?", SubscriberQuestionOrigin.Generated, 3),
+                ("Which country grew fastest?", SubscriberQuestionOrigin.Manual, 2, (string?)null),
+                ("What are sales by country?", SubscriberQuestionOrigin.Generated, 3, "test-model"),
             ],
-            rows.Select(r => (r.Question, r.Origin, r.Ordinal)));
+            rows.Select(r => (r.Question, r.Origin, r.Ordinal, r.Model)));
     }
 
     [SkippableFact]
@@ -133,7 +135,7 @@ public sealed class SubscriberQuestionEnrichmentTests
 
         var warnings = await SubscriberQuestionEnrichment.EnrichAsync(
             scope.Db, scope.RepoId, new Dictionary<string, string> { [Scope.Key(1)] = "the old content hash" },
-            (_, _) => Task.FromResult<IReadOnlyList<string>>([]), CancellationToken.None);
+            (_, _) => Task.FromResult<IReadOnlyList<string>>([]), "test-model", CancellationToken.None);
 
         Assert.Contains("keeps the questions it had", Assert.Single(warnings));
         Assert.Equal([(Scope.Key(1), "Earlier question?")], await scope.QuestionsAsync());
@@ -299,7 +301,7 @@ public sealed class SubscriberQuestionEnrichmentTests
             (_, _) => ++calls == 1
                 ? Task.FromResult<IReadOnlyList<string>>(["A new first question?"])
                 : throw new OperationCanceledException("the sync was stopped"),
-            CancellationToken.None));
+            "test-model", CancellationToken.None));
 
         Assert.Equal(2, calls);
         Assert.Equal([(Scope.Key(1), "First earlier?"), (Scope.Key(2), "Second earlier?")], await scope.QuestionsAsync());
@@ -316,7 +318,7 @@ public sealed class SubscriberQuestionEnrichmentTests
         var warnings = await SubscriberQuestionEnrichment.EnrichAsync(
             scope.Db, scope.RepoId, new Dictionary<string, string>(),
             (_, _) => Task.FromResult<IReadOnlyList<string>>([tooLong, "  ", "What changed?", "WHAT CHANGED?"]),
-            CancellationToken.None);
+            "test-model", CancellationToken.None);
 
         Assert.Contains($"{tooLong.Length} characters", Assert.Single(warnings), StringComparison.Ordinal);
         Assert.Equal([(Scope.Key(1), "What changed?")], await scope.QuestionsAsync());

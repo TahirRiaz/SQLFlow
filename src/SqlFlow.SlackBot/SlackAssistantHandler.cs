@@ -22,6 +22,11 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
     private readonly SlackBotOptions _options;
     private readonly ILogger<SlackAssistantHandler> _logger;
 
+    /// <summary>The provider and model that write the answers, which each answer names for the people in the thread and
+    /// records in its metadata.</summary>
+    private readonly AssistantProvider _provider;
+    private readonly string _model;
+
     /// <summary>The bot's own user id, resolved once from auth.test: used to ignore our own
     /// messages and to strip our mention from question text.</summary>
     private readonly Lazy<Task<string>> _selfUserId;
@@ -51,6 +56,18 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
     /// read as the data command it is.</summary>
     internal static string WithoutMentions(string? text) => MentionRegex().Replace(text ?? string.Empty, string.Empty).Trim();
 
+    /// <summary>An answer as the thread shows it: the model's Markdown as Slack mrkdwn, then a note saying a language model
+    /// wrote it, which one, and that it can be wrong. A thread is read by people who did not ask, and an answer may be
+    /// quoted on its own, so every answer carries the note rather than only the first.</summary>
+    internal static string AnswerText(string markdown, AssistantProvider provider, string model)
+        => $"{SlackMrkdwn.FromMarkdown(markdown)}\n\n_{AssistantDisclosure.Mark(provider, model)}_";
+
+    /// <summary>The reply to a mention that asks nothing: what the bot is, who writes its answers, and what to ask.</summary>
+    internal static string Introduction(AssistantProvider provider, string model)
+        => "I'm an AI assistant. " + AssistantDisclosure.Sentence(provider, model) + " Ask me anything about SQLFlow: " +
+            "pipeline and run status, why a run failed, what a table contains, lineage, schedules, or how a `.flow.yaml` " +
+            "key works. You can also paste a screenshot of an error and ask about it.";
+
     public SlackAssistantHandler(
         ISlackApiClient slack,
         IAssistantGateway gateway,
@@ -61,6 +78,9 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
         _gateway = gateway;
         _options = options;
         _logger = logger;
+        var settings = options.ToAssistantSettings();
+        _provider = settings.Provider;
+        _model = settings.Model;
         _concurrency = new SemaphoreSlim(options.MaxConcurrentAnswers, options.MaxConcurrentAnswers);
         _selfUserId = new Lazy<Task<string>>(async () => (await _slack.Auth.Test().ConfigureAwait(false)).UserId);
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -138,11 +158,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
             var images = await DownloadImagesAsync(files).ConfigureAwait(false);
             if (question.Length == 0 && images.Count == 0)
             {
-                await PostAsync(channel, threadTs,
-                    "Ask me anything about SQLFlow: pipeline and run status, why a run failed, " +
-                    "what a table contains, lineage, schedules, or how a `.flow.yaml` key works. " +
-                    "You can also paste a screenshot of an error and ask about it.")
-                    .ConfigureAwait(false);
+                await PostAsync(channel, threadTs, Introduction(_provider, _model)).ConfigureAwait(false);
                 return;
             }
             // An image with no words is still a question ("what is this error?"): give the model a prompt.
@@ -167,8 +183,10 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
                 McpBearer = _options.SqlFlow.AccessToken,
             }, timeout.Token).ConfigureAwait(false);
 
-            // The reply carries the mode the answer was given in, so the thread's next question starts from it.
-            await PostAsync(channel, threadTs, SlackMrkdwn.FromMarkdown(answer.Text), SlackAssistantMode.For(answer.Mode))
+            // The reply carries the mode the answer was given in, so the thread's next question starts from it, and the
+            // model that wrote it, both in its metadata and in the note it ends with.
+            await PostAsync(channel, threadTs, AnswerText(answer.Text, _provider, _model),
+                    SlackAssistantMode.For(answer.Mode, _provider, _model))
                 .ConfigureAwait(false);
         }
         catch (Exception ex)

@@ -257,8 +257,10 @@ public sealed record SubscriberReportVisualDto(
 /// <c>manual</c> (a person added or edited it, and generation leaves it alone).</param>
 /// <param name="UpdatedBy">Who last added or edited it; null for a generated question.</param>
 /// <param name="UpdatedUtc">When a person last added or edited it.</param>
+/// <param name="Model">For a generated question, the model that wrote it; null for a person's question and for one
+/// generated before questions recorded it.</param>
 public sealed record SubscriberReportQuestionDto(
-    long Id, string Question, string Origin, string? UpdatedBy, DateTime? UpdatedUtc);
+    long Id, string Question, string Origin, string? UpdatedBy, DateTime? UpdatedUtc, string? Model);
 
 /// <summary>One page of a report, with the visuals on it. <c>ReportFile</c> names which <c>.pbix</c> the page
 /// came from, which only distinguishes pages when a subscriber's <c>pbix:</c> names a directory of several
@@ -1840,7 +1842,7 @@ public static class LineageEndpoints
                 questionsByVisual[v.VisualKey].Select(q => q.Question).ToList(),
                 v.VisualKey,
                 questionsByVisual[v.VisualKey]
-                    .Select(q => new SubscriberReportQuestionDto(q.Id, q.Question, q.Origin, q.UpdatedBy, q.UpdatedUtc))
+                    .Select(q => new SubscriberReportQuestionDto(q.Id, q.Question, q.Origin, q.UpdatedBy, q.UpdatedUtc, q.Model))
                     .ToList())))
             .ToLookup(x => x.PageKey, x => x.Dto);
 

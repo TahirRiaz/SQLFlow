@@ -73,6 +73,27 @@ public sealed class AssistantSettings
     /// surface links relative to its own origin when this is empty.</summary>
     public string GuiBaseUrl { get; set; } = "";
 
+    /// <summary>The model that answers under <see cref="Provider"/>, which every answer records as its author and every
+    /// surface names to the person reading (<see cref="AssistantDisclosure"/>).</summary>
+    public string Model => ModelFor(Provider, Foundry, OpenAI, Anthropic);
+
+    /// <summary>The model that answers under <paramref name="provider"/>: the Foundry deployment's name, or the OpenAI or
+    /// Anthropic model id. Shared by every host that binds the provider settings in a section of its own.</summary>
+    public static string ModelFor(
+        AssistantProvider provider, FoundryOptions foundry, OpenAIOptions openAI, AnthropicOptions anthropic)
+    {
+        ArgumentNullException.ThrowIfNull(foundry);
+        ArgumentNullException.ThrowIfNull(openAI);
+        ArgumentNullException.ThrowIfNull(anthropic);
+        return provider switch
+        {
+            AssistantProvider.AzureFoundry => foundry.ModelDeploymentName.Trim(),
+            AssistantProvider.OpenAI => openAI.Model.Trim(),
+            AssistantProvider.Anthropic => anthropic.Model.Trim(),
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Not an assistant provider."),
+        };
+    }
+
     /// <summary>
     /// Appends one entry per missing or invalid shared setting to <paramref name="missing"/>, each
     /// prefixed with <paramref name="sectionPrefix"/> (for example <c>SlackBot</c> or
