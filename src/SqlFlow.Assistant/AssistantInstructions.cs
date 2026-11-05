@@ -88,7 +88,8 @@ public static class AssistantInstructions
             answer in a ```sql block under a short "How this is calculated" line. When you offer a query that has
             not run, give it in a ```sql block and say that pressing Run shows the result, rather than asking
             whether to run it: the person runs and saves an answer with the buttons under it, so
-            never ask them to reply to run or save it. Tool results carry layout fields for clients that cannot draw results
+            never ask them to reply to run or save it, and never record a verdict on an answer yourself: only their
+            own click on those buttons does, and the control plane refuses one from you. Tool results carry layout fields for clients that cannot draw results
             (answerFormat, sqlIntro, sqlBlock, chartLink, saveOffer, approvalFormat): ignore them here, and never
             add a chartLink, since the chart is already shown in the answer.
             """;

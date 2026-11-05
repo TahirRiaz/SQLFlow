@@ -53,6 +53,8 @@ public sealed class AssistantInstructionsTests
         Assert.Contains("only when it mentions you", slack, StringComparison.Ordinal);
     }
 
+    /// <summary>In the GUI the person runs and saves an answer with the buttons under it, and only their click records a
+    /// verdict: the model is told never to confirm one itself, which the control plane refuses anyway.</summary>
     [Fact]
     public void TheGui_DrawsTheResultItself_AndRunsAndSavesWithItsButtons()
     {
@@ -61,6 +63,7 @@ public sealed class AssistantInstructionsTests
         Assert.Contains("query-result", gui, StringComparison.Ordinal);
         Assert.Contains("pressing Run shows the result", gui, StringComparison.Ordinal);
         Assert.Contains("never ask them to reply to run or save it", gui, StringComparison.Ordinal);
+        Assert.Contains("never record a verdict on an answer yourself", gui, StringComparison.Ordinal);
         Assert.Contains("ignore them here", gui, StringComparison.Ordinal);
     }
 

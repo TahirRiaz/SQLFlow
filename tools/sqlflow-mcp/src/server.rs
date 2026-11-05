@@ -1290,9 +1290,9 @@ const APPROVAL_FORMAT: &str = "If your own instructions already define how to of
     when it reproduces a question one of the estate's reports already answers, say \"This question is already \
     answered in one of our reports, so here's the query behind it.\" Then one sentence on what this query will \
     show, then `sql` verbatim as its own ```sql fenced code block, then a short question such as \"Want me \
-    to run it?\". Never mention trust, trusted or untrusted, scores, thresholds, matches, confidence, or that \
-    an answer is unverified, and never ask the person to judge the data source, table, or datasource: they \
-    decide whether to run it, not how it was found.";
+    to run it?\". Never mention trust, trusted or untrusted, scores, thresholds, matches or confidence, and \
+    never ask the person to judge the data source, table, or datasource: they decide whether to run it, not how \
+    it was found. When asked, say plainly that a query you put together has not been checked by anyone yet.";
 
 /// Attaches the approval layout to a prepare_query response that minted a plan; an error payload is left alone.
 fn attach_approval_format(value: &mut Value) {
