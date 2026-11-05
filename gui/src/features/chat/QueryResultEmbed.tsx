@@ -45,6 +45,14 @@ export function QueryResultEmbed({ code }: { code: string }) {
   }
 
   if (task.isError) {
+    if (isApiError(task.error) && task.error.status === 404) {
+      return (
+        <p className="mb-3 text-xs text-muted-foreground" data-testid="query-result-removed">
+          This result was removed by the storage retention an admin set on the Maintenance page. Run the query again to
+          see it.
+        </p>
+      );
+    }
     return (
       <div className="mb-3">
         {isApiError(task.error)

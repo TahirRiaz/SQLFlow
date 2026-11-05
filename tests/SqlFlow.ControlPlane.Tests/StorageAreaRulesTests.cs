@@ -42,10 +42,15 @@ public sealed class StorageAreaRulesTests
     }
 
     [Fact]
-    public void OnlyTheRunTraceAreas_TakeARetention()
+    public void TheRunTraceAndAssistantAreas_AloneTakeARetention()
     {
         var cleanable = new CatalogStorageContributor(new ControlPlaneOptions()).Areas.Where(a => a.Retention is not null).Select(a => a.Id).Order().ToList();
-        Assert.Equal([CatalogStorageContributor.RunEventsArea, CatalogStorageContributor.RunStatementsArea], cleanable);
+        Assert.Equal(
+            [
+                CatalogStorageContributor.ChatsArea, CatalogStorageContributor.ComputeTasksArea,
+                CatalogStorageContributor.RunEventsArea, CatalogStorageContributor.RunStatementsArea,
+            ],
+            cleanable);
     }
 
     [Fact]

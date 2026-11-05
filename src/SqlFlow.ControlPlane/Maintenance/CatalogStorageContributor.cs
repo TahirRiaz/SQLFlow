@@ -7,9 +7,10 @@ namespace SqlFlow.ControlPlane.Maintenance;
 
 /// <summary>
 /// SQLFlow's own storage areas: every table of the catalog, grouped as the Maintenance page shows them, each with what it
-/// holds, what maintenance may do with it and why. Two areas take a retention an admin sets (the SQL statements and the run
-/// events of superseded runs); the rest are kept, or already clean themselves by a rule the area names. The ids are stored
-/// with each area's retention and cleanup history, so they never change once shipped.
+/// holds, what maintenance may do with it and why. Four areas take a retention an admin sets (the SQL statements and the
+/// run events of superseded runs, the assistant's conversations, and finished compute tasks with their results); the rest
+/// are kept, or already clean themselves by a rule the area names. The ids are stored with each area's retention and
+/// cleanup history, so they never change once shipped.
 /// </summary>
 public sealed class CatalogStorageContributor : IStorageContributor
 {
@@ -18,6 +19,12 @@ public sealed class CatalogStorageContributor : IStorageContributor
 
     /// <summary>The run events of superseded successful runs.</summary>
     public const string RunEventsArea = "sqlflow.run-events";
+
+    /// <summary>The assistant's conversations, with every question, image and answer in them.</summary>
+    public const string ChatsArea = "sqlflow.chats";
+
+    /// <summary>Finished compute tasks, with their results (the rows a query returned among them).</summary>
+    public const string ComputeTasksArea = "sqlflow.compute-tasks";
 
     private const string Schema = CatalogDbContext.SchemaName;
 
@@ -63,6 +70,8 @@ public sealed class CatalogStorageContributor : IStorageContributor
         {
             RunStatementsArea => RunTraceStore.CountPrunableStatementsAsync(catalog, olderThanUtc, ct),
             RunEventsArea => RunTraceStore.CountPrunableEventsAsync(catalog, olderThanUtc, ct),
+            ChatsArea => ChatRetention.CountIdleAsync(catalog, olderThanUtc, ct),
+            ComputeTasksArea => ComputeTaskStore.CountFinishedBeforeAsync(catalog, olderThanUtc, ct),
             _ => throw NotCleanable(area),
         };
     }
@@ -75,6 +84,8 @@ public sealed class CatalogStorageContributor : IStorageContributor
         {
             RunStatementsArea => RunTraceStore.PruneStatementsAsync(catalog, olderThanUtc, ct),
             RunEventsArea => RunTraceStore.PruneEventsAsync(catalog, olderThanUtc, ct),
+            ChatsArea => ChatRetention.RemoveIdleAsync(catalog, olderThanUtc, ct),
+            ComputeTasksArea => ComputeTaskStore.RemoveFinishedBeforeAsync(catalog, olderThanUtc, ct),
             _ => throw NotCleanable(area),
         };
     }
@@ -295,15 +306,14 @@ public sealed class CatalogStorageContributor : IStorageContributor
             },
             new()
             {
-                Id = "sqlflow.compute-tasks",
+                Id = ComputeTasksArea,
                 Group = Fleet,
                 Title = "Compute tasks",
-                Verdict = StorageVerdict.Keep,
-                Holds = "One row per data source task a node ran (a key detection, a query), with its result.",
-                Reason = "Key detection, query results and the warehouse panel read them.",
-                Brief = "Never removed",
-                Lifecycle = "Nothing removes them; a task that no worker finished is marked failed, not removed.",
-                Grows = true,
+                Verdict = StorageVerdict.Optional,
+                Holds = "One row per data source task a node ran (a key detection, a query), with its result: the rows a query returned among them, the assistant's included.",
+                Reason = "Key detection, query results and the warehouse panel read them. Removing a task removes its result, so a chat answer that showed it says the result was removed; running the query again shows it.",
+                Lifecycle = "A task that no worker finished is marked failed, not removed; only the retention removes a task.",
+                Retention = new StorageRetention("A task still queued or running keeps its row, whatever its age.", "tasks"),
                 Tables = [T("ComputeTask")],
                 ManagedAt = "/key-detection",
             },
@@ -373,15 +383,14 @@ public sealed class CatalogStorageContributor : IStorageContributor
             },
             new()
             {
-                Id = "sqlflow.chats",
+                Id = ChatsArea,
                 Group = Assistant,
                 Title = "Chat conversations",
-                Verdict = StorageVerdict.Keep,
-                Holds = "Each person's conversations with the assistant and their messages, images included.",
-                Reason = "They belong to the person who had them.",
-                Brief = "Each person deletes their own",
+                Verdict = StorageVerdict.Optional,
+                Holds = "Each person's conversations with the assistant and their messages: every question, image and answer, with the model that wrote each answer.",
+                Reason = "They belong to the person who had them, who deletes their own on the Chat page, and go with the user. A limit removes a conversation nobody has written in for that long, so an estate keeps what was asked of a model, and what it answered, only as long as it decides.",
                 Lifecycle = "Each person deletes their own on the Chat page; removed with the user.",
-                Grows = true,
+                Retention = new StorageRetention("A conversation anyone wrote in within the limit keeps every message, its oldest included.", "conversations"),
                 Tables = [T("ChatConversation"), T("ChatMessage")],
                 ManagedAt = "/chat",
             },

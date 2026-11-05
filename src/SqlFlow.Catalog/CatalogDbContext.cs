@@ -1028,6 +1028,8 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(c => c.Title).HasMaxLength(200).IsRequired();
             // The owner's conversation list, newest activity first.
             entity.HasIndex(c => new { c.UserId, c.UpdatedUtc });
+            // The retention an admin sets on the Maintenance page seeks the conversations idle since its cut-off.
+            entity.HasIndex(c => c.UpdatedUtc);
         });
 
         modelBuilder.Entity<CatalogChatMessage>(entity =>

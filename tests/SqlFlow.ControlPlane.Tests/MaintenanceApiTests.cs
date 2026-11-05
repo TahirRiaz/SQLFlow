@@ -127,6 +127,87 @@ public sealed class MaintenanceApiTests
         }
     }
 
+    /// <summary>
+    /// The assistant's retentions take a conversation nobody wrote in since the cut-off, with every message in it, and a
+    /// finished compute task enqueued before it, its result with it; a conversation written in since keeps every message,
+    /// its oldest included, and a task still queued or running stays whatever its age. The rows are backdated decades, so
+    /// the cut-offs touch no other test's rows.
+    /// </summary>
+    [SkippableFact]
+    public async Task AssistantRetentions_TakeIdleConversations_AndFinishedTasks_Only()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        await using var db = CatalogDatabase.Create(cs);
+        var day = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var owner = Guid.NewGuid();
+        var idle = new CatalogChatConversation { Id = Guid.NewGuid(), UserId = owner, Title = "idle", CreatedUtc = day, UpdatedUtc = day };
+        var active = new CatalogChatConversation { Id = Guid.NewGuid(), UserId = owner, Title = "active", CreatedUtc = day, UpdatedUtc = day.AddDays(40) };
+        var tasks = new[]
+        {
+            ComputeTask(RunStatuses.Succeeded, day), ComputeTask(RunStatuses.Failed, day), ComputeTask(RunStatuses.Cancelled, day),
+            ComputeTask(RunStatuses.Queued, day), ComputeTask(RunStatuses.Running, day), ComputeTask(RunStatuses.Succeeded, day.AddDays(40)),
+        };
+        var taskIds = tasks.Select(t => t.TaskId).ToList();
+        var conversations = new[] { idle.Id, active.Id };
+
+        try
+        {
+            db.ChatConversations.AddRange(idle, active);
+            foreach (var conversation in new[] { idle, active })
+            {
+                db.ChatMessages.Add(new CatalogChatMessage { ConversationId = conversation.Id, Ordinal = 1, Role = ChatMessageRoles.User, Text = "a question", CreatedUtc = day });
+                db.ChatMessages.Add(new CatalogChatMessage { ConversationId = conversation.Id, Ordinal = 2, Role = ChatMessageRoles.Assistant, Text = "an answer", ModelProvider = "OpenAI", Model = "gpt-5-mini", CreatedUtc = day });
+            }
+
+            db.ComputeTasks.AddRange(tasks);
+            await db.SaveChangesAsync();
+
+            var before = day.AddDays(-1);
+            var after = day.AddDays(30);
+            Assert.Equal(0, await ChatRetention.CountIdleAsync(db, before));
+            Assert.Equal(1, await ChatRetention.CountIdleAsync(db, after));
+            Assert.Equal(0, await ComputeTaskStore.CountFinishedBeforeAsync(db, before));
+            Assert.Equal(3, await ComputeTaskStore.CountFinishedBeforeAsync(db, after));
+
+            Assert.Equal(1, await ChatRetention.RemoveIdleAsync(db, after));
+            Assert.Equal(0, await ChatRetention.RemoveIdleAsync(db, after));
+            Assert.Equal(3, await ComputeTaskStore.RemoveFinishedBeforeAsync(db, after));
+            Assert.Equal(0, await ComputeTaskStore.RemoveFinishedBeforeAsync(db, after));
+
+            Assert.Equal(
+                [active.Id],
+                await db.ChatConversations.AsNoTracking().Where(c => conversations.Contains(c.Id)).Select(c => c.Id).ToListAsync());
+            var messages = await db.ChatMessages.AsNoTracking()
+                .Where(m => conversations.Contains(m.ConversationId)).OrderBy(m => m.Ordinal)
+                .Select(m => new { m.ConversationId, m.Ordinal }).ToListAsync();
+            Assert.Equal([(active.Id, 1), (active.Id, 2)], messages.Select(m => (m.ConversationId, m.Ordinal)));
+            var kept = await db.ComputeTasks.AsNoTracking().Where(t => taskIds.Contains(t.TaskId)).Select(t => t.TaskId).ToListAsync();
+            Assert.Equal(new HashSet<Guid> { tasks[3].TaskId, tasks[4].TaskId, tasks[5].TaskId }, kept.ToHashSet());
+
+            // Both areas take a retention an admin sets and are optional to remove: nothing goes until an admin sets one.
+            var areas = new CatalogStorageContributor(new SqlFlow.ControlPlane.Configuration.ControlPlaneOptions()).Areas;
+            foreach (var id in new[] { CatalogStorageContributor.ChatsArea, CatalogStorageContributor.ComputeTasksArea })
+            {
+                var area = Assert.Single(areas, a => a.Id == id);
+                Assert.Equal(StorageVerdict.Optional, area.Verdict);
+                Assert.NotNull(area.Retention);
+            }
+        }
+        finally
+        {
+            await db.ChatMessages.Where(m => conversations.Contains(m.ConversationId)).ExecuteDeleteAsync();
+            await db.ChatConversations.Where(c => conversations.Contains(c.Id)).ExecuteDeleteAsync();
+            await db.ComputeTasks.Where(t => taskIds.Contains(t.TaskId)).ExecuteDeleteAsync();
+        }
+
+        static CatalogComputeTask ComputeTask(string status, DateTime enqueuedUtc) => new()
+        {
+            TaskId = Guid.NewGuid(), Operation = "runQuery", SourceRef = "${env:SQLFLOW_RETENTION_TEST}", ArgumentsJson = "{}",
+            Status = status, EnqueuedUtc = enqueuedUtc, ResultJson = status == RunStatuses.Succeeded ? "{\"rows\":[]}" : null,
+        };
+    }
+
     [SkippableFact]
     public async Task Api_ReportsEveryArea_AndHoldsEachWriteToItsScope()
     {

@@ -225,6 +225,8 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UpdatedUtc");
+
                     b.HasIndex("UserId", "UpdatedUtc");
 
                     b.ToTable("ChatConversation", "catalog");
