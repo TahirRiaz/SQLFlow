@@ -43,6 +43,7 @@
     "src/lib/runValues.ts",
     "src/features/runs/runInputs.ts",
     "src/features/schedules/scheduleValues.ts",
-    "src/lib/time.ts"
+    "src/lib/time.ts",
+    "src/theme/designs.ts"
   ]
 }

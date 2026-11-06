@@ -816,7 +816,7 @@ const chipClass = "inline-flex max-w-full items-center truncate rounded-sm bg-se
  */
 export default function LineageGraphPage() {
   const navigate = useNavigate();
-  const { mode } = useThemeMode();
+  const { mode, palette } = useThemeMode();
   const [searchParams, setSearchParams] = useSearchParams();
   const repoId = searchParams.get("repoId") ?? "";
   const project = searchParams.get("project") ?? "";
@@ -844,8 +844,8 @@ export default function LineageGraphPage() {
   const [streamWindowDays] = useLocalStorageState<number>("datastreams.windowDays", 60);
   const [streamIncludeBackfills] = useLocalStorageState<boolean>("datastreams.includeBackfills", false);
 
-  // The literal accent colors, re-read when the theme flips so inline node styles track the tokens.
-  const accents = useMemo(() => readAccents(), [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The literal accent colors, re-read when the design or mode changes so inline node styles track the tokens.
+  const accents = useMemo(() => readAccents(), [palette]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scriptQuery = useQuery({
     queryKey: ["lineage-node-script", scriptTarget?.key, scriptTarget?.view ?? ""],
@@ -1193,8 +1193,8 @@ export default function LineageGraphPage() {
           ? { label: "Open in explorer", to: `/lineage/objects?name=${encodeURIComponent(names.get(id) ?? id)}` }
           : { label: "Open pipeline", to: `/pipelines/${id}` }),
     };
-    // The accent colors are theme-scoped custom properties; rebuilding on mode change keeps them in sync.
-  }, [pipelines, graphObjects, flowGraphEdges, frontierSet, selectedWave, repoId, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+    // The accent colors are theme-scoped custom properties; rebuilding on a palette change keeps them in sync.
+  }, [pipelines, graphObjects, flowGraphEdges, frontierSet, selectedWave, repoId, palette]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Objects view: tables/files as nodes, "flow moves data from A to B" as edges, colored per flow -------------
   const objectsGraph = useMemo<BuiltGraph | null>(() => {
@@ -1292,7 +1292,7 @@ export default function LineageGraphPage() {
         to: `/lineage/objects?name=${encodeURIComponent(names.get(id) ?? id)}`,
       }),
     };
-  }, [graphView, graphObjects, objectGraphEdges, frontierSet, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [graphView, graphObjects, objectGraphEdges, frontierSet, palette]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const graph = graphView === "flows" ? flowsGraph : objectsGraph;
 

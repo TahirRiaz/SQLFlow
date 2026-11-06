@@ -25,7 +25,7 @@ export function statusTone(status: RunStatus | null): StatusTone {
 }
 
 /** The design tokens the SVG draws with, read off the document via getComputedStyle (the SVG attributes need
- * resolved color strings). Cached per theme mode; a flip re-reads them. Never hex literals. */
+ * resolved color strings). Cached per design and mode; a change re-reads them. Never hex literals. */
 interface ChartPalette {
   success: string;
   destructive: string;
@@ -154,11 +154,11 @@ function makeTicks(startMs: number, endMs: number): Tick[] {
  * drag its body to pan and its edges to zoom (the focus chart also takes scroll-to-zoom and drag-to-pan). */
 export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, ScheduleTimelineChartProps>(
   function ScheduleTimelineChart({ rows, windowStartMs, windowEndMs, nowMs, onZoomChange }, ref) {
-  const { mode } = useThemeMode();
-  // Token values change when the `dark` class flips on <html>; `mode` keys the cache so a theme switch
-  // re-reads them (getComputedStyle has no reactivity of its own).
+  const { palette: tokenKey } = useThemeMode();
+  // Token values change with the design and mode put on <html>; the palette key keys the cache so a change re-reads
+  // them (getComputedStyle has no reactivity of its own).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const palette = useMemo(readPalette, [mode]);
+  const palette = useMemo(readPalette, [tokenKey]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const navRef = useRef<SVGSVGElement>(null);

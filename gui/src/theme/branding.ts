@@ -17,10 +17,3 @@ export function brandToken(name: string): string {
 export function seriesColor(index: number): string {
   return brandToken(`--chart-${(((index % 8) + 8) % 8) + 1}`);
 }
-
-/** Applies the theme mode to <html>: the `dark` class index.css keys its dark tokens on, plus the legacy
- * data attribute kept for anything styling off it. Call before reading tokens for a theme. */
-export function applyBrandMode(mode: "light" | "dark"): void {
-  document.documentElement.setAttribute("data-sf-theme", mode);
-  document.documentElement.classList.toggle("dark", mode === "dark");
-}

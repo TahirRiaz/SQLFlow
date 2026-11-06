@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Command, Menu, Moon, Sun } from "lucide-react";
+import { Command, Menu } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,13 +14,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useAuth } from "../../auth/AuthContext";
 import { branding } from "../../modules/branding";
 import { moduleTitleBarItems } from "../../modules/registry";
-import { useThemeMode } from "../../theme/ThemeModeContext";
+import { AppearanceControl, TitleBarMark } from "./AppearanceControl";
 import { SideBarSearch, SideBarSections } from "./SideBar";
 import { TraceIndicator } from "./TraceIndicator";
 import { useMenuNavigate } from "./useMenuNavigate";
 
 /**
- * The workbench title bar (DESIGN.md section 6): brand on the left, command palette, theme toggle and
+ * The workbench title bar (DESIGN.md section 6): brand on the left, command palette, the design and mode control and
  * account menu on the right, with the controls registered modules add just before them, and before those the trace
  * indicator while an operation's trace is held, so its coming and going moves no other control. Global search lives at
  * the top of the navigation, not here. On mobile, a hamburger opens the navigation sheet, which carries the same search.
@@ -28,19 +28,18 @@ import { useMenuNavigate } from "./useMenuNavigate";
 export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const brand = branding();
   const { session, logout } = useAuth();
-  const { mode, toggle } = useThemeMode();
   const navigate = useMenuNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <header
       data-testid="app-bar"
-      className="flex h-9 shrink-0 select-none items-center gap-2 bg-activity-bar px-2 text-white"
+      className="flex h-9 shrink-0 select-none items-center gap-2 bg-title-bar px-2 text-title-bar-foreground shadow-[inset_0_-1px_0_var(--chrome-border)]"
     >
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetTrigger
           aria-label="Open navigation"
-          className="flex size-7 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white md:hidden"
+          className="flex size-7 items-center justify-center rounded-md text-title-bar-foreground/80 hover:bg-title-bar-foreground/10 hover:text-title-bar-foreground md:hidden"
         >
           <Menu className="size-4" />
         </SheetTrigger>
@@ -57,14 +56,14 @@ export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
       </Sheet>
 
       <div className="flex items-center gap-2 pl-1">
-        <img src={brand.logos.white} alt="" className="size-5 object-contain" />
+        <TitleBarMark />
         {brand.attribution === null
           ? <span className="hidden text-[13px] font-semibold sm:block">{brand.productName}</span>
           : (
             <span className="hidden items-baseline gap-1.5 sm:flex">
               <span className="text-[13px] font-semibold">{brand.productName}</span>
               {/* The attribution rides along where there is room for it, and drops out first when there is not. */}
-              <span className="text-[11px] font-normal text-white/45 max-lg:hidden" data-testid="app-bar-attribution">
+              <span className="text-[11px] font-normal text-title-bar-subtle max-lg:hidden" data-testid="app-bar-attribution">
                 {brand.attribution}
               </span>
             </span>
@@ -83,7 +82,7 @@ export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
             data-testid="command-palette-button"
             aria-label="Open command palette"
             onClick={onOpenPalette}
-            className="hidden h-6 shrink-0 items-center gap-1.5 rounded-md bg-white/10 px-2 text-white/70 transition-colors hover:bg-white/15 hover:text-white sm:flex"
+            className="hidden h-6 shrink-0 items-center gap-1.5 rounded-md bg-title-bar-foreground/10 px-2 text-title-bar-foreground/70 transition-colors hover:bg-title-bar-foreground/15 hover:text-title-bar-foreground sm:flex"
           >
             <Command className="size-3.5" />
             <span className="font-mono text-[10px] leading-none">Ctrl K</span>
@@ -92,27 +91,13 @@ export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
         <TooltipContent side="bottom">Command palette</TooltipContent>
       </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            data-testid="theme-toggle"
-            aria-label="Toggle theme"
-            onClick={toggle}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
-          >
-            {mode === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          {mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        </TooltipContent>
-      </Tooltip>
+      <AppearanceControl />
 
       <DropdownMenu>
         <DropdownMenuTrigger
           data-testid="account-menu-button"
           aria-label="Account"
-          className="flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-title-bar-foreground/10"
         >
           <Avatar className="size-6">
             <AvatarFallback className="bg-primary text-[11px] font-semibold text-primary-foreground">

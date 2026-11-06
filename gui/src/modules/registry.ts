@@ -12,6 +12,7 @@ import type { Column } from "../components/DataTable";
 import type { MenuGroupLayout, MenuLayout, MenuSectionLayout } from "../layout/menuLayout";
 import { extendNavigation } from "../layout/nav";
 import { registerCensus, type CensusSource } from "../lib/lsp/sqlflowLsp";
+import { installModuleDesigns, type DesignContribution } from "../theme/designs";
 import { installModuleBranding, type BrandingContribution } from "./branding";
 import { checkHomePrompts } from "./homePrompts";
 
@@ -266,8 +267,10 @@ export interface HomeContribution {
 /**
  * A control a module adds to the workbench title bar, between the brand and the command palette: a context every page of
  * the module reads (the environment it works in, say), or a fact the whole workbench should see. It renders on the
- * title bar's dark ground, inside the router and the signed-in session, so it may read the URL and call the API; one that
- * has nothing to show renders nothing. Controls appear in registration order.
+ * title bar's ground, inside the router and the signed-in session, so it may read the URL and call the API; one that has
+ * nothing to show renders nothing. Controls appear in registration order. The ground is the design's, light or dark
+ * (DESIGN.md 3.3), so a control draws in the title bar's tokens (`text-title-bar-foreground` and its opacities,
+ * `bg-title-bar-foreground/10` for a fill) and never in white.
  */
 export interface TitleBarContribution {
   /** Unique across modules; names the control in registration errors. */
@@ -340,6 +343,11 @@ export interface GuiModule {
   dashboardTiles?: readonly DashboardTileContribution[];
   /** The product's branding; at most one registered module may set it. */
   branding?: BrandingContribution;
+  /**
+   * Designs the module adds to the title bar's design menu, after SQLFlow's (DESIGN.md 3.7). At most one design, across
+   * the modules, may start people in it.
+   */
+  designs?: readonly DesignContribution[];
   /** Key census files for the module's flow kinds and documents, which the YAML editor analyses them against. */
   census?: readonly CensusContribution[];
   /** Controls the module adds to the workbench title bar. */
@@ -530,6 +538,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
   installModuleBranding(modules.flatMap((module) => (
     module.branding === undefined ? [] : [{ moduleId: module.id, branding: module.branding }]
   )));
+  installModuleDesigns(modules.map((module) => ({ moduleId: module.id, designs: module.designs ?? [] })));
 
   setModuleRequestHeaders(requestHeaders);
   registered = {

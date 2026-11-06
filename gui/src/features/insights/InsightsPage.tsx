@@ -115,7 +115,7 @@ function RecommendationRow({ item }: { item: Recommendation }) {
  * collects; the warehouse panel below adds live DMV probes executed on worker nodes.
  */
 export default function InsightsPage() {
-  const { mode } = useThemeMode();
+  const { palette } = useThemeMode();
   const navigate = useNavigate();
   const [days, setDays] = useLocalStorageState<number>("insights.windowDays", 7);
   const [drill, setDrill] = useState<{ pipelineId: string; flowName: string } | null>(null);
@@ -140,7 +140,7 @@ export default function InsightsPage() {
   const chartColors = useMemo(() => {
     const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     return { series: token("--chart-1"), axis: token("--muted-foreground"), grid: token("--border"), cursor: token("--muted") };
-  }, [mode]);
+  }, [palette]);
 
   const flowColumns = useMemo<Column<FlowInsight>[]>(() => [
     {

@@ -106,7 +106,7 @@ function Glance({ dashboard }: { dashboard: Dashboard }) {
  * distribution.
  */
 export default function DashboardPage() {
-  const { mode } = useThemeMode();
+  const { palette } = useThemeMode();
   const query = useQuery({
     queryKey: ["summary"],
     queryFn: summaryApi.get,
@@ -115,7 +115,7 @@ export default function DashboardPage() {
 
   // Recharts needs literal color values, so the reserved status tokens (DESIGN.md 3.2) and the muted
   // axis/grid tokens are read off the root element with getComputedStyle: the chart uses the exact same
-  // custom properties as the rest of the app, re-read whenever the theme flips. Run states are status
+  // custom properties as the rest of the app, re-read whenever the design or mode changes. Run states are status
   // colors by definition and never take chart-series slots.
   const chartColors = useMemo(() => {
     const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -129,8 +129,8 @@ export default function DashboardPage() {
       grid: token("--border"),
       cursor: token("--muted"),
     };
-    // The mode value is the re-read trigger: the tokens themselves come from the stylesheet.
-  }, [mode]);
+    // The palette key is the re-read trigger: the tokens themselves come from the stylesheet.
+  }, [palette]);
 
   const dashboard = query.data;
   // Each run state wears its reserved status color; the x-axis tick names the state, so color never

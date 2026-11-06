@@ -66,7 +66,7 @@ function ResultTooltip({ active, payload, label }: TooltipContentProps) {
 }
 
 export function QueryResultView({ columns, rows }: QueryResultViewProps) {
-  const { mode } = useThemeMode();
+  const { palette } = useThemeMode();
   const [view, setView] = useState<"chart" | "table">("chart");
 
   // The app's own fixed categorical order (index.css --chart-1..8), re-read on theme flips, matching
@@ -80,7 +80,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
       cursor: token("--muted"),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [palette]);
 
   const kinds = useMemo(() => columns.map((c) => classify(c.dataType)), [columns]);
 

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "../api/endpoints";
 import { isApiError } from "../api/client";
 import { CorrelationError } from "../components/CorrelationError";
+import { AppearanceControl } from "../layout/workbench/AppearanceControl";
 import { useAuth } from "./AuthContext";
 import { entraLoginHint, sameAppPath, takeEntraSignInAnswer } from "./entraSignIn";
 import { branding } from "../modules/branding";
@@ -188,6 +189,11 @@ export default function LoginPage() {
       style={{ background: BRAND_FIELD }}
     >
       <BrandPanel />
+
+      {/* The design and mode, picked before signing in when a module offers designs beside SQLFlow's (DESIGN.md 3.7). */}
+      <div className="absolute top-4 right-4 z-10 sm:top-6 sm:right-6">
+        <AppearanceControl place="sign-in" />
+      </div>
 
       {/* The lockup on narrow screens, where the brand panel is hidden. */}
       <header className="px-6 pt-8 sm:px-10 lg:hidden">

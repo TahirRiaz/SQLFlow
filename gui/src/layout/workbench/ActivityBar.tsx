@@ -79,7 +79,7 @@ export function ActivityBar({ activeGroupId, onSelectGroup, sideBarShown, onTogg
     });
 
     return (
-      <nav aria-label="Shortcuts" className="hidden w-12 shrink-0 flex-col items-center bg-activity-bar py-1 md:flex">
+      <nav aria-label="Shortcuts" className="hidden w-12 shrink-0 flex-col items-center bg-activity-bar py-1 shadow-[inset_-1px_0_0_var(--chrome-border)] md:flex">
         <ActivityButton
           label="Menu"
           hint={sideBarShown ? "Hide the menu" : "Show the menu"}
@@ -120,7 +120,7 @@ export function ActivityBar({ activeGroupId, onSelectGroup, sideBarShown, onTogg
   );
 
   return (
-    <div className="hidden w-12 shrink-0 flex-col items-center bg-activity-bar py-1 md:flex">
+    <div className="hidden w-12 shrink-0 flex-col items-center bg-activity-bar py-1 shadow-[inset_-1px_0_0_var(--chrome-border)] md:flex">
       {top.map(groupButton)}
       <div className="flex-1" />
       {bottom.map(groupButton)}

@@ -12,6 +12,8 @@ import { loadRuntimeConfig } from "./config/runtime";
 import { applyRuntimeBranding, branding } from "./modules/branding";
 import { registerModules, type GuiModule } from "./modules/registry";
 import { ThemeModeProvider } from "./theme/ThemeModeContext";
+import { applyAppearance, readStoredAppearance, systemPrefersDark } from "./theme/appearance";
+import { resolveAppearance } from "./theme/designs";
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -52,6 +54,10 @@ export function renderApp(modules: readonly GuiModule[] = []): void {
   }
 
   registerModules(modules);
+
+  // The appearance goes on now, with the designs the modules add known, rather than once the config has loaded: index.html
+  // put the remembered one on already, so this settles a first visit, or a design no longer offered, at once.
+  applyAppearance(resolveAppearance(readStoredAppearance(), systemPrefersDark()).appearance);
 
   const queryClient = createQueryClient();
 

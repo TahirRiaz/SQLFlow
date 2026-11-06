@@ -90,7 +90,7 @@ interface DiffViewProps {
 export function DiffView({
   original, modified, language, height = 480, caption, sideLabels, foldUnchanged = false, "data-testid": testId,
 }: DiffViewProps) {
-  const { mode } = useThemeMode();
+  const { mode, palette } = useThemeMode();
   const monacoRef = useRef<Monaco | null>(null);
   const [sideBySide, setSideBySide] = useLocalStorageState("sqlflow.diff-view.side-by-side", true);
   const rootTestId = testId ?? "diff-view";
@@ -98,7 +98,7 @@ export function DiffView({
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monacoRef.current = monaco;
     defineSqlflowTheme(monaco, mode);
-  }, [mode]);
+  }, [mode, palette]);
 
   // The two documents being compared. The library disposes them before the editor on unmount, which monaco refuses
   // ("TextModel got disposed before DiffEditorWidget model got reset", an uncaught error on every view that unmounts a
@@ -121,13 +121,13 @@ export function DiffView({
     }
   }, []);
 
-  // The design tokens change when the app toggles; re-define and re-apply so the comparison tracks the theme.
+  // The design tokens change with the design and mode; re-define and re-apply so the comparison tracks them.
   useEffect(() => {
     if (monacoRef.current) {
       defineSqlflowTheme(monacoRef.current, mode);
       monacoRef.current.editor.setTheme(sqlflowEditorTheme);
     }
-  }, [mode]);
+  }, [mode, palette]);
 
   // "Explain": the assistant explains what changed between the two versions, wherever the assistant is configured.
   const explainer = useExplain();

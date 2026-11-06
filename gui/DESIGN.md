@@ -102,6 +102,15 @@ to show.
 | `tab-active` | `#ffffff` | `#111a28` |
 | `panel` | `#ffffff` | `#0f1826` |
 | `status-bar` | `#2264c2` (`--brand-blue`, both modes) | `#2264c2` |
+| `title-bar` | `activity-bar` | `activity-bar` |
+| `title-bar-foreground` | `#ffffff` | `#ffffff` |
+| `title-bar-subtle` | `title-bar-foreground` at 45% | the same |
+| `chrome-border` | `transparent` | `transparent` |
+
+Whatever sits on the title bar, SQLFlow's controls and a module's, draws in `title-bar-foreground` and its opacities
+(`text-title-bar-foreground/80`, `bg-title-bar-foreground/10` for a fill), with `title-bar-subtle` for the attribution,
+and never in white: a design (3.7) may make the bar light. `chrome-border` is the hairline such a design draws under the
+title bar and beside the activity bar, where they meet the workbench; SQLFlow's bars are dark, so it is transparent.
 
 ### 3.4 Chart palette (validated)
 
@@ -153,6 +162,33 @@ on `.react-flow`: the canvas is `background`, a node is a `card` outlined in `in
 and zoom controls are cards. A rule on one of the library's classes is the wrong tool: its stylesheet loads
 with the graph's chunk, after ours, and wins.
 
+### 3.7 Designs
+
+The tokens above are SQLFlow's design. A GUI module may add designs of its own (`GuiModule.designs`,
+`src/theme/designs.ts`), each with a light and a dark mode, and a person picks the design and the mode they wear:
+
+- **Where they are kept.** `<html>` carries `data-sf-design="<id>"` beside the `dark` class, and a module's stylesheet
+  sets the same tokens under `:root[data-sf-design="<id>"]` (light) and `:root[data-sf-design="<id>"].dark,
+  :root[data-sf-design="<id>"] .dark` (dark, on the page and on a dark panel such as the sign-in page's). The light
+  rule outweighs `.dark`, so every token it sets that differs by mode is set again in the dark rule. A design sets every
+  token of 3.1 to 3.3 or leaves SQLFlow's showing through; it keeps the chart palette (3.4) unless it validates its own.
+- **What a design adds besides tokens.** Stylesheets it needs from outside the build, by https URL, put in the page the
+  first time it is worn and never for a person who does not wear it (a typeface a font service serves), and the title
+  bar's mark per mode, an image or a part of one (`DesignMark.crop`), in place of the branding's logo.
+- **The picker.** With SQLFlow's design alone, the title bar's button flips light and dark, as it always has. When a
+  module adds designs, it opens a menu (`AppearanceControl`): the designs, then Light and Dark, staying open while a
+  person tries them so each pick shows at once. The sign-in page carries the same menu in its top right corner, there
+  only when there is a design to pick; the page itself stays on its brand field in either mode (11), so its menu names
+  the mode the workbench's.
+- **What is remembered.** The design and the mode a person wore last, in their browser (`sqlflow.design`,
+  `sqlflow.theme`), put on again at their next visit; `index.html` puts them on before the first paint, so no other
+  appearance shows first. Until a person picks, they wear the design and mode a module starts people in
+  (`DesignContribution.firstMode`, one design at most), or SQLFlow's design in the operating system's mode, which is then
+  followed live and not kept, as SQLFlow has always done. A design no longer offered falls back to that start, keeping
+  the mode.
+- **Code that reads tokens into literal colours** (charts, the code editor, a graph) rebuilds them on the palette key
+  `useThemeMode().palette`, which changes with the design as well as the mode; `mode` alone misses a change of design.
+
 ## 4. Typography
 
 - Sans: `Inter Variable` (UI text, labels, prose). Mono: `JetBrains Mono Variable` (data).
@@ -202,11 +238,13 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 +------------------------------------------------------------------+
 ```
 
-- **Title bar** (`h-9`, `bg-activity-bar`): logo + product name left, everything else right: the trace
-  indicator while the trace tray holds a trace (testid `trace-indicator`, below), the controls modules add, the command
-  palette button (testid `command-palette-button`, a `Ctrl K` chip), the theme toggle (testid
-  `theme-toggle`) and the account menu (testids `account-menu-button`, `account-subject`,
-  `account-tokens`, `account-notifications`, `account-logout`). Nothing floats in the middle: the bar
+- **Title bar** (`h-9`, `bg-title-bar`, drawn in `title-bar-foreground`, 3.3): the design's mark (testid
+  `app-bar-mark`, 3.7) + product name left, everything else right: the trace indicator while the trace tray holds a
+  trace (testid `trace-indicator`, below), the controls modules add, the command palette button (testid
+  `command-palette-button`, a `Ctrl K` chip), the theme toggle (testid `theme-toggle`), or the design and mode menu when
+  a module adds designs (testids `appearance-menu-button`, `appearance-menu`, `appearance-design-<id>`,
+  `appearance-mode-light`, `appearance-mode-dark`), and the account menu (testids `account-menu-button`,
+  `account-subject`, `account-tokens`, `account-notifications`, `account-logout`). Nothing floats in the middle: the bar
   carries chrome only, never a content control. On mobile a hamburger opens the nav sheet.
 - **Trace indicator**: the operation traces the trace tray holds (`useTraceTray()`). It comes first on the right, so
   its coming and going moves no other control. While a trace runs, an arc in the one blue turns around a terminal
@@ -504,7 +542,9 @@ rules take their place, and only on this page:
   narrow screens only the lockup stays above the form.
 - **Colors.** The identity's navy, cream (the rings, as in the logo mark) and the one blue, which carries the motion (the
   records' points and the light they travel into) and, lightened to read on the navy, the pitch's accent line. Nothing
-  else.
+  else. A design (3.7) sets these identity tokens to its own.
+- **The design menu.** When a module adds designs, the design and mode menu (3.7) sits in the page's top right corner,
+  opening on the page's dark tokens; the page has nothing else in its corners.
 - **Sizes.** Every size is in rem. The pitch is set large (2.5rem, 3.25rem from `xl`); the form's controls are 40px
   (`h-10`, button `size="lg"`) at 14px type, because the form is the page's one task.
 - **Motion.** The picture moves slowly and without end (records travel a lane in 17 to 24 seconds, a pulse runs down the

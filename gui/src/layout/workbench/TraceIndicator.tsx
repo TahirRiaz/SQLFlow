@@ -82,7 +82,7 @@ function RunningRing() {
       className="dark pointer-events-none absolute inset-0 size-full motion-safe:animate-[trace-turn_1.6s_linear_infinite]"
       data-testid="trace-indicator-ring"
     >
-      <circle cx="14" cy="14" r="12.5" fill="none" strokeWidth="1.5" className="stroke-white/15" />
+      <circle cx="14" cy="14" r="12.5" fill="none" strokeWidth="1.5" className="stroke-title-bar-foreground/15" />
       <circle
         cx="14"
         cy="14"
@@ -129,7 +129,7 @@ function OutcomeBadge({ tone }: { tone: TraceTone }) {
     <span
       aria-hidden
       data-testid="trace-indicator-badge"
-      className="pointer-events-none absolute right-0 top-0 rounded-full ring-2 ring-activity-bar motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200"
+      className="pointer-events-none absolute right-0 top-0 rounded-full ring-2 ring-title-bar motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200"
     >
       <span className={cn("dark flex size-3.5 items-center justify-center rounded-full", BADGE_TONE[tone])}>
         {tone === "success"
@@ -211,9 +211,9 @@ export function TraceIndicator() {
               aria-pressed={shownId !== null}
               onClick={toggleOnly}
               className={cn(
-                "relative flex size-7 shrink-0 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white",
+                "relative flex size-7 shrink-0 items-center justify-center rounded-md text-title-bar-foreground/80 transition-colors hover:bg-title-bar-foreground/10 hover:text-title-bar-foreground",
                 "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200",
-                shownId !== null && "bg-white/10 text-white",
+                shownId !== null && "bg-title-bar-foreground/10 text-title-bar-foreground",
               )}
             >
               {running > 0 ? <RunningRing /> : null}
