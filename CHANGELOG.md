@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- A toast says what happened at a glance: the outcome's glyph in its status color on a tint of it, the message over its
+  reason, an action as a small outline button, and the close button inside the card's corner, in the workbench's own
+  typeface. A success toast stays five seconds, and the stack sits clear of the status bar
+  ([DESIGN.md](gui/DESIGN.md), section 8).
 - The run trace's sweep is the Maintenance page's automatic cleanup, configured as `ControlPlane:Maintenance:Enabled` and
   `ControlPlane:Maintenance:PollSeconds`; `ControlPlane:RunTrace:*` is refused at startup naming them. Run events take a
   limit like SQL statements, each pipeline's latest run and every failed run keeping theirs

@@ -510,7 +510,12 @@ The old GUI's central failure was silence. These rules bind every feature:
    with the correlation id. No blank rectangles, ever.
 4. **Route transitions** show the slim top progress bar (lazy chunks), never a blank screen.
 5. **Toasts** (bottom-right, max 3): success auto-dismiss 5s; errors stay until dismissed; never toast
-   what the user is already looking at live (no "loaded 50 rows" noise).
+   what the user is already looking at live (no "loaded 50 rows" noise). A toast is a popover card (`ui/sonner.tsx`, the
+   one place it is drawn): the outcome's 16px glyph in its status color on a 28px tile of that color's 12% tint, as an
+   outcome pill pairs them (3.2, 7.3); the title at 13px medium saying what happened, and a description under it at 12px
+   muted saying why or what next; an action as a 28px outline button at the end; and the close button inside the top
+   right corner, muted until hovered or focused. The title is a sentence that stands alone ("Trigger wl-dev saved."), so
+   a toast never needs its description to be understood.
 
 ## 9. Motion
 
