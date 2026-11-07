@@ -53,6 +53,7 @@ sourceRefs:
   - src/SqlFlow.Catalog/CatalogDbContext.cs
   - src/SqlFlow.Catalog/RunQueueStore.cs
   - src/SqlFlow.Catalog/RunScopeExpander.cs
+  - src/SqlFlow.Lineage/Graph/MemberWaves.cs
   - src/SqlFlow.Dispatch/DispatchState.cs
   - src/SqlFlow.ControlPlane/Background/SchedulerService.cs
   - src/SqlFlow.ControlPlane/Background/ScheduleFire.cs
@@ -161,9 +162,9 @@ schedules:
 schedule: sales_daily
 ```
 
-At fire time the members are read from the catalog (src/SqlFlow.Catalog/RunScopeExpander.cs, `ExpandScheduleAsync`) and ordered by each pipeline's lineage wave, renumbered from 0 over the members that actually run. Several members are enqueued as one wave-gated run group, and the control plane's dispatcher hands a member to a node only once every member in a lower wave is terminal (src/SqlFlow.Dispatch/DispatchState.cs), which gives these guarantees:
+At fire time the members are read from the catalog (src/SqlFlow.Catalog/RunScopeExpander.cs, `ExpandScheduleAsync`) and ordered in waves by the lineage dependencies among the members that actually run (`RunScopeExpander.InWaves`): a member waits for a member it depends on, in as many waves as its longest chain of them, numbered from 0. A dependency on a flow the fire does not run orders nothing, and neither does a path through one: that flow changes nothing in this fire, so two members that lineage orders only through flows of another schedule, or through members a batch filter left out, run in the same wave. Members on a dependency cycle, and those behind one, go to one last wave, as lineage places a cycle. A flow's wave in the repository's lineage (the pipeline's `Wave`, which counts every flow) is not a fire's order. Several members are enqueued as one wave-gated run group, and the control plane's dispatcher hands a member to a node only once every member in a lower wave is terminal (src/SqlFlow.Dispatch/DispatchState.cs), which gives these guarantees:
 
-- **Waves run in order.** Wave N+1 starts only after every flow in wave N has finished, so a flow never runs before what it depends on.
+- **Waves run in order.** Wave N+1 starts only after every flow in wave N has finished, so a flow never runs before a member it depends on.
 - **A wave runs concurrently.** Members sharing a wave have no gate against each other and run together, up to `maxConcurrency`.
 - **A failure stops what depends on it.** When a member fails, every still-queued member that transitively depends on it is marked `skipped` with the reason `skipped: an upstream dependency ('<flow>') did not succeed.`; independent members continue.
 - **A flow never overlaps itself.** A run never starts while another run of the same flow, outside its own group, is executing.

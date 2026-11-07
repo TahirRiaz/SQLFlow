@@ -2663,6 +2663,7 @@
         "src/SqlFlow.Catalog/CatalogDbContext.cs",
         "src/SqlFlow.Catalog/RunQueueStore.cs",
         "src/SqlFlow.Catalog/RunScopeExpander.cs",
+        "src/SqlFlow.Lineage/Graph/MemberWaves.cs",
         "src/SqlFlow.Dispatch/DispatchState.cs",
         "src/SqlFlow.ControlPlane/Background/SchedulerService.cs",
         "src/SqlFlow.ControlPlane/Background/ScheduleFire.cs",
