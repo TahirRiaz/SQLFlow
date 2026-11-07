@@ -73,7 +73,7 @@ internal static class LocalInspectVerbs
             // A library is not a flow: the estate scan reads it on its own terms, so validate does too.
             if (FlowSetCollector.IsScheduleLibraryFile(file))
             {
-                results.Add(ValidateScheduleLibrary(file, relative));
+                results.Add(ValidateScheduleLibrary(documents, file, relative));
                 continue;
             }
 
@@ -134,7 +134,7 @@ internal static class LocalInspectVerbs
     /// A shared-schedule library, parsed by the loader the estate scan uses. Every warning is an entry the scan would drop,
     /// leaving the flows that join it without a schedule, so a library with any warning is broken.
     /// </summary>
-    private static ValidationResult ValidateScheduleLibrary(string file, string relative)
+    private static ValidationResult ValidateScheduleLibrary(YamlDocumentLoader documents, string file, string relative)
     {
         string yaml;
         try
@@ -146,7 +146,7 @@ internal static class LocalInspectVerbs
             return new ValidationResult(relative, false, null, null, ex.Message);
         }
 
-        var library = new YamlScheduleLibraryLoader().Parse(yaml, relative);
+        var library = documents.ScheduleLibraries().Parse(yaml, relative);
         return library.Warnings.Count > 0
             ? new ValidationResult(relative, false, null, null, string.Join(" ", library.Warnings))
             : new ValidationResult(relative, true, "schedules", string.Join(", ", library.Schedules.Select(s => s.Name)), null);

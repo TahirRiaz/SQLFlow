@@ -31,9 +31,11 @@ public sealed class FlowSetCollector
     {
         ArgumentNullException.ThrowIfNull(documents);
         _documents = documents;
+        _scheduleLibraries = documents.ScheduleLibraries();
     }
 
-    private readonly YamlScheduleLibraryLoader _scheduleLibraries = new();
+    /// <summary>Reads schedule libraries with the default fire width the loader's product gives a schedule.</summary>
+    private readonly YamlScheduleLibraryLoader _scheduleLibraries;
 
     private readonly YamlSubscriberLibraryLoader _subscriberLibraries = new();
 

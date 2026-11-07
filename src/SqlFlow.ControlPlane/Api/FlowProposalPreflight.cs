@@ -35,8 +35,6 @@ public static class FlowProposalPreflight
     /// Only ACTIVE pipelines participate: a flow that already left git constrains nothing.</summary>
     public sealed record ExistingPipeline(string Name, string RelativePath, string Yaml);
 
-    private static readonly YamlScheduleLibraryLoader ScheduleLibraries = new();
-
     private static readonly YamlSubscriberLibraryLoader SubscriberLibraries = new();
 
     /// <summary>Preflights a proposal against the built-in flow kinds only.</summary>
@@ -57,6 +55,8 @@ public static class FlowProposalPreflight
         var errors = new List<ProposalFinding>();
         var warnings = new List<ProposalFinding>();
 
+        // A schedule library is judged as the sync will read it, with the default fire width of this host's product.
+        var scheduleLibraries = documents.ScheduleLibraries();
         var existingByName = new Dictionary<string, ExistingPipeline>(StringComparer.OrdinalIgnoreCase);
         foreach (var pipeline in existing)
         {
@@ -76,7 +76,7 @@ public static class FlowProposalPreflight
 
             if (FlowSetCollector.IsScheduleLibraryFile(file.Path))
             {
-                foreach (var warning in ScheduleLibraries.Parse(file.Content, file.Path).Warnings)
+                foreach (var warning in scheduleLibraries.Parse(file.Content, file.Path).Warnings)
                 {
                     warnings.Add(new ProposalFinding(file.Path, warning));
                 }

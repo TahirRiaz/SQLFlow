@@ -63,7 +63,8 @@ public sealed record ScheduleDefinitionDto(
 /// intervalSeconds, and optionally a name (defaulting to the first member's flow name). Membership is what a fire
 /// runs, so a schedule with no members is rejected.
 /// <para><paramref name="MaxConcurrency"/> bounds how many members one fire executes at once. Omitted takes the
-/// product default (<see cref="ScheduleDefaults.MaxConcurrency"/>); <c>0</c> asks for unbounded.</para>
+/// product's default (<see cref="ScheduleFireDefaults"/>, SQLFlow's being <see cref="ScheduleDefaults.MaxConcurrency"/>);
+/// <c>0</c> asks for unbounded.</para>
 /// <para><paramref name="Operation"/> and <paramref name="Values"/> are what every fire passes to the members of a
 /// registered flow kind that declares the operation (or to every member of a registered kind when no operation is
 /// named); at least one member's kind must accept them.</para></summary>
@@ -439,7 +440,7 @@ public static class ScheduleEndpoints
         {
             id = await ScheduleStore.CreateApiScheduleAsync(
                 db, request.RepoId, name, members, request.Cron, request.IntervalSeconds, timezone,
-                request.Enabled ?? true, request.Catchup ?? false, ScheduleDefaults.Resolve(request.MaxConcurrency, out _),
+                request.Enabled ?? true, request.Catchup ?? false, documents.FireDefaults.Resolve(request.MaxConcurrency, out _),
                 next ?? now, now, operation, values, ct).ConfigureAwait(false);
         }
         catch (ScheduleNameTakenException ex)

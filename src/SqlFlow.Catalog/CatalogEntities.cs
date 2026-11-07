@@ -2932,8 +2932,8 @@ public class CatalogSchedule
 
     /// <summary>
     /// How many of this schedule's members may EXECUTE concurrently, or null for unbounded (a schedule declared
-    /// without the key stores the product default, <see cref="Core.ScheduleDefaults.MaxConcurrency"/>; a row stored
-    /// before the column existed stays null). Because a group's waves are gated, this is the width of the running wave:
+    /// without the key stores its product's default, <see cref="Core.ScheduleFireDefaults"/>, which is
+    /// <see cref="Core.ScheduleDefaults.MaxConcurrency"/> in SQLFlow; a row stored before the column existed stays null). Because a group's waves are gated, this is the width of the running wave:
     /// 1 makes a fire strictly serial. It bounds the FIRE rather than the estate, so one fragile upstream can be
     /// protected without throttling every other source's throughput. Stamped onto each member run at enqueue
     /// (<see cref="CatalogRun.GroupMaxConcurrency"/>) and applied by the control plane's dispatcher, which hands out no

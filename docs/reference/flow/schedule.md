@@ -45,6 +45,7 @@ sourceRefs:
   - src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs
   - src/SqlFlow.Lineage/Collection/LineageFacts.cs
   - src/SqlFlow.Core/ScheduleSpec.cs
+  - src/SqlFlow.Core/ScheduleFireDefaults.cs
   - src/SqlFlow.Core/Runs/ExecutionMode.cs
   - src/SqlFlow.Catalog/ScheduleClock.cs
   - src/SqlFlow.Catalog/ScheduleStore.cs
@@ -97,7 +98,7 @@ When `schedule:` is a name or a list of names, the flow joins those schedules an
 | `timezone` | string | no | `"UTC"` | IANA time zone id the cron expression is evaluated in, for example `Europe/Oslo`. Ignored for interval schedules. |
 | `enabled` | bool | no | `true` | Whether the schedule fires on its own. A disabled schedule is recorded in the catalog with its members but is never fired by the clock or by a chain; it still runs when fired on demand through the run-now endpoint. |
 | `catchup` | bool | no | `false` | Whether missed occurrences are replayed. With `false` an overdue schedule fires once when the scheduler next sees it and its next fire is computed strictly after now, so any further missed occurrences are dropped. With `true` the next fire is computed from the occurrence just fired, so every missed occurrence fires, one per scheduler tick, until the schedule is current. |
-| `maxConcurrency` | int | no | `4` | How many of the schedule's members execute at the same time, when a fire has more than one. Because waves are gated, this is the width of the running wave. `1` runs the fire strictly serially; `0` opts out and runs the wave unbounded. See [Fire width](#fire-width-maxconcurrency). |
+| `maxConcurrency` | int | no | `4` (the product's default) | How many of the schedule's members execute at the same time, when a fire has more than one. Because waves are gated, this is the width of the running wave. `1` runs the fire strictly serially; `0` opts out and runs the wave unbounded. Omitted takes the product's default: SQLFlow's is 4, and a host may give its product another. See [Fire width](#fire-width-maxconcurrency). |
 | `name` | string | no | the declaring flow's name | The schedule's name. Other flows join this schedule by writing `schedule: <name>`, and every fire then runs the declaring flow and every flow that joined as one wave-ordered group. See [Shared schedules and membership](#shared-schedules-and-membership). |
 | `operation` | string | no | none | The operation each fire runs on the members whose registered flow kind declares it; left out, each member runs its kind's default operation. 1 to 32 characters of lowercase letters, digits and `-`, starting with a letter. See [operation and values](#operation-and-values). |
 | `values` | map of string to string or list of strings | no | none | Parameter values each fire passes to the members of a registered flow kind. At most 32 entries; each name is an identifier of at most 64 characters, each value at most 1000 characters without control characters. A sequence gives the parameter several values: 1 to 100 of them, at most 16,000 characters as a list. See [operation and values](#operation-and-values). |
@@ -126,9 +127,15 @@ node too. The bound belongs to the thing that fans out.
 
 **Values.**
 
-- Omitted takes the product default of **4** (`ScheduleDefaults.MaxConcurrency`). This is deliberately bounded rather
-  than unbounded: a schedule nobody has tuned should not be able to open an unlimited number of connections against
-  one server.
+- Omitted takes the product's default. SQLFlow's is **4** (`ScheduleDefaults.MaxConcurrency`), deliberately bounded
+  rather than unbounded: a schedule nobody has tuned should not be able to open an unlimited number of connections
+  against one server. A node runs four flows at once, so with this default one fire never asks for a second node; a
+  schedule whose waves should spread over nodes sets a wider bound or `0`.
+- A host whose flows bound their own load on what they share may give its product another default: it registers a
+  `ScheduleFireDefaults` in its services (`services.AddSingleton(ScheduleFireDefaults.Unbounded)`, or a bound of its
+  own). The document loader carries it (`YamlDocumentLoader.FireDefaults`), so the repository sync, the proposal
+  preflight, `sqlflow validate` and the API's create path all resolve an omitted key to the same bound. A host that
+  registers none keeps SQLFlow's.
 - `1` makes the fire strictly serial, one member after another.
 - `0` is the explicit opt-out: the wave runs unbounded, limited only by worker capacity.
 - A negative value is not a usable bound and falls back to the default: the schedule-library loader reports it as a

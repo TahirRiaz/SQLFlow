@@ -2655,6 +2655,7 @@
         "src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs",
         "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
         "src/SqlFlow.Core/ScheduleSpec.cs",
+        "src/SqlFlow.Core/ScheduleFireDefaults.cs",
         "src/SqlFlow.Core/Runs/ExecutionMode.cs",
         "src/SqlFlow.Catalog/ScheduleClock.cs",
         "src/SqlFlow.Catalog/ScheduleStore.cs",
