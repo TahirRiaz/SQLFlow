@@ -19,6 +19,15 @@ namespace SqlFlow.Catalog.Modules;
 public static class ModuleDatabases
 {
     /// <summary>
+    /// How long one statement of a module's migration may run. A migration that adds an index or a column to a populated table
+    /// reads the whole table in one statement, which takes as long as the table is large and the server slow, so it is not held
+    /// to the few seconds a statement at run time is given: on a small cloud database a table of a few hundred megabytes takes
+    /// minutes. Still a bound, so a migration blocked behind a lock fails, naming the statement, instead of holding a host's
+    /// start for ever.
+    /// </summary>
+    public static readonly TimeSpan MigrationCommandTimeout = TimeSpan.FromMinutes(30);
+
+    /// <summary>
     /// Applies the module's pending migrations, then hands the module the migrated context to record its version. Refused, before
     /// the module database is touched, when the catalog lacks the migration the module needs, or when the database is ahead of
     /// the build (an older build does not migrate a newer schema). With <paramref name="allowCreate"/> false (every automatic
@@ -86,7 +95,18 @@ public static class ModuleDatabases
                 "Provision it explicitly with 'sqlflow db migrate --create', or point the module's connection at an existing database.");
         }
 
-        await context.Database.MigrateAsync(ct).ConfigureAwait(false);
+        // The checks above ran with the context's own timeout; the migrations get the budget a table rebuild needs, and the
+        // module's version is recorded with its own timeout again.
+        var runTimeout = context.Database.GetCommandTimeout();
+        context.Database.SetCommandTimeout(MigrationCommandTimeout);
+        try
+        {
+            await context.Database.MigrateAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            context.Database.SetCommandTimeout(runTimeout);
+        }
 
         var migrations = context.Database.GetMigrations().ToList();
         await database.AfterMigrateAsync(

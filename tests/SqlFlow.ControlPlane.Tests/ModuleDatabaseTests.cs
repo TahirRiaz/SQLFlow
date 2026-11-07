@@ -323,6 +323,46 @@ public sealed class ModuleDatabaseTests
     }
 
     [SkippableFact]
+    public async Task Migrate_RunsTheMigrationsWithTheMigrationBudget_AndRecordsTheVersionWithTheModulesOwnTimeout()
+    {
+        var connection = CatalogTestDb.Require();
+        var schema = NewSchema();
+        var commands = new CommandTimeouts();
+        try
+        {
+            // The module's context runs its statements with a timeout of its own; a migration of a populated table needs longer.
+            const int ModuleTimeout = 17;
+            var database = new ModuleDatabase<ProbeContextV2>(
+                "probe",
+                schema,
+                "2.0.0",
+                connectionString => ProbeContextBase.Create<ProbeContextV2>(builder => builder
+                    .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable(HistoryRepository.DefaultTableName, schema).CommandTimeout(ModuleTimeout))
+                    .AddInterceptors(commands)),
+                open => ProbeContextBase.Create<ProbeContextV2>(builder => builder.UseSqlServer(
+                    open, sql => sql.MigrationsHistoryTable(HistoryRepository.DefaultTableName, schema))))
+            {
+                AfterMigrate = ProbeContextBase.RecordVersionAsync,
+                ReadRecordedVersion = ProbeContextBase.ReadVersionAsync,
+            };
+
+            var migrated = await ModuleDatabases.MigrateAsync(database, connection, allowCreate: false, "module database tests", DateTime.UtcNow, catalogAppliedMigrations: null);
+
+            Assert.True(migrated.IsCurrent, migrated.Summary());
+            var tables = commands.Seen.Where(c => c.Text.Contains("CREATE TABLE", StringComparison.OrdinalIgnoreCase)).ToList();
+            Assert.NotEmpty(tables);
+            Assert.All(tables, c => Assert.Equal((int)ModuleDatabases.MigrationCommandTimeout.TotalSeconds, c.Timeout));
+            var recorded = commands.Seen.Where(c => c.Text.Contains("INSERT INTO", StringComparison.OrdinalIgnoreCase) && c.Text.Contains("[ProbeVersion]", StringComparison.Ordinal)).ToList();
+            Assert.Single(recorded);
+            Assert.Equal(ModuleTimeout, recorded[0].Timeout);
+        }
+        finally
+        {
+            await DropSchemaAsync(connection, schema);
+        }
+    }
+
+    [SkippableFact]
     public async Task Verify_RefusesADatabaseBehindTheBuild_AndOneAheadOfIt()
     {
         var connection = CatalogTestDb.Require();
@@ -480,6 +520,55 @@ public sealed class ModuleDatabaseTests
             """;
         command.Parameters.AddWithValue("@schema", schema);
         await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Every command a context sends, with the timeout it was sent with, in order.</summary>
+    private sealed class CommandTimeouts : DbCommandInterceptor
+    {
+        private readonly List<(string Text, int Timeout)> _seen = [];
+        private readonly Lock _gate = new();
+
+        public IReadOnlyList<(string Text, int Timeout)> Seen
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return [.. _seen];
+                }
+            }
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+            => Note(command, result);
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(Note(command, result));
+
+        public override InterceptionResult<int> NonQueryExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<int> result)
+            => Note(command, result);
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(Note(command, result));
+
+        public override InterceptionResult<object> ScalarExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<object> result)
+            => Note(command, result);
+
+        public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<object> result, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(Note(command, result));
+
+        private T Note<T>(DbCommand command, T result)
+        {
+            lock (_gate)
+            {
+                _seen.Add((command.CommandText, command.CommandTimeout));
+            }
+
+            return result;
+        }
     }
 
     private sealed class MapResolver(Dictionary<string, string> values) : ISecretResolver
