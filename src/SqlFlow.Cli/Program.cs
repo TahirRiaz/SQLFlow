@@ -2566,9 +2566,12 @@ internal static class Program
                                | register --name r (--remote-url u | --local-path <dir>) [--branch b] [--interval s]
                                  [--credential-ref ${env:GIT_TOKEN}] [--credential-user u] [--disabled]
                                | discover --remote-url u [--branch b] [--credential-ref ...]
+                               | auto-sync <name|id> on|off
                                                  Synced repos and their managed git sources: register a source (the
                                                  credential is always a ${...} reference), preview a remote's flows
                                                  without importing, and force a sync (git source or local re-sync).
+                                                 'auto-sync off' (admin) makes a source sync only when a trigger
+                                                 request or 'repos sync' asks, holding its commit until then.
               sqlflow pipelines list [--repo r --kind k --active true|false --name x]
                                | show <id> [--yaml|--definition] | columns <id> [--kind declared|detected]
                                | files <id> [--search x]         The pipeline registry; --yaml/--definition print the

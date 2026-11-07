@@ -28,7 +28,7 @@ internal static class CliCompletions
         ("health", []), ("login", []), ("logout", []), ("whoami", []), ("doctor", []),
         ("trigger", []), ("summary", []), ("nodes", []),
         ("schedules", ["list", "show", "create", "pause", "resume", "delete"]),
-        ("repos", ["list", "show", "register", "discover", "sync"]),
+        ("repos", ["list", "show", "register", "discover", "sync", "auto-sync"]),
         ("pipelines", ["list", "show", "columns", "files"]),
         ("datasources", ["list", "test", "databases", "schemas", "objects", "search", "introspect", "detect-unique-key", "tasks", "task", "cancel"]),
         ("search", []),

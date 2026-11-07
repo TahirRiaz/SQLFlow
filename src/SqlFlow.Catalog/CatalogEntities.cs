@@ -1983,10 +1983,45 @@ public class CatalogRepoSource
     /// selection lives here, but nothing reaches the catalog until a sync runs, which is what the scheduler reads.</summary>
     public string? ExcludedFlowPaths { get; set; }
 
-    /// <summary>Whether the control plane auto-syncs this source. A disabled source is kept but never pulled.</summary>
+    /// <summary>Whether the control plane syncs this source at all. A disabled source is kept but never pulled, whoever
+    /// asks; <see cref="AutoSync"/> decides when an enabled one syncs.</summary>
     public bool Enabled { get; set; } = true;
 
     public int SyncIntervalSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Whether the control plane syncs this source on its own, every <see cref="SyncIntervalSeconds"/>, reading the tip of
+    /// its branch each time, so a merge reaches the catalog within one interval (the default). Off, the source syncs only
+    /// when asked and holds the commit it last synced until then: a trigger request moves it to the commit the request
+    /// names (or the branch's tip when it names none), a sync-now moves it to the tip, and a change that only needs the
+    /// catalog recomputed (a registration run, an uploaded report, a host module's own) syncs the commit it holds again.
+    /// A move goes forward only (<see cref="MoveToCommit"/>). A source that has never synced retries on its interval until
+    /// its first sync succeeds, so a deployment comes up from its configuration alone. Applies to a git source; a
+    /// local-path source has no commits to hold, so off it only stops syncing on its interval.
+    /// </summary>
+    public bool AutoSync { get; set; } = true;
+
+    /// <summary>The control-plane setting that sets <see cref="AutoSync"/>
+    /// (<c>ControlPlane:Bootstrap:Repositories:&lt;name&gt;:AutoSync</c>), or null when an administrator sets it, as for every
+    /// source whose configuration does not say. The API refuses to change a value the configuration sets, naming this.</summary>
+    public string? AutoSyncConfiguredBy { get; set; }
+
+    /// <summary>Who last turned <see cref="AutoSync"/> on or off through the API; null until someone has.</summary>
+    public string? AutoSyncUpdatedBy { get; set; }
+
+    /// <summary>When <see cref="AutoSyncUpdatedBy"/> turned it on or off (UTC).</summary>
+    public DateTime? AutoSyncUpdatedUtc { get; set; }
+
+    /// <summary>When a sync that moves the source to a newer commit was last asked for (UTC): by a trigger request or a
+    /// sync-now. It decides what a sync reads only while <see cref="AutoSync"/> is off. The attempt that starts at or after
+    /// it answers it, and the outcome that attempt records clears it; one asked for while an attempt runs stays for the
+    /// next attempt.</summary>
+    public DateTime? MoveRequestedUtc { get; set; }
+
+    /// <summary>The commit the move asks for (as the request named it, full or abbreviated), or null for the tip of the
+    /// branch. The sync checks it is on the branch, stays on the commit it holds when that already contains it, and
+    /// refuses a commit that would drop what the held commit has (one on a separate line of history).</summary>
+    public string? MoveToCommit { get; set; }
 
     /// <summary>The control-plane setting that names this source (<c>ControlPlane:Bootstrap:Repositories:&lt;name&gt;</c>), or null
     /// for a source registered through the API. The control plane writes a configured source at every start, and the API

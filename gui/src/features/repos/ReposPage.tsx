@@ -9,13 +9,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { isApiError } from "../../api/client";
 import { repoApi, repoSourceApi } from "../../api/endpoints";
 import type { Repo, RepoSource } from "../../api/types";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RichTooltip } from "../../components/RichTooltip";
 import { CopyButton } from "../../components/CopyButton";
+import { syncModeDetail, syncModeText, syncNowConfirmText, syncNowMoves, syncsOnRequest } from "./autoSync";
 import { GitCredentialGlyph } from "./GitCredentialChip";
 import { GitCredentialsSheet } from "./GitCredentialsSheet";
 import { RegisterSourceDialog } from "./RegisterSourceDialog";
@@ -84,6 +87,7 @@ export default function ReposPage() {
   const [attachRepo, setAttachRepo] = useState<Repo | null>(null);
   const [deleteRow, setDeleteRow] = useState<MergedRow | null>(null);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
+  const [confirmSync, setConfirmSync] = useState<RepoSource | null>(null);
 
   const reposQuery = useQuery({
     queryKey: ["repos", "list", FETCH_CAP],
@@ -133,13 +137,24 @@ export default function ReposPage() {
       );
     }
 
-    return source.enabled ? (
-      <Badge variant="outline" className="border-success/50 text-success">
-        every {source.syncIntervalSeconds}s
-      </Badge>
-    ) : (
-      <Badge variant="outline">paused</Badge>
+    // How it syncs in a word or two, and what that means for a merge on hover: an administrator sets whether a repository
+    // syncs on its own or only on request, on the External triggers page.
+    return (
+      <RichTooltip title="How it syncs" body={syncModeDetail(source)}>
+        <span data-testid="source-sync-mode">
+          {source.enabled && !syncsOnRequest(source) ? (
+            <Badge variant="outline" className="border-success/50 text-success">{syncModeText(source)}</Badge>
+          ) : (
+            <Badge variant="outline">{syncModeText(source)}</Badge>
+          )}
+        </span>
+      </RichTooltip>
     );
+  };
+
+  const startSync = (source: RepoSource) => {
+    syncNow.mutate(source.id);
+    followSyncTrace(source.id, source.name);
   };
 
   const renderHealth = (source: RepoSource | undefined) => {
@@ -267,8 +282,12 @@ export default function ReposPage() {
               onClick={(e) => {
                 e.stopPropagation();
                 if (row.source !== undefined) {
-                  syncNow.mutate(row.source.id);
-                  followSyncTrace(row.source.id, row.source.name);
+                  // A repository that syncs only on request holds its commit on purpose: moving it to the tip is confirmed.
+                  if (syncNowMoves(row.source)) {
+                    setConfirmSync(row.source);
+                  } else {
+                    startSync(row.source);
+                  }
                 }
               }}
               data-testid="source-sync-now"
@@ -360,6 +379,20 @@ export default function ReposPage() {
           onClose={() => setDeleteRow(null)}
         />
       )}
+      <ConfirmDialog
+        open={confirmSync !== null}
+        title="Move to the tip of its branch"
+        message={confirmSync === null ? "" : syncNowConfirmText(confirmSync)}
+        confirmLabel="Sync now"
+        onConfirm={() => {
+          if (confirmSync !== null) {
+            startSync(confirmSync);
+          }
+
+          setConfirmSync(null);
+        }}
+        onClose={() => setConfirmSync(null)}
+      />
     </Page>
   );
 }

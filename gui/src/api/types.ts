@@ -1258,6 +1258,16 @@ export interface RepoSource {
    * registered here. A configured source is written at every start and cannot be edited or removed here.
    */
   configuredBy?: string | null;
+  /**
+   * Whether it syncs on its own every syncIntervalSeconds, reading its branch's tip each time (true), or only when a trigger
+   * request or a sync-now asks, holding lastSyncedSha until then (false). Absent from an older server, which always did.
+   */
+  autoSync?: boolean;
+  /** The setting that sets autoSync (ControlPlane:Bootstrap:Repositories:<name>:AutoSync); null when an administrator does. */
+  autoSyncConfiguredBy?: string | null;
+  /** Who last turned autoSync on or off here, and when; null until someone has. */
+  autoSyncUpdatedBy?: string | null;
+  autoSyncUpdatedUtc?: string | null;
 }
 
 export interface RegisterRepoSourceRequest {

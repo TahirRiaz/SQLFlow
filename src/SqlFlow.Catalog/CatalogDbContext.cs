@@ -861,6 +861,10 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(s => s.ExcludedFlowPaths);
             // The configuration key that sets the source, as an operator reads it in an error.
             entity.Property(s => s.ConfiguredBy).HasMaxLength(200);
+            entity.Property(s => s.AutoSyncConfiguredBy).HasMaxLength(256);
+            entity.Property(s => s.AutoSyncUpdatedBy).HasMaxLength(256);
+            // A commit id, full (40 or 64 hexadecimal characters) or abbreviated, as a trigger request names it.
+            entity.Property(s => s.MoveToCommit).HasMaxLength(64);
             entity.HasIndex(s => s.Name).IsUnique();
             // The sync loop scans for enabled sources whose next sync is due.
             entity.HasIndex(s => s.NextSyncUtc);

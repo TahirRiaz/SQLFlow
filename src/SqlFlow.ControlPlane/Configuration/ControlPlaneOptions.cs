@@ -507,7 +507,7 @@ public sealed class BootstrapOptions
                 name.Trim(), hasRemote ? options.RemoteUrl!.Trim() : null, hasLocal ? options.LocalPath!.Trim() : null,
                 string.IsNullOrWhiteSpace(options.Branch) ? "main" : options.Branch.Trim(), options.SyncIntervalSeconds, reference,
                 string.IsNullOrWhiteSpace(options.CredentialUsername) ? null : options.CredentialUsername.Trim(),
-                options.ExcludedFlowPaths ?? [], key));
+                options.ExcludedFlowPaths ?? [], key, options.AutoSync));
         }
 
         return configured;
@@ -558,6 +558,13 @@ public sealed class ConfiguredRepositoryOptions
     public string Branch { get; set; } = "main";
 
     public int SyncIntervalSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Whether the source syncs on its own every <see cref="SyncIntervalSeconds"/> (true), or only when a trigger request or
+    /// a person asks, holding the commit it last synced until then (false). Unset leaves it to an administrator, on the
+    /// External triggers page; a new source then syncs on its own. Set, the API refuses to change it, naming this setting.
+    /// </summary>
+    public bool? AutoSync { get; set; }
 
     /// <summary>The token a private remote needs, as a secret reference (<c>${keyvault:vault/secret}</c>), never the token.</summary>
     public string? CredentialReference { get; set; }

@@ -171,6 +171,17 @@ public sealed class TriggerRequestProcessor
         if (request.ExpectedCommit is { } expected && source.LastSyncedSha is { } synced && !SameCommit(synced, expected))
         {
             var containment = await _containment.ContainsAsync(source, synced, expected, ct).ConfigureAwait(false);
+            if (containment.Contains is false && await ShortOfExpectedAsync(source, synced, expected, ct).ConfigureAwait(false))
+            {
+                // A source that syncs only on request moves to the commit asked for, and two requests' moves become one:
+                // another request's earlier commit can answer this one's sync. The sync never moves back, so asking again
+                // moves it on towards the commit this request expects.
+                await trace.InfoAsync("sync", $"The sync moved '{request.RepoName}' to {Short(synced)}, which another request asked for and which {Short(expected)} contains; asking again for {Short(expected)}.", ct).ConfigureAwait(false);
+                request.SyncRequestedUtc = null;
+                request.SyncedCommit = null;
+                return;
+            }
+
             if (containment.Contains is not true)
             {
                 var reason = containment.Contains is false
@@ -180,7 +191,9 @@ public sealed class TriggerRequestProcessor
                 return;
             }
 
-            await trace.InfoAsync("sync", $"Synced at {Short(synced)}, which contains {Short(expected)}: the branch moved on past it before the sync read it.", ct).ConfigureAwait(false);
+            await trace.InfoAsync("sync", source.AutoSync
+                ? $"Synced at {Short(synced)}, which contains {Short(expected)}: the branch moved on past it before the sync read it."
+                : $"Synced at {Short(synced)}, which contains {Short(expected)}: '{request.RepoName}' already held a later commit, or another request asked for one.", ct).ConfigureAwait(false);
         }
         else
         {
@@ -191,8 +204,17 @@ public sealed class TriggerRequestProcessor
         request.State = TriggerRequestStates.Firing;
     }
 
+    /// <summary>Whether a source that syncs only on request was synced short of <paramref name="expected"/>: at a commit the
+    /// expected one contains, so a sync asked for again moves it forward to it.</summary>
+    private async Task<bool> ShortOfExpectedAsync(CatalogRepoSource source, string synced, string expected, CancellationToken ct)
+        => !source.AutoSync
+            && (await _containment.ContainsAsync(source, expected, synced, ct).ConfigureAwait(false)).Contains is true;
+
     /// <summary>Asks for the request's sync, or finds it needs none: a repository already synced at the expected commit is
-    /// current, and syncing it again would change nothing.</summary>
+    /// current, and syncing it again would change nothing. A repository that syncs only on request is also current when the
+    /// commit it holds contains the expected one (a later merge's request reached it first), since its sync never moves
+    /// back; otherwise its sync is asked to move to exactly the expected commit (or the branch's tip when the request names
+    /// none), so a merge approved for it brings in that merge and nothing merged after.</summary>
     private async Task RequestSyncAsync(
         CatalogTriggerRequest request, List<CatalogTriggerRequestSchedule> schedules, CatalogRepoSource source, ActivityTrace trace,
         CancellationToken ct)
@@ -204,8 +226,8 @@ public sealed class TriggerRequestProcessor
             return;
         }
 
-        if (request.ExpectedCommit is { } expected && source.LastSyncedSha is { } synced && SameCommit(synced, expected)
-            && source.LastError is null && !RepoSourceStore.IsSyncRunning(source))
+        var settled = source.LastError is null && !RepoSourceStore.IsSyncRunning(source);
+        if (request.ExpectedCommit is { } expected && source.LastSyncedSha is { } synced && SameCommit(synced, expected) && settled)
         {
             request.SyncOutcome = TriggerSyncOutcomes.Current;
             request.SyncedCommit = synced;
@@ -214,8 +236,23 @@ public sealed class TriggerRequestProcessor
             return;
         }
 
+        if (!source.AutoSync && request.ExpectedCommit is { } asked && RepoSourceStore.IsCommitId(source.LastSyncedSha) && settled)
+        {
+            var held = source.LastSyncedSha!;
+            var containment = await _containment.ContainsAsync(source, held, asked, ct).ConfigureAwait(false);
+            if (containment.Contains is true)
+            {
+                request.SyncOutcome = TriggerSyncOutcomes.Current;
+                request.SyncedCommit = held;
+                await trace.InfoAsync("sync", $"'{request.RepoName}' already holds {Short(held)}, which contains {Short(asked)}; no sync is needed, and it does not move back.", ct).ConfigureAwait(false);
+                request.State = TriggerRequestStates.Firing;
+                return;
+            }
+        }
+
         var nowUtc = Now();
-        if (await RepoSourceStore.RequestSyncAsync(_catalog, source.Id, nowUtc, forceLineage: false, ct).ConfigureAwait(false)
+        var move = !source.AutoSync && request.ExpectedCommit is not null ? RepoSyncMove.Commit : RepoSyncMove.BranchTip;
+        if (await RepoSourceStore.RequestSyncAsync(_catalog, source.Id, nowUtc, forceLineage: false, move, request.ExpectedCommit, ct).ConfigureAwait(false)
             == RepoSourceMutation.NotFound)
         {
             await FailSyncAsync(request, schedules, trace, TriggerSyncOutcomes.Failed,
@@ -225,12 +262,19 @@ public sealed class TriggerRequestProcessor
 
         // The sync's own trace says who asked, so an operator watching the repository's sync knows why it ran.
         var syncTrace = await ActivityTrace.BeginAsync(_catalog, ActivityKinds.RepoSync, source.Id.ToString(), _clock, ct).ConfigureAwait(false);
-        await syncTrace.InfoAsync("queued", $"Sync requested by {request.RequestedBy} (trigger request {request.Id:D}); waiting for a worker to pick it up.", ct).ConfigureAwait(false);
+        await syncTrace.InfoAsync("queued", $"Sync requested by {request.RequestedBy} (trigger request {request.Id:D})"
+            + (move == RepoSyncMove.Commit ? $" to move to {Short(request.ExpectedCommit)}" : string.Empty)
+            + "; waiting for a worker to pick it up.", ct).ConfigureAwait(false);
         _syncSignal.Wake();
 
         request.SyncRequestedUtc = nowUtc;
         await trace.InfoAsync("sync", $"Asked for a sync of '{request.RepoName}' (branch {source.Branch})"
-            + (request.ExpectedCommit is { } commit ? $", expecting {Short(commit)}" : string.Empty) + ".", ct).ConfigureAwait(false);
+            + (request.ExpectedCommit is { } commit ? $", expecting {Short(commit)}" : string.Empty)
+            + (source.AutoSync
+                ? "."
+                : move == RepoSyncMove.Commit
+                    ? $". It syncs only on request, so the sync moves it to {Short(request.ExpectedCommit)} and nothing merged after."
+                    : $". It syncs only on request; with no commit named, the sync moves it to the tip of {source.Branch}."), ct).ConfigureAwait(false);
         if (!_options.ManagedSync.Enabled)
         {
             await trace.WarnAsync("sync", "This control plane does not run the managed sync (ControlPlane:ManagedSync:Enabled is false); another control plane must pick the sync up.", ct).ConfigureAwait(false);

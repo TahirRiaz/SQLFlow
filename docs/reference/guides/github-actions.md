@@ -18,8 +18,11 @@ keywords:
   - sync and fire action
   - workflow_dispatch
   - trigger key
+  - several environments
+  - auto sync
 related:
   - concept-external-triggers
+  - concept-repository-auto-sync
   - concept-authentication-and-identity
   - flow-schedule
   - guide-github-app
@@ -158,6 +161,24 @@ job's page shows the summary; the request is also on **External triggers > Reque
 in the bottom panel, and the summary links there. Each run of the fire records `trigger:estate-deliver` as the one that
 asked for it.
 
+## Several environments from one repository
+
+Each control plane syncs a repository on its own interval as well, so with dev, test and production all syncing `main`,
+a merge reaches every one of them within minutes whatever their triggers do. To have a merge reach an environment only
+when its job says so:
+
+1. On each environment that should wait, open **External triggers > Repositories** and turn **Auto sync** off for the
+   repository (or set `ControlPlane:Bootstrap:Repositories:<name>:AutoSync=false` in its configuration). It then holds
+   the commit it has until a request moves it ([automatic sync](../concepts/repository-auto-sync.md)).
+2. Give each environment a trigger, and the workflow a job per environment, each naming that environment's control plane
+   and its `environment:` (whose reviewers then stand between the merge and that environment).
+3. Each job's request names the merge's commit, and the repository moves to exactly that commit: a merge approved for
+   production later brings in that merge, not one merged after it. A request for an older merge than the one already
+   synced finds it there and fires on what the repository holds.
+
+The Repositories tab warns about a repository that syncs only on request with no enabled trigger, and notes one that
+syncs on its own although triggers sync it.
+
 ## From another system
 
 A system that cannot present GitHub's token uses a **Key** trigger: the key is shown once when the trigger is created
@@ -184,6 +205,9 @@ and follows `GET /api/v1/trigger-requests/{id}` until its `conclusion` is set.
 | `Trigger '...' may not fire '...'. It may fire: ...` | The schedule is not among the trigger's. | Add it to the trigger, or fire one it lists. |
 | `The sync of '...' failed: ...` | The repository could not be read or synced. | Read the sync's lines under **Repository sync**; fix the repo source's credential or the repository. |
 | `The sync read ..., which does not contain ...` | The commit is not on the branch the repository syncs. | Run the workflow on that branch, or point the trigger's ref there. |
+| `Commit ... is not on branch '...'` | The repository syncs only on request, and the commit asked for is not merged to its branch. | Merge it first, or ask for a commit on the branch. |
+| `... are on separate lines of branch '...''s history` | The repository syncs only on request and holds a commit beside the one asked for. | Ask for a commit that contains both, such as the branch's tip. |
+| A merge reached the environment before its job ran | The repository's auto sync is on, so it synced on its interval. | Turn auto sync off for it on **External triggers > Repositories**. |
 | `No schedule named '...'` | The merge does not define it, or renamed it. | Check the repository's schedules, which the message lists. |
 | `... is paused by an operator` | Someone paused the schedule. | Resume it on the Schedules page. |
 | `No sync of '...' answered the request within 30 minutes` | No control plane runs the managed sync, or the sync is stuck. | Check `ControlPlane:ManagedSync:Enabled` and the repository's sync trace. |

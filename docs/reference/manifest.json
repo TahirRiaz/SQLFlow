@@ -811,7 +811,8 @@
         "guide-deployment",
         "guide-github-app",
         "concept-maintenance",
-        "concept-external-triggers"
+        "concept-external-triggers",
+        "concept-repository-auto-sync"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
@@ -824,6 +825,7 @@
         "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
         "src/SqlFlow.ControlPlane/Background/RepoSyncService.cs",
         "src/SqlFlow.ControlPlane/Background/RepoSyncWaiter.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncTarget.cs",
         "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
@@ -1010,7 +1012,8 @@
         "concept-authentication-and-identity",
         "concept-control-plane",
         "flow-schedule",
-        "concept-maintenance"
+        "concept-maintenance",
+        "concept-repository-auto-sync"
       ],
       "sourceRefs": [
         "src/SqlFlow.Catalog/CatalogEntities.cs",
@@ -1033,6 +1036,7 @@
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneModuleServices.cs",
         "gui/src/features/external-triggers/ExternalTriggersPage.tsx",
+        "gui/src/features/external-triggers/RepositoriesTab.tsx",
         "gui/src/features/external-triggers/workflow.ts",
         "integrations/github/action.yml",
         "integrations/github/lib.mjs"
@@ -1492,6 +1496,46 @@
         "src/SqlFlow.Core/Engine/FlowRunner.cs",
         "src/SqlFlow.Execution/DocumentLoader.cs",
         "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-repository-auto-sync",
+      "corpus": "reference",
+      "path": "concepts/repository-auto-sync.md",
+      "title": "Automatic sync of a repository, and syncing only on request",
+      "type": "concept",
+      "summary": "Each repo source syncs on its own interval or only when asked; off, it holds its commit until a trigger request or a sync-now moves it, forward only.",
+      "keywords": [
+        "auto sync",
+        "automatic sync",
+        "autoSync",
+        "sync on request",
+        "sync only on request",
+        "hold commit",
+        "several environments",
+        "central estate repository",
+        "promotion",
+        "gated sync",
+        "merge reaches every environment",
+        "ControlPlane:Bootstrap:Repositories:AutoSync",
+        "repos auto-sync"
+      ],
+      "related": [
+        "concept-control-plane",
+        "concept-external-triggers",
+        "guide-github-actions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/RepoSourceStore.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncService.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncTarget.cs",
+        "src/SqlFlow.ControlPlane/Background/TriggerRequestProcessor.cs",
+        "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs",
+        "gui/src/features/external-triggers/RepositoriesTab.tsx",
+        "gui/src/features/repos/autoSync.ts"
       ]
     },
     {
@@ -3327,10 +3371,13 @@
         "integrations/github",
         "sync and fire action",
         "workflow_dispatch",
-        "trigger key"
+        "trigger key",
+        "several environments",
+        "auto sync"
       ],
       "related": [
         "concept-external-triggers",
+        "concept-repository-auto-sync",
         "concept-authentication-and-identity",
         "flow-schedule",
         "guide-github-app"

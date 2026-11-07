@@ -1489,6 +1489,20 @@ namespace SqlFlow.Catalog.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("AutoSync")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AutoSyncConfiguredBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("AutoSyncUpdatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("AutoSyncUpdatedUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Branch")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1533,6 +1547,13 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<string>("LocalPath")
                         .HasMaxLength(1024)
                         .HasColumnType("nvarchar(1024)");
+
+                    b.Property<DateTime?>("MoveRequestedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MoveToCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("Name")
                         .IsRequired()
