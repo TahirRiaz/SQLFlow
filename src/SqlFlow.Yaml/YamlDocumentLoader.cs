@@ -611,7 +611,8 @@ public sealed class YamlDocumentLoader
             "health check, 'scm' for a database source-control snapshot, 'sch' to register an external database's " +
             "tables and views in the catalog, 'batch' for an ordered multi-flow batch, " +
             "'api' for a generic acquisition flow (HTTP / SFTP / Azure Table), 'cpy' for a file-copy flow "
-            + "(local / Azure storage / S3, with optional zip/unzip), 'cal' for a generated calendar dimension, "
+            + "(local / Azure storage / S3, with optional zip/unzip), 'sftp' for an SFTP download or upload, "
+            + "'cal' for a generated calendar dimension, "
             + "'trl' for a JSON translation flow (query result to shaped documents, optionally delivered to an API), "
             + "or omit flowType for a file flow."
             + (_kinds.Count == 0

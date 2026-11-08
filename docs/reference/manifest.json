@@ -2086,7 +2086,7 @@
       "path": "flow/cpy.md",
       "title": "Copy flow (flowType: cpy): file copy between storage endpoints, with zip/unzip",
       "type": "flow-reference",
-      "summary": "flowType: cpy copies files byte-for-byte between local disk and Azure Blob/ADLS in any direction, optionally zipping or unzipping.",
+      "summary": "flowType: cpy copies files byte-for-byte between local disk, Azure Blob/ADLS and S3 in any direction, optionally zipping or unzipping.",
       "keywords": [
         "copy",
         "cpy",
@@ -2525,9 +2525,9 @@
       "id": "flow-overview",
       "corpus": "reference",
       "path": "flow/overview.md",
-      "title": "Anatomy of a flow file: the twelve document kinds",
+      "title": "Anatomy of a flow file: the fourteen document kinds",
       "type": "flow-reference",
-      "summary": "How the top-level flowType key selects one of twelve flow document kinds, what each kind contains, and how loading and validation behave.",
+      "summary": "How the top-level flowType key selects one of fourteen flow document kinds, what each kind contains, and how loading and validation behave.",
       "keywords": [
         "flowtype",
         "document kinds",

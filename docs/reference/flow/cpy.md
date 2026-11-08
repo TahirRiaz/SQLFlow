@@ -2,7 +2,7 @@
 id: flow-cpy
 title: "Copy flow (flowType: cpy): file copy between storage endpoints, with zip/unzip"
 type: flow-reference
-summary: "flowType: cpy copies files byte-for-byte between local disk and Azure Blob/ADLS in any direction, optionally zipping or unzipping."
+summary: "flowType: cpy copies files byte-for-byte between local disk, Azure Blob/ADLS and S3 in any direction, optionally zipping or unzipping."
 keywords:
   - copy
   - cpy
@@ -26,7 +26,7 @@ sourceRefs:
 
 # Copy flow (flowType: cpy)
 
-A `cpy` flow copies files **byte-for-byte** between two storage endpoints, in any direction: Azure Blob/ADLS Gen2 to/from another account, local disk to/from Azure, or local to local. It performs no parsing; it optionally bundles the matched files into one `.zip` (`operation: zip`, a zip-only run) or extracts archives (`operation: unzip`). It replaces the estate's lake-to-lake / drop-zone copy runbooks (e.g. boatbooking). SFTP is a separate flow type (`sftp`), not a copy endpoint.
+A `cpy` flow copies files **byte-for-byte** between two storage endpoints, in any direction: Azure Blob/ADLS Gen2 to/from another account, local disk to/from Azure, an S3 bucket to/from either, or local to local. It performs no parsing; it optionally bundles the matched files into one `.zip` (`operation: zip`, a zip-only run) or extracts archives (`operation: unzip`). It replaces the estate's lake-to-lake / drop-zone copy runbooks (e.g. boatbooking). SFTP is a separate flow type (`sftp`), not a copy endpoint.
 
 ## Minimal example
 
@@ -66,13 +66,16 @@ A flow declares **either** a single top-level `source`/`target` pair **or** an `
 
 | Key | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `location` | string | yes | | A local/UNC path or an Azure storage URI (`abfss://fs@account.dfs.core.windows.net/path` or the https form). A relative local path resolves against the flow file's own folder. |
+| `location` | string | yes | | A local/UNC path, an Azure storage URI (`abfss://fs@account.dfs.core.windows.net/path` or the https form), or an S3 URI (`s3://bucket/prefix`). A relative local path resolves against the flow file's own folder. |
 | `pattern` | string | no | `*` | Source only: file-name glob selecting which files copy. |
 | `recursive` | bool | no | `true` | Source only: recurse into subfolders. |
 | `modifiedWithinDays` | int | no | `0` | Source only: only copy files modified within this many days; 0 = all. |
 | `connectionStringRef` | secret ref | no | | Azure endpoint: `${...}` reference to a connection string. Absent = ambient managed identity. |
 | `sasTokenRef` | secret ref | no | | Azure endpoint: `${...}` reference to a SAS token. |
 | `accountKeyRef` | secret ref | no | | Azure endpoint: `${...}` reference to a storage account key (the shape the legacy runbooks used). Prefer managed identity. |
+| `accessKeyRef` | secret ref | for S3 | | S3 endpoint: `${...}` reference to the AWS access key id, paired with `secretKeyRef`. S3 has no ambient identity, so an `s3://` endpoint needs both. |
+| `secretKeyRef` | secret ref | for S3 | | S3 endpoint: `${...}` reference to the AWS secret access key. |
+| `region` | string | no | `eu-west-1` | S3 endpoint: the bucket's AWS region. |
 
 The target ignores `pattern`/`recursive`/`modifiedWithinDays`.
 
@@ -108,7 +111,7 @@ The run reports one aggregated result (files matched and written across all step
 
 ## Authentication
 
-Azure endpoints authenticate with the ambient managed identity / az login (`SQLFLOW_AZURE_AUTH`) by default - the same credential Key Vault, invoke, and the other file engines use, so no per-flow secret is needed. For a drop zone that only issues a key, set `accountKeyRef` (account key), `sasTokenRef` (SAS), or `connectionStringRef` (connection string); each is a whole `${keyvault:...}` / `${env:...}` reference, never the value itself.
+Azure endpoints authenticate with the ambient managed identity / az login (`SQLFLOW_AZURE_AUTH`) by default - the same credential Key Vault, invoke, and the other file engines use, so no per-flow secret is needed. For a drop zone that only issues a key, set `accountKeyRef` (account key), `sasTokenRef` (SAS), or `connectionStringRef` (connection string); each is a whole `${keyvault:...}` / `${env:...}` reference, never the value itself. An S3 endpoint has no ambient identity: it authenticates with `accessKeyRef` and `secretKeyRef` (the same kind of references) in the bucket's `region`.
 
 ## Operations
 

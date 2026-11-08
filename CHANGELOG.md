@@ -167,6 +167,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- A document whose `flowType` is unknown is refused with a menu that names all fourteen built-in kinds: `sftp` was missing
+  from it. The flow overview counts the fourteen kinds it lists, where it said twelve, and gives an `api` flow its three
+  transports (HTTP, SFTP, Azure Table), not S3; the copy page documents the S3 endpoint a `cpy` flow already has, with
+  its `accessKeyRef`, `secretKeyRef` and `region` ([Anatomy of a flow file](docs/reference/flow/overview.md),
+  [Copy flow](docs/reference/flow/cpy.md)).
 - The Schema changes page lists its databases. `GET /api/v1/schema-changes/databases` answered 500 on every catalog, because its
   ordering could not be translated to SQL.
 - Flows running side by side on a fresh database no longer fail on the schema they share. Each found it missing and created it, and
