@@ -10,8 +10,8 @@ import { navEntryFor, routeTitle } from "../../layout/nav";
 import { useActiveTabTitle } from "../../layout/workbench/TabsContext";
 import { branding } from "../../modules/branding";
 import {
-  changeSubject, codeSubject, explainChangeQuestion, explainCodeQuestion, explainPageQuestion, type ExplainChange,
-  type ExplainCode, type ExplainPage, type PageOutline,
+  changeSubject, codeExplanation, explainChangeQuestion, explainPageQuestion, type ExplainChange, type ExplainCode,
+  type ExplainPage, type ExplainQuestion, type PageOutline,
 } from "./explain";
 import { ExplainIcon } from "./ExplainIcon";
 
@@ -30,6 +30,11 @@ const MODAL_CONTENT = '[data-slot="sheet-content"], [data-slot="dialog-content"]
 export interface ExplainValue {
   /** Explains a piece of code a page shows; `origin` is the element it was asked from. */
   explainCode: (code: ExplainCode, origin: Element | null) => void;
+  /**
+   * What explaining a piece of code asks, without opening the drawer: for a page that holds the conversation in a panel
+   * of its own layout (`ExplainConversationView`), beside what it explains.
+   */
+  codeQuestion: (code: ExplainCode) => ExplainQuestion;
   /** Explains what changed between the two versions a comparison window shows. */
   explainChange: (change: ExplainChange, origin: Element | null) => void;
   /** Explains the page in view: what the feature is for, what it shows, what a person does there. */
@@ -105,8 +110,11 @@ export function ExplainProvider({ children }: { children: ReactNode }) {
 
   const enabled = capabilities.data?.enabled === true;
   const value = useMemo((): ExplainValue | null => !enabled ? null : {
-    explainCode: (code, origin) =>
-      ask(codeSubject(code), explainCodeQuestion(code, page(), branding().productName), origin),
+    explainCode: (code, origin) => {
+      const { subject, question } = codeExplanation(code, page(), branding().productName);
+      ask(subject, question, origin);
+    },
+    codeQuestion: (code) => codeExplanation(code, page(), branding().productName),
     explainChange: (change, origin) =>
       ask(capitalized(changeSubject(change)), explainChangeQuestion(change, page(), branding().productName), origin),
     explainPage: () => {
@@ -212,13 +220,18 @@ function ExplainSurface({ asked, maximized, onMaximizedChange, onClose, title }:
         testIdPrefix="explain"
       />
       <div className="min-h-0 flex-1">
-        <Conversation key={asked.id} question={asked.question} />
+        <ExplainConversationView key={asked.id} question={asked.question} />
       </div>
     </>
   );
 }
 
-function Conversation({ question }: { question: string }) {
+/**
+ * An explanation's conversation, asking `question` first and followed up in the same thread, wherever it is held: the
+ * drawer, or a panel a page opens beside what it explains (`ExplainValue.codeQuestion`). It fills its parent's height.
+ * Each question is a conversation of its own, so a holder asking another one keys this by it.
+ */
+export function ExplainConversationView({ question }: { question: string }) {
   return (
     <Suspense
       fallback={(

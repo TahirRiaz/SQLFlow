@@ -144,6 +144,10 @@ reach, it slides in over the dialog, and closing it returns to the dialog. Every
 with the others on the Assistant page. The chat's own code blocks offer no Explain, and nothing offers it while the
 assistant is not configured.
 
+A page may hold an explanation in a panel of its own layout instead, beside the code it explains: `useExplain()`'s
+`codeQuestion` gives the subject and the question the drawer would ask about the code, and `ExplainConversationView`
+holds the conversation, which fills its panel. Each question is again a new conversation, kept on the Assistant page.
+
 ## Per-user authority (the difference from Slack)
 
 The Slack bot holds one shared read-scoped token, because everyone in a channel shares the bot's identity. The GUI chat has a signed-in user on every request, so each agent run gets a token the control plane delegates from that user for that one run: the assistant reads at most what that user may read, the control plane enforces it per tool call, and the model host never holds the user's own session. The delegated token expires with the run (`RunTimeoutSeconds` plus 60 seconds), cannot be renewed, and is refused everywhere outside the read surface the tools need, so it cannot mint a personal access token, approve a device sign-in, read the user's conversations, or start work; see [Assistant run tokens](../concepts/authentication-and-identity.md#assistant-run-tokens). The conversation's mode decides which tools the run's MCP session lists (see [Business questions and modes](#business-questions-and-modes--exit)); a tool that needs more than the token may do, such as starting a run, is refused by the control plane, and the assistant says where a person does it.

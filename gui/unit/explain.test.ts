@@ -3,8 +3,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  MAX_EXPLAIN_LENGTH, MAX_OUTLINE_ENTRIES, changeSubject, codeSubject, explainChangeQuestion, explainCodeQuestion,
-  explainPageQuestion, languageName, tidyOutline, type ExplainPage,
+  MAX_EXPLAIN_LENGTH, MAX_OUTLINE_ENTRIES, changeSubject, codeExplanation, codeSubject, explainChangeQuestion,
+  explainCodeQuestion, explainPageQuestion, languageName, tidyOutline, type ExplainPage,
 } from "../src/features/chat/explain.ts";
 
 const PIPELINE: ExplainPage = {
@@ -75,6 +75,17 @@ describe("explainCodeQuestion", () => {
     assert.ok(question.length <= MAX_EXPLAIN_LENGTH, String(question.length));
     assert.match(question, /Only the first \d+ lines of 1000 lines fit in this question\.\n\n/);
     assert.ok(!question.includes(`${line}x`), "a line is never cut in two");
+  });
+});
+
+describe("codeExplanation", () => {
+  it("is the subject and the question the drawer asks, so a page holding the conversation itself asks the same", () => {
+    const code = { code: "source:\n  table: wells", language: "yaml", lines: { start: 7, end: 8 }, totalLines: 40 };
+    assert.deepEqual(codeExplanation(code, PIPELINE, "SQLFlow"), {
+      subject: codeSubject(code),
+      question: explainCodeQuestion(code, PIPELINE, "SQLFlow"),
+    });
+    assert.equal(codeExplanation(code, PIPELINE, "SQLFlow").subject, "YAML, lines 7 to 8 of 40");
   });
 });
 

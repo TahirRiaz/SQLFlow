@@ -111,6 +111,17 @@ export function explainCodeQuestion(code: ExplainCode, page: ExplainPage, produc
   return `${intro}\n\n${block(shown.text, code.language)}${shown.note}\n\n${LOOK_IT_UP}`;
 }
 
+/** An explanation before it is asked: what it is about, in a few words, and the question that opens its conversation. */
+export interface ExplainQuestion {
+  subject: string;
+  question: string;
+}
+
+/** What explaining a piece of code asks, wherever its conversation is held: the drawer, or a panel of the page itself. */
+export function codeExplanation(code: ExplainCode, page: ExplainPage, productName: string): ExplainQuestion {
+  return { subject: codeSubject(code), question: explainCodeQuestion(code, page, productName) };
+}
+
 /** Two versions of one document, as a comparison window shows them. */
 export interface ExplainChange {
   original: string;
