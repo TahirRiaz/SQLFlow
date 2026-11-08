@@ -299,9 +299,11 @@ public sealed class RunInputsApiTests
             Assert.Equal(("verify", "south"), (root.GetProperty("operation").GetString(), root.GetProperty("values").GetProperty("region").GetString()));
             Assert.Equal(["a", "b"], root.GetProperty("values").GetProperty("sources").EnumerateArray().Select(v => v.GetString()));
             var members = root.GetProperty("members").EnumerateArray().ToList();
-            Assert.Equal([flow, ing], members.Select(m => m.GetProperty("flowName").GetString()));
+            // Neither member depends on the other, so both are in the fire's first wave, listed by name, as the fire runs them.
+            Assert.Equal([ing, flow], members.Select(m => m.GetProperty("flowName").GetString()));
+            Assert.All(members, m => Assert.Equal(0, m.GetProperty("wave").GetInt32()));
 
-            var member = members[0];
+            var member = members.Single(m => m.GetProperty("flowName").GetString() == flow);
             Assert.True(member.GetProperty("takesScheduleArguments").GetBoolean());
             Assert.Equal("verify", member.GetProperty("operation").GetString());
             var values = member.GetProperty("values").EnumerateArray()
@@ -317,7 +319,7 @@ public sealed class RunInputsApiTests
             Assert.Empty(member.GetProperty("settings").EnumerateArray());
             Assert.Equal(JsonValueKind.Null, member.GetProperty("note").ValueKind);
 
-            var builtIn = members[1];
+            var builtIn = members.Single(m => m.GetProperty("flowName").GetString() == ing);
             Assert.False(builtIn.GetProperty("takesScheduleArguments").GetBoolean());
             Assert.Equal("A built-in kind takes no operation or values: this flow runs as its document defines.", builtIn.GetProperty("note").GetString());
             Assert.Empty(builtIn.GetProperty("values").EnumerateArray());
