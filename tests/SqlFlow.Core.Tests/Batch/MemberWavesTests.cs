@@ -48,4 +48,32 @@ public sealed class MemberWavesTests
 
         Assert.Equal(new[] { new MemberWave(0, false), new MemberWave(0, false) }, placed);
     }
+
+    [Fact]
+    public void APathThroughPassedOverFlows_OrdersTheMembersAtItsEnds_AndOnlyThroughThem()
+    {
+        // load feeds a passed-over transform, which feeds a passed-over merge, which feeds check: check still waits for
+        // load. other is reached only through a flow that is not passed over, and orders nothing.
+        var placed = MemberWaves.Compute(
+            ["check", "load", "other"],
+            [("load", "transform"), ("transform", "merge"), ("merge", "check"), ("load", "elsewhere"), ("elsewhere", "other")],
+            StringComparer.Ordinal,
+            passedOver: ["transform", "merge"]);
+
+        Assert.Equal(new[] { new MemberWave(1, false), new MemberWave(0, false), new MemberWave(0, false) }, placed);
+    }
+
+    [Fact]
+    public void APassedOverKeyThatIsAMember_CountsAsAMember_AndAPassedOverCycleOrdersNothingItself()
+    {
+        // b is a member and passed over at once: it stays a member, in its own wave. The passed-over pair p and q feed
+        // each other, which neither loops forever nor makes a cycle of the members on either side of them.
+        var placed = MemberWaves.Compute(
+            ["a", "b", "c"],
+            [("a", "b"), ("b", "p"), ("p", "q"), ("q", "p"), ("q", "c")],
+            StringComparer.Ordinal,
+            passedOver: ["b", "p", "q"]);
+
+        Assert.Equal(new[] { new MemberWave(0, false), new MemberWave(1, false), new MemberWave(2, false) }, placed);
+    }
 }

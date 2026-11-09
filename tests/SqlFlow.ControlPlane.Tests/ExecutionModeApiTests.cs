@@ -188,6 +188,75 @@ public sealed class ExecutionModeApiTests
         }
     }
 
+    [SkippableFact]
+    public async Task ScopeExpansion_KeepsTheOrderThroughAMemberItPassesOverForItsMode()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var name = $"mode-through-{Guid.NewGuid():N}";
+        var repoId = SqlFlow.Core.Identity.FlowIdentity.FromName($"repo/{name}");
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var now = DateTime.UtcNow;
+            db.Repos.Add(new CatalogRepo { Id = repoId, Name = name, FirstSeenUtc = now, LastSyncUtc = now });
+
+            // One section lands, keys, delivers and refreshes what it delivered; the delivery is disabled. Its refresh
+            // must still follow the keying, not start the fire beside the landing.
+            db.Pipelines.Add(Pipeline(repoId, "land", "file", now, batch: "SECTION"));
+            db.Pipelines.Add(Pipeline(repoId, "key", "ing", now, batch: "SECTION"));
+            db.Pipelines.Add(Pipeline(repoId, "deliver", "ing", now, batch: "SECTION", executionMode: PipelineExecutionModes.Disabled));
+            db.Pipelines.Add(Pipeline(repoId, "refresh", "hc", now, batch: "SECTION"));
+            db.Pipelines.Add(Pipeline(repoId, "report", "hc", now, batch: "SECTION"));
+            db.Pipelines.Add(Pipeline(repoId, "publish", "ing", now, batch: "OTHER"));
+            db.FlowDependencies.Add(Dependency(repoId, "land", "key"));
+            db.FlowDependencies.Add(Dependency(repoId, "key", "deliver"));
+            db.FlowDependencies.Add(Dependency(repoId, "deliver", "refresh"));
+
+            // A member another batch holds is left out by a batch filter, not by its mode: a path through it orders nothing.
+            db.FlowDependencies.Add(Dependency(repoId, "key", "publish"));
+            db.FlowDependencies.Add(Dependency(repoId, "publish", "report"));
+
+            var scheduleId = Guid.CreateVersion7();
+            db.Schedules.Add(new CatalogSchedule
+            {
+                Id = scheduleId, RepoId = repoId, Name = "sections", Cron = "0 4 * * *", Timezone = "UTC",
+                Enabled = true, Source = "yaml", CreatedUtc = now, UpdatedUtc = now,
+            });
+            foreach (var member in new[] { "land", "key", "deliver", "refresh", "report", "publish" })
+            {
+                db.ScheduleMembers.Add(new CatalogScheduleMember
+                {
+                    ScheduleId = scheduleId, PipelineId = CatalogIdentity.Pipeline(repoId, member),
+                    RepoId = repoId, FlowName = member,
+                });
+            }
+
+            await db.SaveChangesAsync();
+
+            var fired = await RunScopeExpander.ExpandScheduleAsync(db, repoId, scheduleId, "sections");
+            Assert.Equal(
+                new[] { ("land", 0), ("key", 1), ("publish", 2), ("refresh", 2), ("report", 3) },
+                fired.Members.Select(m => (m.FlowName, m.Wave)).ToArray());
+
+            var section = await RunScopeExpander.ExpandScheduleAsync(db, repoId, scheduleId, "sections", batchFilter: ["SECTION"]);
+            Assert.Equal(
+                new[] { ("land", 0), ("report", 0), ("key", 1), ("refresh", 2) },
+                section.Members.Select(m => (m.FlowName, m.Wave)).ToArray());
+
+            // A flow with its descendants passes over the disabled descendant the same way.
+            var node = await RunScopeExpander.ExpandAsync(db, repoId, "land", RunScope.Node);
+            Assert.Equal(
+                new[] { ("land", 0), ("key", 1), ("publish", 2), ("refresh", 2), ("report", 3) },
+                node.Members.Select(m => (m.FlowName, m.Wave)).ToArray());
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId);
+        }
+    }
+
     private static CatalogPipeline Pipeline(
         Guid repoId, string name, string kind, DateTime now, string? batch = null, string executionMode = PipelineExecutionModes.Auto)
         => new()

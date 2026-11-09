@@ -52,6 +52,29 @@ public sealed class RunScopeWavesTests
     }
 
     [Fact]
+    public void AFlowPassedOverForItsMode_KeepsTheMembersAroundItInOrder()
+    {
+        // The section lands, keys, (delivers: disabled) and refreshes the cache: the refresh still follows the keying,
+        // while a flow merely outside the set (another schedule's) still orders nothing.
+        var land = Member("land");
+        var key = Member("key");
+        var refresh = Member("refresh");
+        var report = Member("report");
+        var disabledDelivery = Guid.NewGuid();
+        var otherSchedules = Guid.NewGuid();
+
+        var waves = RunScopeExpander.InWaves(
+            [refresh, report, key, land],
+            [
+                Edge(land, key), Edge(key.PipelineId!.Value, disabledDelivery), Edge(disabledDelivery, refresh.PipelineId!.Value),
+                Edge(land.PipelineId!.Value, otherSchedules), Edge(otherSchedules, report.PipelineId!.Value),
+            ],
+            passedOver: [disabledDelivery]);
+
+        Assert.Equal(new[] { ("land", 0), ("report", 0), ("key", 1), ("refresh", 2) }, Shape(waves));
+    }
+
+    [Fact]
     public void ARepeatedEdge_CountsOnce()
     {
         var a = Member("a");

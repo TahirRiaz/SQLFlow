@@ -5,8 +5,10 @@ namespace SqlFlow.Lineage.Graph;
 /// order with max-level assignment, scoped to the set. A member's wave is one past the latest wave of a member it
 /// depends on, so a member waits for its longest chain of members and no longer. An edge with an end outside the set
 /// orders nothing, and neither does a path through a flow outside it: a flow that does not run changes nothing its
-/// downstream reads. Members on a dependency cycle, and every member behind one, go to one fallback wave after all the
-/// others and are reported as unordered, never refused. Waves are dense, numbered from 0.
+/// downstream reads. The one exception is a flow the caller names as passed over (a member it leaves out by its mode,
+/// say): a path through such flows still orders the members at its two ends, so leaving a flow out of a chain never moves
+/// what follows it ahead of what precedes it. Members on a dependency cycle, and every member behind one, go to one
+/// fallback wave after all the others and are reported as unordered, never refused. Waves are dense, numbered from 0.
 /// <para>
 /// The one implementation behind a batch flow's waves (<c>BatchOrchestrator</c>) and a run group's (a schedule's fire, a
 /// flow with its descendants: <c>RunScopeExpander</c>), so a set of flows is ordered the same way however it is run.
@@ -21,9 +23,15 @@ public static class MemberWaves
     /// <param name="dependencies">Flow-to-flow edges, <c>From</c> finishing before <c>To</c>; a repeated edge counts once,
     /// and an edge with an end outside <paramref name="members"/> or from a member to itself is ignored.</param>
     /// <param name="comparer">How keys compare; the default comparer when null.</param>
+    /// <param name="passedOver">Flows the set leaves out whose paths still order it: a path from one member to another
+    /// through these flows alone orders the two as an edge between them would. A key that is also a member counts as a
+    /// member. None when null.</param>
     /// <returns>For each member, by position: its wave and whether it is in the fallback wave of a cycle.</returns>
     public static IReadOnlyList<MemberWave> Compute<TKey>(
-        IReadOnlyList<TKey> members, IEnumerable<(TKey From, TKey To)> dependencies, IEqualityComparer<TKey>? comparer = null)
+        IReadOnlyList<TKey> members,
+        IEnumerable<(TKey From, TKey To)> dependencies,
+        IEqualityComparer<TKey>? comparer = null,
+        IEnumerable<TKey>? passedOver = null)
         where TKey : notnull
     {
         ArgumentNullException.ThrowIfNull(members);
@@ -34,6 +42,13 @@ public static class MemberWaves
         for (var i = 0; i < count; i++)
         {
             index.TryAdd(members[i], i);
+        }
+
+        var passed = passedOver is null ? null : new HashSet<TKey>(passedOver.Where(k => !index.ContainsKey(k)), comparer);
+        if (passed is { Count: > 0 })
+        {
+            var edges = dependencies.ToList();
+            dependencies = [.. edges, .. Through(edges, index, passed, comparer)];
         }
 
         // waitsFor[i]: the members i must wait for; feeds[j]: the members waiting for j.
@@ -84,6 +99,61 @@ public static class MemberWaves
         }
 
         return waves;
+    }
+
+    /// <summary>
+    /// The member-to-member edges the paths through <paramref name="passed"/> flows imply: from each member, every member
+    /// reached over one or more passed-over flows and nothing else.
+    /// </summary>
+    private static List<(TKey From, TKey To)> Through<TKey>(
+        List<(TKey From, TKey To)> edges, Dictionary<TKey, int> index, HashSet<TKey> passed, IEqualityComparer<TKey>? comparer)
+        where TKey : notnull
+    {
+        var next = new Dictionary<TKey, List<TKey>>(comparer);
+        foreach (var (from, to) in edges)
+        {
+            if (!next.TryGetValue(from, out var targets))
+            {
+                targets = [];
+                next[from] = targets;
+            }
+
+            targets.Add(to);
+        }
+
+        var implied = new List<(TKey From, TKey To)>();
+        foreach (var member in index.Keys)
+        {
+            if (!next.TryGetValue(member, out var fed))
+            {
+                continue;
+            }
+
+            var seen = new HashSet<TKey>(comparer);
+            var stack = new Stack<TKey>(fed.Where(passed.Contains));
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                if (!seen.Add(current) || !next.TryGetValue(current, out var targets))
+                {
+                    continue;
+                }
+
+                foreach (var target in targets)
+                {
+                    if (index.ContainsKey(target))
+                    {
+                        implied.Add((member, target));
+                    }
+                    else if (passed.Contains(target))
+                    {
+                        stack.Push(target);
+                    }
+                }
+            }
+        }
+
+        return implied;
     }
 }
 
