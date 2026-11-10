@@ -3508,6 +3508,47 @@
       ]
     },
     {
+      "id": "guide-lineage-graph",
+      "corpus": "reference",
+      "path": "guides/lineage-graph.md",
+      "title": "Reading the lineage graph: scope, level, folders, stacks, waves, kinds and trace",
+      "type": "guide",
+      "summary": "How the GUI's lineage graph decides what to draw, what each control of its bar changes, and how a drawing is shared as a link.",
+      "keywords": [
+        "lineage graph",
+        "lineage page",
+        "trace upstream downstream",
+        "impact analysis",
+        "wave range",
+        "folders",
+        "stacks",
+        "handovers",
+        "graph level",
+        "hide kinds",
+        "project-graph",
+        "whole repository"
+      ],
+      "related": [
+        "concept-lineage-graph-and-plan",
+        "concept-lineage-tiers",
+        "concept-control-plane",
+        "concept-shadow-catalog",
+        "guide-lineage-demo"
+      ],
+      "sourceRefs": [
+        "gui/src/features/lineage/LineageGraphPage.tsx",
+        "gui/src/features/lineage/graphModel.ts",
+        "gui/src/features/lineage/graphUrl.ts",
+        "gui/src/features/lineage/graphLayout.ts",
+        "gui/src/features/lineage/GraphControls.tsx",
+        "gui/src/features/lineage/GraphStatusLine.tsx",
+        "gui/src/features/lineage/GraphDetails.tsx",
+        "gui/src/features/lineage/LineageNodeCard.tsx",
+        "gui/unit/lineageGraph.test.ts",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs"
+      ]
+    },
+    {
       "id": "guide-notifications",
       "corpus": "reference",
       "path": "guides/notifications.md",

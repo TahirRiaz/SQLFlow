@@ -162,6 +162,13 @@ on `.react-flow`: the canvas is `background`, a node is a `card` outlined in `in
 and zoom controls are cards. A rule on one of the library's classes is the wrong tool: its stylesheet loads
 with the graph's chunk, after ours, and wins.
 
+The graph's nodes are cards of its own (`features/lineage/LineageNodeCard.tsx`), told apart by shape and glyph, never
+by a fill: a flow is a square-cornered card led by its kind's glyph in the kind's tone (3.5), data is a pill with a
+dashed edge and a neutral glyph, and a folder or a stack, each standing for several nodes, has a second edge behind
+it. An edge is neutral until a node is selected; then what is upstream of the node takes `chart-7` and what is
+downstream `chart-2`, on edges and as a ring on nodes, and everything else fades. A node carries a status mark only
+when a status needs a look (3.2).
+
 ### 3.7 Designs
 
 The tokens above are SQLFlow's design. A GUI module may add designs of its own (`GuiModule.designs`,
