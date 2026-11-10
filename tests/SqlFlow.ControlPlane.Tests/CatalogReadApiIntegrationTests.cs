@@ -13,8 +13,9 @@ namespace SqlFlow.ControlPlane.Tests;
 /// The authenticated catalog read API end to end against the real shadow catalog: the host runs in-memory through
 /// <see cref="ControlPlaneAppFactory"/> pointed at the migrated catalog database, while the test seeds one repo and
 /// two pipelines straight into the <c>catalog</c> schema with EF. It then obtains a bootstrap token and asserts the
-/// repos list, the repo-filtered pipelines list, the pipeline detail (with Yaml/DefinitionJson), a 404 for an
-/// unknown id, and readiness. Every seeded row is removed in a finally so repeated runs stay isolated.
+/// repos list, the pipelines list and its filters (repo, kind, project, batch, schedule), the pipeline detail (with
+/// Yaml/DefinitionJson), a 404 for an unknown id, and readiness. Every seeded row is removed in a finally so repeated
+/// runs stay isolated.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class CatalogReadApiIntegrationTests
@@ -34,6 +35,7 @@ public sealed class CatalogReadApiIntegrationTests
         var batchName = "sales_" + suffix;
         var pipelineAId = CatalogIdentity.Pipeline(repoId, flowA);
         var pipelineBId = CatalogIdentity.Pipeline(repoId, flowB);
+        var scheduleId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
@@ -57,6 +59,13 @@ public sealed class CatalogReadApiIntegrationTests
                 // filter below have both a named batch and the default-batch coalescing to exercise.
                 db.Pipelines.Add(SeedPipeline(pipelineAId, repoId, flowA, "ing", "sales/orders.flow.yaml", now, batchName));
                 db.Pipelines.Add(SeedPipeline(pipelineBId, repoId, flowB, "file", "customers.flow.yaml", now));
+
+                // flowA joins a schedule and flowB does not, so the schedule filter below is proven to narrow the
+                // list to the schedule's members rather than to its repo.
+                db.ScheduleMembers.Add(new CatalogScheduleMember
+                {
+                    ScheduleId = scheduleId, PipelineId = pipelineAId, RepoId = repoId, FlowName = flowA,
+                });
 
                 // Two flow dependencies: one between the seeded pipelines and one leading out of them, so the
                 // pipelineId filter on the dependencies endpoint is proven to narrow rather than return all.
@@ -134,6 +143,15 @@ public sealed class CatalogReadApiIntegrationTests
                 client, token, $"/api/v1/pipelines?repoId={repoId}&batch={CatalogPipeline.DefaultBatch}");
             Assert.Equal(flowB, Assert.Single(defaultBatch.Items).Name);
 
+            // The schedule filter lists the flows that joined the schedule, with no repo filter needed; a schedule the
+            // catalog holds no membership for lists nothing rather than every flow.
+            var scheduled = await GetJsonAsync<PagedResult<PipelineSummaryDto>>(
+                client, token, $"/api/v1/pipelines?scheduleId={scheduleId}");
+            Assert.Equal(flowA, Assert.Single(scheduled.Items).Name);
+            var unknownSchedule = await GetJsonAsync<PagedResult<PipelineSummaryDto>>(
+                client, token, $"/api/v1/pipelines?scheduleId={Guid.NewGuid()}");
+            Assert.Equal(0, unknownSchedule.Total);
+
             // The dependencies list returns the repo's whole DAG unfiltered; the pipelineId filter narrows it
             // to the edges touching one flow, in either direction.
             var allDeps = await GetJsonAsync<PagedResult<FlowDependencyDto>>(
@@ -177,6 +195,7 @@ public sealed class CatalogReadApiIntegrationTests
         {
             await using var db = CatalogDatabase.Create(cs);
             await db.FlowDependencies.Where(d => d.RepoId == repoId).ExecuteDeleteAsync();
+            await db.ScheduleMembers.Where(m => m.RepoId == repoId).ExecuteDeleteAsync();
             await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
             await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
         }

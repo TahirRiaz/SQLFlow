@@ -40,6 +40,7 @@
     "src/layout/workbench/sideBarStart.ts",
     "src/layout/workbench/traceTrayState.ts",
     "src/lib/codeLanguage.ts",
+    "src/lib/fetchEveryPage.ts",
     "src/lib/runTiming.ts",
     "src/lib/runValues.ts",
     "src/features/runs/runInputs.ts",

@@ -156,6 +156,8 @@ export interface PipelineListQuery extends PageQuery {
   project?: string;
   /** Batch (source-system grouping) label; "default" also matches flows that declare no batch. */
   batch?: string;
+  /** A schedule's id; narrows the list to the flows that joined it, the members one fire runs. */
+  scheduleId?: string;
 }
 
 export const pipelineApi = {

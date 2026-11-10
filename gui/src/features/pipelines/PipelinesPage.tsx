@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, FolderGit2 } from "lucide-react";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { useLocalStorageState, useUrlSeed } from "@/hooks/useLocalStorageState";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import type { PipelineSummary } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
 import { FilterBar } from "../../components/FilterBar";
+import { FilterCombobox } from "../../components/FilterCombobox";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { SearchInput } from "../../components/SearchInput";
@@ -20,6 +21,7 @@ import { builtInFlowKinds } from "../../modules/flowKinds";
 import { contributedKinds } from "../../modules/registry";
 import { fetchAllPipelines, type FetchResult } from "./fetchAllPipelines";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
+import { scheduleFilterOptions, useAllSchedules } from "../schedules/useAllSchedules";
 import { groupByProject, pipelineMatches, ProjectGroup } from "./ProjectGroup";
 
 /** The kinds the filter offers: the built-in ones the loader recognises, acquisition-first then transform/utility,
@@ -81,18 +83,20 @@ function RepoGroup({
   );
 }
 
-/** All pipelines across repos, grouped as a repo -> project folder tree. Server-side filters (repo, kind, active) shape
- * the fetched set; a free-text box narrows it in the browser by name, path, kind, or project. A link can set the repo and
- * the kind (?repo=, ?kind=), which wins over the filters remembered from an earlier visit; picking a filter here replaces
- * what the link set, so the address never disagrees with the dropdown. */
+/** All pipelines across repos, grouped as a repo -> project folder tree. Server-side filters (repo, schedule, kind,
+ * active) shape the fetched set; a free-text box narrows it in the browser by name, path, kind, or project. A link can
+ * set the repo, the schedule and the kind (?repo=, ?schedule=, ?kind=), which wins over the filters remembered from an
+ * earlier visit; picking a filter here replaces what the link set, so the address never disagrees with the dropdown. */
 export default function PipelinesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [storedRepo, setStoredRepo] = useLocalStorageState("sqlflow.filters.pipelines.repo", "");
+  const [storedSchedule, setStoredSchedule] = useLocalStorageState("sqlflow.filters.pipelines.schedule", "");
   const [storedKind, setStoredKind] = useLocalStorageState("sqlflow.filters.pipelines.kind", "");
   const repoFilter = searchParams.get("repo") ?? storedRepo;
+  const scheduleFilter = searchParams.get("schedule") ?? storedSchedule;
   const kindFilter = searchParams.get("kind") ?? storedKind;
-  const choose = (key: "repo" | "kind", store: (value: string) => void) => (value: string) => {
+  const choose = (key: "repo" | "schedule" | "kind", store: (value: string) => void) => (value: string) => {
     store(value);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
@@ -101,10 +105,20 @@ export default function PipelinesPage() {
     }, { replace: true });
   };
   const setRepoFilter = choose("repo", setStoredRepo);
+  const setScheduleFilter = choose("schedule", setStoredSchedule);
   const setKindFilter = choose("kind", setStoredKind);
   const [activeFilter, setActiveFilter] = useLocalStorageState("sqlflow.filters.pipelines.active", "");
   const [search, setSearch] = useLocalStorageState("sqlflow.filters.pipelines.name", "");
   const [runBatch, setRunBatch] = useState<{ repoId: string; flowName: string } | null>(null);
+
+  // A link naming a schedule (a schedule's flows on the Schedules page) asks for exactly the flows that joined it, so on
+  // arrival it lifts what an earlier visit left narrowing the tree: the search, the active state and a remembered kind.
+  // The link's own repo and schedule win over the remembered ones already, and every filter it leaves reads in the bar.
+  useUrlSeed(searchParams.get("schedule"), () => {
+    setSearch("");
+    setActiveFilter("");
+    setStoredKind("");
+  });
 
   const repos = useQuery({
     queryKey: ["repos", "all-for-pipeline-filter"],
@@ -113,23 +127,28 @@ export default function PipelinesPage() {
   const repoOptions = repos.data?.items ?? [];
   const repoNameById = new Map(repoOptions.map((r) => [r.id, r.name]));
 
+  const schedules = useAllSchedules();
+  const scheduleOptions = useMemo(() => scheduleFilterOptions(schedules.data?.items ?? []), [schedules.data]);
+
   const query = useQuery({
-    queryKey: ["pipelines", "grouped", repoFilter, kindFilter, activeFilter],
+    queryKey: ["pipelines", "grouped", repoFilter, scheduleFilter, kindFilter, activeFilter],
     queryFn: () => fetchAllPipelines({
       repoId: repoFilter === "" ? undefined : repoFilter,
+      scheduleId: scheduleFilter === "" ? undefined : scheduleFilter,
       kind: kindFilter === "" ? undefined : kindFilter,
       active: activeFilter === "" ? undefined : activeFilter === "active",
     }),
   });
 
   const needle = search.trim().toLowerCase();
-  // A kind, an active state or a search picks pipelines out of the tree, so it opens onto them: the reader asked for those
-  // flows, not for an outline to dig them out of. The repo alone only scopes the tree to one repo's project outline.
-  const narrowed = needle !== "" || kindFilter !== "" || activeFilter !== "";
+  // A schedule, a kind, an active state or a search picks pipelines out of the tree, so it opens onto them: the reader
+  // asked for those flows, not for an outline to dig them out of. The repo alone only scopes the tree to one repo's
+  // project outline.
+  const narrowed = needle !== "" || scheduleFilter !== "" || kindFilter !== "" || activeFilter !== "";
   // What the tree's expansion is derived from. Each change remounts the groups, so a folder opened or closed under the
   // previous filters never hides a match of the new ones. The search text itself is left out, so typing does not undo
   // a fold made while the search runs.
-  const view = JSON.stringify([repoFilter, kindFilter, activeFilter, needle !== ""]);
+  const view = JSON.stringify([repoFilter, scheduleFilter, kindFilter, activeFilter, needle !== ""]);
 
   return (
     <Page data-testid="page-pipelines">
@@ -159,6 +178,18 @@ export default function PipelinesPage() {
             ))}
           </SelectContent>
         </Select>
+        {/* Searchable rather than a plain dropdown: an estate runs hundreds of schedules. */}
+        <FilterCombobox
+          options={scheduleOptions}
+          value={scheduleFilter}
+          onChange={setScheduleFilter}
+          placeholder="all schedules"
+          searchPlaceholder="Search schedules"
+          emptyText="No schedules found."
+          ariaLabel="Schedule"
+          testId="filter-schedule"
+          className="w-48"
+        />
         <Select
           value={kindFilter === "" ? ALL : kindFilter}
           onValueChange={(value) => setKindFilter(value === ALL ? "" : value)}

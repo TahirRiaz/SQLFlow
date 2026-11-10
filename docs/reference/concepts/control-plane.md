@@ -103,7 +103,7 @@ Read surface (policy `read`):
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /repos`, `GET /repos/{id}` | Repository registry |
-| `GET /pipelines`, `GET /pipelines/{id}` | Pipeline registry (filters: `repoId`, `kind`, `active`, `name`) |
+| `GET /pipelines`, `GET /pipelines/{id}` | Pipeline registry (filters: `repoId`, `kind`, `active`, `name`, `project`, `batch`, and `scheduleId`, the flows that joined that schedule, which are what one fire of it runs) |
 | `GET /pipelines/{id}/definition` | The pipeline's parsed definition as JSON |
 | `GET /pipelines/{id}/parameters` | The run controls that apply to the flow and, for a registered kind's flow, what its document declares a run may be given: its parameters, their defaults, choices and lookups, and its run settings ([Run inputs](run-inputs.md)) |
 | `GET /pipelines/{id}/columns` | Declared and detected pre-ingestion transform columns |

@@ -183,7 +183,7 @@ public static class CatalogEndpoints
 
     private static async Task<Ok<PagedResult<PipelineSummaryDto>>> ListPipelinesAsync(
         CatalogDbContext db, Guid? repoId, string? kind, bool? active, string? name, string? project,
-        string? batch, int? page, int? pageSize, CancellationToken ct)
+        string? batch, Guid? scheduleId, int? page, int? pageSize, CancellationToken ct)
     {
         var (p, size) = PageRequest.Normalize(page, pageSize);
 
@@ -191,6 +191,14 @@ public static class CatalogEndpoints
         if (repoId is { } r)
         {
             query = query.Where(x => x.RepoId == r);
+        }
+
+        // The flows one schedule runs: its members, read through the same membership a fire reads, so the list names
+        // exactly the flows that joined it (a schedule the catalog does not hold lists none). The membership's key
+        // leads with the schedule, so this is a seek per pipeline.
+        if (scheduleId is { } sid)
+        {
+            query = query.Where(x => db.ScheduleMembers.Any(m => m.ScheduleId == sid && m.PipelineId == x.Id));
         }
 
         if (!string.IsNullOrWhiteSpace(kind))
