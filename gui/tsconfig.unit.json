@@ -32,6 +32,7 @@
     "src/features/nodes/scalingMode.ts",
     "src/features/pipelines/folderTree.ts",
     "src/features/pipelines/pipelineTabs.ts",
+    "src/features/pipelines/scheduleWaves.ts",
     "src/features/repos/autoSync.ts",
     "src/features/repos/gitCredential.ts",
     "src/features/repos/project.ts",
