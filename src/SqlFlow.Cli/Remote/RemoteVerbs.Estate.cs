@@ -303,16 +303,28 @@ internal static partial class RemoteVerbs
 
     // ---- repos --------------------------------------------------------------------------------------------
 
-    /// <summary>'sqlflow repos list|show|register|discover|sync': the synced-repo surface, merging catalog
+    /// <summary>'sqlflow repos list|show|register|discover|sync|auto-sync': the synced-repo surface, merging catalog
     /// repos with their managed git sources exactly as the GUI's repos page does. 'sync' picks the right
-    /// mechanism per repo: a managed source syncs from git, a local-path repo re-syncs from disk.</summary>
+    /// mechanism per repo: a managed source syncs from git, a local-path repo re-syncs from disk. 'auto-sync' turns a
+    /// managed source's automatic sync on or off, as the External triggers page's Repositories tab does.</summary>
     public static async Task<int> ReposAsync(string[] positional, string[] args)
     {
         var sub = positional.Length > 1 ? positional[1].ToLowerInvariant() : "list";
-        if (sub is not ("list" or "show" or "register" or "discover" or "sync"))
+        if (sub is not ("list" or "show" or "register" or "discover" or "sync" or "auto-sync"))
         {
-            Console.Error.WriteLine("ERROR  'repos' supports: list, show <name|id>, register, discover, sync <name|id>.");
+            Console.Error.WriteLine("ERROR  'repos' supports: list, show <name|id>, register, discover, sync <name|id>, auto-sync <name|id> on|off.");
             return 1;
+        }
+
+        bool? autoSync = null;
+        if (sub == "auto-sync")
+        {
+            autoSync = positional.Length > 3 ? positional[3].ToLowerInvariant() switch { "on" => true, "off" => false, _ => null } : null;
+            if (positional.Length < 3 || string.IsNullOrWhiteSpace(positional[2]) || autoSync is null)
+            {
+                Console.Error.WriteLine("ERROR  'repos auto-sync' requires a managed source and on or off: sqlflow repos auto-sync <name|id> on|off.");
+                return 1;
+            }
         }
 
         var url = RequireUrl(args);
@@ -333,14 +345,15 @@ internal static partial class RemoteVerbs
                         return 0;
                     }
 
-                    Console.WriteLine($"{"REPO",-28}  {"KIND",-6}  {"LAST SYNC (UTC)",-19}  {"COMMIT",-12}  REMOTE / PATH");
+                    Console.WriteLine($"{"REPO",-28}  {"KIND",-6}  {"SYNCS",-10}  {"LAST SYNC (UTC)",-19}  {"COMMIT",-12}  REMOTE / PATH");
                     foreach (var repo in repos.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
                     {
                         var source = sources.GetValueOrDefault(repo.Name);
                         var kind = source is null ? (repo.RootPath is not null ? "local" : "-") : source.LocalPath is not null ? "path" : "git";
+                        var syncs = source is null ? "-" : !source.Enabled ? "paused" : source.AutoSync ? "on its own" : "on request";
                         var sha = source?.LastSyncedSha is { Length: >= 8 } s ? s[..8] : "-";
                         Console.WriteLine(
-                            $"{Truncate(repo.Name, 28),-28}  {kind,-6}  {repo.LastSyncUtc:yyyy-MM-dd HH:mm:ss}  {sha,-12}  {repo.RemoteUrl ?? repo.RootPath ?? "-"}");
+                            $"{Truncate(repo.Name, 28),-28}  {kind,-6}  {syncs,-10}  {repo.LastSyncUtc:yyyy-MM-dd HH:mm:ss}  {sha,-12}  {repo.RemoteUrl ?? repo.RootPath ?? "-"}");
                         if (source?.LastError is { Length: > 0 } error)
                         {
                             Console.WriteLine($"{string.Empty,-28}  sync error: {Truncate(error, 100)}");
@@ -428,6 +441,34 @@ internal static partial class RemoteVerbs
                     }
 
                     Console.WriteLine($"({flows.Count} flow file(s) in {remote})");
+                    return 0;
+                }
+
+                case "auto-sync":
+                {
+                    // A managed source, by its name or id: one registered but not yet synced has no catalog repo to name.
+                    var raw = positional[2];
+                    var sources = (await client.ListRepoSourcesAsync(1, 200, ct).ConfigureAwait(false)).Items;
+                    var source = Guid.TryParse(raw, out var sourceId)
+                        ? sources.FirstOrDefault(s => s.Id == sourceId)
+                        : sources.FirstOrDefault(s => string.Equals(s.Name, raw, StringComparison.OrdinalIgnoreCase));
+                    if (source is null)
+                    {
+                        Console.Error.WriteLine(
+                            $"ERROR  no managed source '{raw}'. Known sources: {string.Join(", ", sources.Select(s => s.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Take(15))}.");
+                        return 1;
+                    }
+
+                    var set = await client.SetRepoSourceAutoSyncAsync(source.Id, autoSync!.Value, ct).ConfigureAwait(false);
+                    if (json)
+                    {
+                        Console.WriteLine(JsonSerializer.Serialize(set, ControlPlaneClient.JsonIndented));
+                        return 0;
+                    }
+
+                    Console.WriteLine(set.AutoSync
+                        ? $"OK   '{set.Name}' syncs on its own every {set.SyncIntervalSeconds}s, reading the tip of {set.Branch}; it syncs now to catch up."
+                        : $"OK   '{set.Name}' syncs only when asked: it holds {set.LastSyncedSha ?? "no commit yet"} until a trigger request or 'sqlflow repos sync {set.Name}' moves it.");
                     return 0;
                 }
 

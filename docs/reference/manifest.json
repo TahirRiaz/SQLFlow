@@ -647,7 +647,9 @@
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
         "src/SqlFlow.Catalog/UserStore.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
-        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs"
+        "src/SqlFlow.ControlPlane/Security/ExternalTriggerCredential.cs",
+        "gui/src/auth/msal.ts",
+        "gui/src/auth/LoginPage.tsx"
       ]
     },
     {
@@ -809,7 +811,8 @@
         "guide-deployment",
         "guide-github-app",
         "concept-maintenance",
-        "concept-external-triggers"
+        "concept-external-triggers",
+        "concept-repository-auto-sync"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
@@ -822,6 +825,7 @@
         "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
         "src/SqlFlow.ControlPlane/Background/RepoSyncService.cs",
         "src/SqlFlow.ControlPlane/Background/RepoSyncWaiter.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncTarget.cs",
         "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
@@ -1008,7 +1012,8 @@
         "concept-authentication-and-identity",
         "concept-control-plane",
         "flow-schedule",
-        "concept-maintenance"
+        "concept-maintenance",
+        "concept-repository-auto-sync"
       ],
       "sourceRefs": [
         "src/SqlFlow.Catalog/CatalogEntities.cs",
@@ -1031,6 +1036,7 @@
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
         "src/SqlFlow.ControlPlane/Hosting/ControlPlaneModuleServices.cs",
         "gui/src/features/external-triggers/ExternalTriggersPage.tsx",
+        "gui/src/features/external-triggers/RepositoriesTab.tsx",
         "gui/src/features/external-triggers/workflow.ts",
         "integrations/github/action.yml",
         "integrations/github/lib.mjs"
@@ -1490,6 +1496,46 @@
         "src/SqlFlow.Core/Engine/FlowRunner.cs",
         "src/SqlFlow.Execution/DocumentLoader.cs",
         "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-repository-auto-sync",
+      "corpus": "reference",
+      "path": "concepts/repository-auto-sync.md",
+      "title": "Automatic sync of a repository, and syncing only on request",
+      "type": "concept",
+      "summary": "Each repo source syncs on its own interval or only when asked; off, it holds its commit until a trigger request or a sync-now moves it, forward only.",
+      "keywords": [
+        "auto sync",
+        "automatic sync",
+        "autoSync",
+        "sync on request",
+        "sync only on request",
+        "hold commit",
+        "several environments",
+        "central estate repository",
+        "promotion",
+        "gated sync",
+        "merge reaches every environment",
+        "ControlPlane:Bootstrap:Repositories:AutoSync",
+        "repos auto-sync"
+      ],
+      "related": [
+        "concept-control-plane",
+        "concept-external-triggers",
+        "guide-github-actions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/RepoSourceStore.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncService.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncTarget.cs",
+        "src/SqlFlow.ControlPlane/Background/TriggerRequestProcessor.cs",
+        "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs",
+        "gui/src/features/external-triggers/RepositoriesTab.tsx",
+        "gui/src/features/repos/autoSync.ts"
       ]
     },
     {
@@ -2040,7 +2086,7 @@
       "path": "flow/cpy.md",
       "title": "Copy flow (flowType: cpy): file copy between storage endpoints, with zip/unzip",
       "type": "flow-reference",
-      "summary": "flowType: cpy copies files byte-for-byte between local disk and Azure Blob/ADLS in any direction, optionally zipping or unzipping.",
+      "summary": "flowType: cpy copies files byte-for-byte between local disk, Azure Blob/ADLS and S3 in any direction, optionally zipping or unzipping.",
       "keywords": [
         "copy",
         "cpy",
@@ -2479,9 +2525,9 @@
       "id": "flow-overview",
       "corpus": "reference",
       "path": "flow/overview.md",
-      "title": "Anatomy of a flow file: the twelve document kinds",
+      "title": "Anatomy of a flow file: the fourteen document kinds",
       "type": "flow-reference",
-      "summary": "How the top-level flowType key selects one of twelve flow document kinds, what each kind contains, and how loading and validation behave.",
+      "summary": "How the top-level flowType key selects one of fourteen flow document kinds, what each kind contains, and how loading and validation behave.",
       "keywords": [
         "flowtype",
         "document kinds",
@@ -2609,6 +2655,7 @@
         "src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs",
         "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
         "src/SqlFlow.Core/ScheduleSpec.cs",
+        "src/SqlFlow.Core/ScheduleFireDefaults.cs",
         "src/SqlFlow.Core/Runs/ExecutionMode.cs",
         "src/SqlFlow.Catalog/ScheduleClock.cs",
         "src/SqlFlow.Catalog/ScheduleStore.cs",
@@ -2617,6 +2664,7 @@
         "src/SqlFlow.Catalog/CatalogDbContext.cs",
         "src/SqlFlow.Catalog/RunQueueStore.cs",
         "src/SqlFlow.Catalog/RunScopeExpander.cs",
+        "src/SqlFlow.Lineage/Graph/MemberWaves.cs",
         "src/SqlFlow.Dispatch/DispatchState.cs",
         "src/SqlFlow.ControlPlane/Background/SchedulerService.cs",
         "src/SqlFlow.ControlPlane/Background/ScheduleFire.cs",
@@ -3325,10 +3373,13 @@
         "integrations/github",
         "sync and fire action",
         "workflow_dispatch",
-        "trigger key"
+        "trigger key",
+        "several environments",
+        "auto sync"
       ],
       "related": [
         "concept-external-triggers",
+        "concept-repository-auto-sync",
         "concept-authentication-and-identity",
         "flow-schedule",
         "guide-github-app"
@@ -3454,6 +3505,47 @@
         "samples/lineage-demo/sql/usp_BuildOrderFact.sql",
         "samples/lineage-demo/sql/usp_BuildRollups.sql",
         "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "guide-lineage-graph",
+      "corpus": "reference",
+      "path": "guides/lineage-graph.md",
+      "title": "Reading the lineage graph: scope, level, folders, stacks, waves, kinds and trace",
+      "type": "guide",
+      "summary": "How the GUI's lineage graph decides what to draw, what each control of its bar changes, and how a drawing is shared as a link.",
+      "keywords": [
+        "lineage graph",
+        "lineage page",
+        "trace upstream downstream",
+        "impact analysis",
+        "wave range",
+        "folders",
+        "stacks",
+        "handovers",
+        "graph level",
+        "hide kinds",
+        "project-graph",
+        "whole repository"
+      ],
+      "related": [
+        "concept-lineage-graph-and-plan",
+        "concept-lineage-tiers",
+        "concept-control-plane",
+        "concept-shadow-catalog",
+        "guide-lineage-demo"
+      ],
+      "sourceRefs": [
+        "gui/src/features/lineage/LineageGraphPage.tsx",
+        "gui/src/features/lineage/graphModel.ts",
+        "gui/src/features/lineage/graphUrl.ts",
+        "gui/src/features/lineage/graphLayout.ts",
+        "gui/src/features/lineage/GraphControls.tsx",
+        "gui/src/features/lineage/GraphStatusLine.tsx",
+        "gui/src/features/lineage/GraphDetails.tsx",
+        "gui/src/features/lineage/LineageNodeCard.tsx",
+        "gui/unit/lineageGraph.test.ts",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs"
       ]
     },
     {

@@ -36,6 +36,22 @@ public sealed class YamlScheduleLibraryLoader
         .IgnoreUnmatchedProperties()
         .Build();
 
+    private readonly ScheduleFireDefaults _fireDefaults;
+
+    /// <summary>A reader with SQLFlow's defaults.</summary>
+    public YamlScheduleLibraryLoader()
+        : this(ScheduleFireDefaults.SqlFlow)
+    {
+    }
+
+    /// <summary>A reader whose schedules that leave <c>maxConcurrency</c> out take <paramref name="fireDefaults"/>: the
+    /// product's, as its document loader carries it (<c>YamlDocumentLoader.ScheduleLibraries</c>).</summary>
+    public YamlScheduleLibraryLoader(ScheduleFireDefaults fireDefaults)
+    {
+        ArgumentNullException.ThrowIfNull(fireDefaults);
+        _fireDefaults = fireDefaults;
+    }
+
     private sealed class LibraryYaml
     {
         public Dictionary<string, ScheduleEntryYaml?>? Schedules { get; set; }
@@ -163,17 +179,17 @@ public sealed class YamlScheduleLibraryLoader
         return new ScheduleLibrary(schedules, warnings);
     }
 
-    /// <summary>Resolves the declared member-concurrency bound through the shared
-    /// <see cref="ScheduleDefaults.Resolve"/> (omitted takes the product default, <c>0</c> is the explicit unbounded
-    /// opt-out, negative is meaningless), warning on a value that had to be corrected.</summary>
-    internal static int? NormalizeMaxConcurrency(int? value, string name, string source, List<string> warnings)
+    /// <summary>Resolves the declared member-concurrency bound through <see cref="ScheduleFireDefaults.Resolve"/> with
+    /// this reader's product default (omitted takes the default, <c>0</c> is the explicit unbounded opt-out, negative is
+    /// meaningless), warning on a value that had to be corrected.</summary>
+    private int? NormalizeMaxConcurrency(int? value, string name, string source, List<string> warnings)
     {
-        var resolved = ScheduleDefaults.Resolve(value, out var invalid);
+        var resolved = _fireDefaults.Resolve(value, out var invalid);
         if (invalid)
         {
             warnings.Add(
                 $"{source}: schedule '{name}' sets maxConcurrency to {value}, which is not a usable bound; "
-                + $"using the default of {ScheduleDefaults.MaxConcurrency} (use 0 for unbounded).");
+                + $"using the default of {_fireDefaults.Describe()} (use 0 for unbounded).");
         }
 
         return resolved;

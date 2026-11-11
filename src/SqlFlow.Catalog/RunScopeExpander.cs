@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SqlFlow.Lineage.Graph;
 
 namespace SqlFlow.Catalog;
 
@@ -47,9 +48,11 @@ public sealed record RunScopeExpansion(RunScope Scope, string Anchor, IReadOnlyL
 /// Turns a run scope (Flow / Node) or a schedule's member set into the concrete, ordered set of flows to enqueue.
 /// This is the single place that answers "which flows does this execution touch", shared by the read-only preview
 /// endpoint, the trigger endpoint and a schedule's fire and plan, so they can never disagree. It reads exactly the data
-/// the lineage graph does: the flow-to-flow dependency edges (<see cref="CatalogFlowDependency"/>) for descendants,
-/// the schedule's members (<see cref="CatalogScheduleMember"/>) for a schedule, and the topological wave
-/// (<see cref="CatalogPipeline.Wave"/>) for ordering. Only active pipelines are ever selected, so a
+/// the lineage graph does: the flow-to-flow dependency edges (<see cref="CatalogFlowDependency"/>) for descendants
+/// and for ordering, and the schedule's members (<see cref="CatalogScheduleMember"/>) for a schedule. A set is ordered
+/// by the edges among its own members (<see cref="InWaves"/>), not by the repository-wide wave
+/// (<see cref="CatalogPipeline.Wave"/>): a flow the set does not run cannot hold back one it does, though a member it
+/// passes over for its mode keeps the members around it in their order. Only active pipelines are ever selected, so a
 /// flow that has left the estate is never enqueued; a <c>mode: manual</c> or <c>mode: disabled</c> pipeline is
 /// likewise excluded from group membership by default (a Node's anchor is the one exception: naming it IS the
 /// manual trigger; and a Node expansion can opt into "find all" to replay them deliberately). Stateless, like the
@@ -68,9 +71,9 @@ public static class RunScopeExpander
     /// <summary>
     /// Expands <paramref name="scope"/> into its ordered member flows, starting from the flow
     /// <paramref name="anchorFlow"/> names (a whole source runs through its schedule instead: see
-    /// <see cref="ExpandScheduleAsync"/>). The returned members are active pipelines ordered by wave then name; a wave
-    /// that lineage has not computed yet (-1) collapses to 0 so an un-analyzed set runs as a single parallel wave
-    /// rather than in an undefined order. A Node expansion selects only <c>mode: auto</c> descendants by default
+    /// <see cref="ExpandScheduleAsync"/>). The returned members are active pipelines ordered by wave then name, the
+    /// waves taken from the dependencies among the members alone (<see cref="InWaves"/>), so a set lineage has not
+    /// analysed yet, which has no edges, runs as a single parallel wave. A Node expansion selects only <c>mode: auto</c> descendants by default
     /// (find only active); <paramref name="includeAll"/> widens it to every descendant, manual and disabled alike
     /// (find all), for the operator who deliberately wants a retired branch replayed with its parent.
     /// </summary>
@@ -95,7 +98,10 @@ public static class RunScopeExpander
     /// nightly, but only the small and medium tables" is expressed; it never widens the set, so a filter can only
     /// ever run a subset of what the schedule already owns. A null or empty filter runs every member. Inactive,
     /// <c>mode: manual</c>, and <c>mode: disabled</c> members are excluded exactly as they are from a node
-    /// expansion: a manual flow reserved itself for a direct trigger, and a disabled one is deactivated.
+    /// expansion: a manual flow reserved itself for a direct trigger, and a disabled one is deactivated. A member the
+    /// filter selects but its mode excludes is passed over rather than forgotten: the members it sits between keep
+    /// their order (<see cref="InWaves"/>), so a disabled flow in the middle of a chain does not move the flows after it
+    /// into the fire's first wave.
     /// </summary>
     public static async Task<RunScopeExpansion> ExpandScheduleAsync(
         CatalogDbContext catalog, Guid repoId, Guid scheduleId, string scheduleName,
@@ -109,39 +115,78 @@ public static class RunScopeExpander
             ? null
             : batchFilter.Where(b => !string.IsNullOrWhiteSpace(b)).Select(b => b.Trim())
                 .ToHashSet(StringComparer.Ordinal) is { Count: > 0 } set ? set : null;
-        var raw = await (
+        var selected = await (
             from member in catalog.ScheduleMembers.AsNoTracking().Where(m => m.ScheduleId == scheduleId)
             join pipeline in catalog.Pipelines.AsNoTracking() on member.PipelineId equals pipeline.Id
             where pipeline.RepoId == repoId && pipeline.Active
-                  && pipeline.ExecutionMode == PipelineExecutionModes.Auto
                   && (filter == null || filter.Contains(pipeline.Batch ?? CatalogPipeline.DefaultBatch))
-            orderby pipeline.Wave < 0 ? 0 : pipeline.Wave, pipeline.Name
-            select new RunScopeMember(
-                pipeline.Name, pipeline.Kind, pipeline.Wave < 0 ? 0 : pipeline.Wave,
-                pipeline.Batch ?? CatalogPipeline.DefaultBatch, pipeline.Id))
+            select new
+            {
+                Member = new RunScopeMember(
+                    pipeline.Name, pipeline.Kind, 0, pipeline.Batch ?? CatalogPipeline.DefaultBatch, pipeline.Id),
+                Runs = pipeline.ExecutionMode == PipelineExecutionModes.Auto,
+            })
             .ToListAsync(ct).ConfigureAwait(false);
+        var raw = selected.Where(s => s.Runs).Select(s => s.Member).ToList();
+        if (raw.Count < 2)
+        {
+            return new RunScopeExpansion(RunScope.Flow, scheduleName, raw);
+        }
 
-        return new RunScopeExpansion(RunScope.Flow, scheduleName, DenseWaves(raw));
+        var passedOver = selected.Where(s => !s.Runs).Select(s => s.Member.PipelineId!.Value).ToList();
+        var dependencies = await DependenciesAsync(catalog, repoId, ct).ConfigureAwait(false);
+        return new RunScopeExpansion(RunScope.Flow, scheduleName, InWaves(raw, dependencies, passedOver));
     }
 
     /// <summary>
-    /// Renumbers a set's waves to a dense 0..N sequence over exactly the members it contains, preserving their
-    /// order. A fire's waves are then relative to what it actually runs: a batch-filtered subset, or a schedule
-    /// whose flows never include the lineage's wave 0, starts at wave 0 rather than at whatever global wave its
-    /// first member happened to sit on. The group claim gate only cares about the relative order, so the run board's
-    /// preview and the run group's step column show the same wave numbers as what executes.
+    /// Orders the flows one execution runs in waves by the dependencies among them alone (<see cref="MemberWaves"/>, the
+    /// algorithm a batch flow orders its members by): a member waits for a member it depends on (an edge <c>From</c>
+    /// before <c>To</c>, as <see cref="CatalogFlowDependency"/> records them), in as many waves as its longest chain of
+    /// such members, and the members of a wave run together. An edge with an end the set does not run orders nothing,
+    /// and neither does a path through such a flow: a flow that does not run in this execution changes nothing its
+    /// downstream reads, so the repository-wide wave (<see cref="CatalogPipeline.Wave"/>), which counts every flow of the
+    /// repository, would only make members wait for work that is not happening. Two cache refreshes that lineage places
+    /// after two different deliveries of another schedule thus run side by side in a fire of their own schedule. A flow
+    /// the execution passes over (<paramref name="passedOver"/>: a member of the schedule, or a descendant, left out for
+    /// its mode) is the exception: a path through such flows orders the members at its ends, so a load, a disabled
+    /// transform after it and a check after that still run load first and check last. Members on a dependency cycle,
+    /// and those behind one, go to one last wave after every other, as lineage places a cycle in its fallback wave. Waves
+    /// are numbered densely from 0; a wave is ordered by flow name. A member without a
+    /// <see cref="RunScopeMember.PipelineId"/> has no edges.
     /// </summary>
-    private static IReadOnlyList<RunScopeMember> DenseWaves(IReadOnlyList<RunScopeMember> members)
+    /// <param name="members">The flows the execution runs.</param>
+    /// <param name="dependencies">The repository's flow-to-flow edges, <c>From</c> finishing before <c>To</c>; edges
+    /// with an end outside <paramref name="members"/> are ignored, unless a path through passed-over flows joins them.</param>
+    /// <param name="passedOver">The pipelines the execution leaves out for their mode, whose paths still order the
+    /// members; none when null.</param>
+    public static IReadOnlyList<RunScopeMember> InWaves(
+        IReadOnlyList<RunScopeMember> members,
+        IEnumerable<(Guid From, Guid To)> dependencies,
+        IReadOnlyCollection<Guid>? passedOver = null)
     {
-        if (members.Count == 0)
-        {
-            return members;
-        }
+        ArgumentNullException.ThrowIfNull(members);
+        ArgumentNullException.ThrowIfNull(dependencies);
 
-        var rank = members.Select(m => m.Wave).Distinct().OrderBy(w => w)
-            .Select((wave, index) => (wave, index))
-            .ToDictionary(t => t.wave, t => t.index);
-        return members.Select(m => m with { Wave = rank[m.Wave] }).ToList();
+        // A member the queue built from a name alone has no pipeline id, so it is keyed by an id no edge names.
+        var keys = members.Select(m => m.PipelineId ?? Guid.NewGuid()).ToList();
+        var placed = MemberWaves.Compute(keys, dependencies, passedOver: passedOver);
+        return members
+            .Select((member, i) => member with { Wave = placed[i].Wave })
+            .OrderBy(m => m.Wave)
+            .ThenBy(m => m.FlowName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(m => m.FlowName, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>The repository's flow-to-flow dependency edges, <c>From</c> finishing before <c>To</c>.</summary>
+    private static async Task<IReadOnlyList<(Guid From, Guid To)>> DependenciesAsync(
+        CatalogDbContext catalog, Guid repoId, CancellationToken ct)
+    {
+        var edges = await catalog.FlowDependencies.AsNoTracking()
+            .Where(d => d.RepoId == repoId)
+            .Select(d => new { d.FromPipelineId, d.ToPipelineId })
+            .ToListAsync(ct).ConfigureAwait(false);
+        return edges.Select(e => (e.FromPipelineId, e.ToPipelineId)).ToList();
     }
 
     private static async Task<RunScopeExpansion> ExpandFlowAsync(
@@ -151,8 +196,7 @@ public static class RunScopeExpander
         var pipelineId = CatalogIdentity.Pipeline(repoId, flowName);
         var member = await catalog.Pipelines.AsNoTracking()
             .Where(p => p.Id == pipelineId && p.RepoId == repoId && p.Active)
-            .Select(p => new RunScopeMember(
-                p.Name, p.Kind, p.Wave < 0 ? 0 : p.Wave, p.Batch ?? CatalogPipeline.DefaultBatch, p.Id))
+            .Select(p => new RunScopeMember(p.Name, p.Kind, 0, p.Batch ?? CatalogPipeline.DefaultBatch, p.Id))
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         var members = member is null ? Array.Empty<RunScopeMember>() : new[] { member };
         return new RunScopeExpansion(RunScope.Flow, flowName, members);
@@ -174,21 +218,18 @@ public static class RunScopeExpander
 
         // The flow-to-flow dependency edges for this repo: From must finish before To. Reachability from the anchor
         // over From -> To is exactly its transitive descendant set (the same closure the lineage graph highlights).
-        var edges = await catalog.FlowDependencies.AsNoTracking()
-            .Where(d => d.RepoId == repoId)
-            .Select(d => new { d.FromPipelineId, d.ToPipelineId })
-            .ToListAsync(ct).ConfigureAwait(false);
+        var edges = await DependenciesAsync(catalog, repoId, ct).ConfigureAwait(false);
 
         var outgoing = new Dictionary<Guid, List<Guid>>();
-        foreach (var edge in edges)
+        foreach (var (from, to) in edges)
         {
-            if (!outgoing.TryGetValue(edge.FromPipelineId, out var to))
+            if (!outgoing.TryGetValue(from, out var targets))
             {
-                to = new List<Guid>();
-                outgoing[edge.FromPipelineId] = to;
+                targets = new List<Guid>();
+                outgoing[from] = targets;
             }
 
-            to.Add(edge.ToPipelineId);
+            targets.Add(to);
         }
 
         var reachable = new HashSet<Guid> { anchorId };
@@ -215,27 +256,36 @@ public static class RunScopeExpander
         // execution, and a manual or disabled (deactivated) descendant opted out of exactly that. The anchor
         // itself is always kept, because the caller named it explicitly and a direct request IS the manual
         // trigger; includeAll (find all) widens the set to every descendant for a deliberate full replay.
-        var members = await MembersByIdAsync(catalog, repoId, reachable, anchorId, includeAll, ct).ConfigureAwait(false);
-        return new RunScopeExpansion(RunScope.Node, flowName, members);
+        // A descendant left out for its mode is passed over: the descendants it sits between keep their order.
+        var (members, passedOver) = await MembersByIdAsync(catalog, repoId, reachable, anchorId, includeAll, ct).ConfigureAwait(false);
+        return new RunScopeExpansion(RunScope.Node, flowName, InWaves(members, edges, passedOver));
     }
 
-    private static async Task<IReadOnlyList<RunScopeMember>> MembersByIdAsync(
+    /// <summary>
+    /// The active pipelines of <paramref name="pipelineIds"/> a node expansion runs, and those it passes over for their
+    /// mode (a manual or disabled descendant, unless <paramref name="includeAll"/>), whose paths still order the rest.
+    /// </summary>
+    private static async Task<(IReadOnlyList<RunScopeMember> Members, IReadOnlyList<Guid> PassedOver)> MembersByIdAsync(
         CatalogDbContext catalog, Guid repoId, IReadOnlyCollection<Guid> pipelineIds, Guid anchorId, bool includeAll,
         CancellationToken ct)
     {
         if (pipelineIds.Count == 0)
         {
-            return Array.Empty<RunScopeMember>();
+            return (Array.Empty<RunScopeMember>(), Array.Empty<Guid>());
         }
 
         var ids = pipelineIds.ToList();
-        return await catalog.Pipelines.AsNoTracking()
-            .Where(p => p.RepoId == repoId && p.Active && ids.Contains(p.Id)
-                        && (includeAll || p.Id == anchorId || p.ExecutionMode == PipelineExecutionModes.Auto))
-            .OrderBy(p => p.Wave < 0 ? 0 : p.Wave).ThenBy(p => p.Name)
-            .Select(p => new RunScopeMember(
-                p.Name, p.Kind, p.Wave < 0 ? 0 : p.Wave, p.Batch ?? CatalogPipeline.DefaultBatch, p.Id))
+        var active = await catalog.Pipelines.AsNoTracking()
+            .Where(p => p.RepoId == repoId && p.Active && ids.Contains(p.Id))
+            .Select(p => new
+            {
+                Member = new RunScopeMember(p.Name, p.Kind, 0, p.Batch ?? CatalogPipeline.DefaultBatch, p.Id),
+                Runs = includeAll || p.Id == anchorId || p.ExecutionMode == PipelineExecutionModes.Auto,
+            })
             .ToListAsync(ct).ConfigureAwait(false);
+        return (
+            active.Where(a => a.Runs).Select(a => a.Member).ToList(),
+            active.Where(a => !a.Runs).Select(a => a.Member.PipelineId!.Value).ToList());
     }
 
     private static string RequireAnchor(string? anchorFlow)

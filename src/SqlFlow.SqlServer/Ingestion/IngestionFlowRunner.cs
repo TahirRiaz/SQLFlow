@@ -393,7 +393,7 @@ public sealed class IngestionFlowRunner
             //    the create always yields a fresh table carrying THIS run's exact source shape: a kept or
             //    failed prior table never leaks stale rows or a stale schema into the run, and a flow never
             //    accumulates more than this one staging object.
-            var ensureSchemaSql = $"IF SCHEMA_ID(N'{StagingSchemaName}') IS NULL EXEC(N'CREATE SCHEMA [{StagingSchemaName}]');";
+            var ensureSchemaSql = Schema.SchemaStatements.Ensure(StagingSchemaName);
             Trace("staging.schema", ensureSchemaSql);
             await ExecuteAsync(targetConnectionString, ensureSchemaSql, ct).ConfigureAwait(false);
             var resetSql = $"DROP TABLE IF EXISTS {SchemaQualified(staging)};";
@@ -1110,6 +1110,7 @@ public sealed class IngestionFlowRunner
             DateColumn = windowDateColumn,
             TargetFilter = policy.TargetFilter,
             DeletedDateColumn = flow.SystemColumns.DeletedDate ? "DeletedDate_DW" : null,
+            UpdatedDateColumn = flow.SystemColumns.UpdatedDate ? "UpdatedDate_DW" : null,
             RowStatusColumn = flow.SystemColumns.RowStatus ? "RowStatus_DW" : null,
         });
         traceSql("matchkeys.apply", script);

@@ -2,7 +2,7 @@ name: orders_multi
 
 source:
   type: csv
-  location: C:\Projects\SQLFlowV3\samples\multi   # a folder: all matching files are consolidated
+  location: .   # a folder: all matching files are consolidated
   options:
     srcFile: "*.csv"
 

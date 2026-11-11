@@ -91,7 +91,7 @@ export function CodeView({
   value, language, height = 480, fill = false, lsp = true, readOnly = true, onChange, label, extraActions,
   explain = true, "data-testid": testId,
 }: CodeViewProps) {
-  const { mode } = useThemeMode();
+  const { mode, palette } = useThemeMode();
   const monacoRef = useRef<Monaco | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -112,7 +112,7 @@ export function CodeView({
     if (lspOn) {
       registerSqlflowYamlProviders(monaco);
     }
-  }, [mode, lspOn]);
+  }, [mode, palette, lspOn]);
 
   const handleMount = useCallback((editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editorInstance;
@@ -151,13 +151,13 @@ export function CodeView({
     }
   }, [lspOn, value]);
 
-  // The design tokens change when the app toggles; re-define and re-apply so the editor tracks the theme.
+  // The design tokens change with the design and mode; re-define and re-apply so the editor tracks them.
   useEffect(() => {
     if (monacoRef.current) {
       defineSqlflowTheme(monacoRef.current, mode);
       monacoRef.current.editor.setTheme(sqlflowEditorTheme);
     }
-  }, [mode]);
+  }, [mode, palette]);
 
   const displayValue = useMemo(
     () => (isSql && formatSqlOn ? prettyPrintSql(value) : value),

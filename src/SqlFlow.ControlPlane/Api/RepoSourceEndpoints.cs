@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -20,14 +21,21 @@ namespace SqlFlow.ControlPlane.Api;
 /// flow files this source does NOT import. <see cref="SyncRequestedUtc"/> is the latest sync-now,
 /// <see cref="SyncStartedUtc"/> the start of the latest attempt, and <see cref="SyncPending"/> whether a sync is in
 /// progress for an operator (a sync-now not yet answered, or an attempt running; see <see cref="RepoSyncWaiter"/>), so
-/// a client shows a sync as running until the commit it pulls is the one runs are pinned to.</summary>
+/// a client shows a sync as running until the commit it pulls is the one runs are pinned to. <see cref="AutoSync"/> is
+/// whether it syncs on its own every <see cref="SyncIntervalSeconds"/> or only when asked, holding
+/// <see cref="LastSyncedSha"/> until then (<see cref="CatalogRepoSource.AutoSync"/>), with the setting that sets it
+/// (<see cref="AutoSyncConfiguredBy"/>) or who last turned it on or off, and when.</summary>
 public sealed record RepoSourceDto(
     Guid Id, string Name, string? RemoteUrl, string? LocalPath, string Branch, bool Enabled, int SyncIntervalSeconds,
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
     DateTime CreatedUtc, DateTime UpdatedUtc,
     DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false, string? ConfiguredBy = null,
-    GitCredentialDto? Credential = null);
+    GitCredentialDto? Credential = null, bool AutoSync = true, string? AutoSyncConfiguredBy = null, string? AutoSyncUpdatedBy = null,
+    DateTime? AutoSyncUpdatedUtc = null);
+
+/// <summary>The body that turns a repo source's automatic sync on or off.</summary>
+public sealed record SetAutoSyncRequest(bool? AutoSync);
 
 /// <summary>
 /// The credential a repo source's git operations use, as this control plane is configured (nothing is resolved to
@@ -124,6 +132,59 @@ public static class RepoSourceEndpoints
         return group;
     }
 
+    /// <summary>
+    /// The administrator's part of the managed sync: whether each source syncs on its own or only when asked. Mapped under
+    /// the "admin" scope, since it decides when merged changes reach the catalog, and so the estate's runs.
+    /// </summary>
+    public static RouteGroupBuilder MapRepoSourceAdminEndpoints(this RouteGroupBuilder group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        group.MapPut("/repos/sources/{id:guid}/auto-sync", SetAutoSyncAsync).WithTags("RepoSources").WithName("SetRepoSourceAutoSync");
+        return group;
+    }
+
+    /// <summary>
+    /// Turns a source's automatic sync on or off (<see cref="RepoSourceStore.SetAutoSyncAsync"/>) and answers the source as
+    /// it now stands. On, the source syncs at once and then on its interval; off, it holds the commit it has until a trigger
+    /// request or a sync-now moves it. 200 with the source, also when it already synced that way; 400 without
+    /// <c>autoSync</c>; 404 for an unknown source; 409 when the control plane's configuration sets the value, naming the
+    /// setting.
+    /// </summary>
+    private static async Task<Results<Ok<RepoSourceDto>, ProblemHttpResult>> SetAutoSyncAsync(
+        Guid id, SetAutoSyncRequest? body, ClaimsPrincipal user, CatalogDbContext db, TimeProvider clock, RepoSyncWaiter syncWaiter,
+        RepoSyncSignal syncSignal, CancellationToken ct)
+    {
+        if (body?.AutoSync is not { } autoSync)
+        {
+            return TypedResults.Problem(
+                detail: "Say whether the source syncs on its own: { \"autoSync\": true } or { \"autoSync\": false }.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        var changed = await RepoSourceStore.SetAutoSyncAsync(
+            db, id, autoSync, RequestActor.Of(user) ?? RequestActor.Unknown, clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
+        switch (changed.Outcome)
+        {
+            case AutoSyncChange.NotFound:
+                return TypedResults.Problem(
+                    detail: $"No repo source '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
+            case AutoSyncChange.SetByConfiguration:
+                return TypedResults.Problem(
+                    detail: $"Whether this repo source syncs on its own is set by the control plane's configuration ({changed.Setting}); "
+                        + "change it there, or remove it there to set it here, and the control plane writes it when it next starts.",
+                    statusCode: StatusCodes.Status409Conflict, title: "Set by configuration");
+            case AutoSyncChange.Applied when autoSync:
+                // Due now: the source catches up with its branch's tip at once rather than an interval later.
+                syncSignal.Wake();
+                break;
+        }
+
+        var row = await db.RepoSources.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
+        return row is null
+            ? TypedResults.Problem(detail: $"Repo source '{id}' was removed.", statusCode: StatusCodes.Status404NotFound, title: "Not found")
+            : TypedResults.Ok(ToDto(row, syncWaiter));
+    }
+
     private static async Task<Ok<PagedResult<RepoSourceDto>>> ListSourcesAsync(
         CatalogDbContext db, RepoSyncWaiter syncWaiter, int? page, int? pageSize, CancellationToken ct)
     {
@@ -193,14 +254,16 @@ public static class RepoSourceEndpoints
     /// <c>ManagedSync:SyncNowWaitSeconds</c>) for the attempt that answers this request, so it carries the commit that
     /// attempt pulled (<c>lastSyncedSha</c>), which is the commit a run started afterwards is pinned to, or the error it
     /// failed with (<c>lastError</c>). 200 when the attempt answered, success or failure; 202 with the source still
-    /// <c>syncPending</c> when it outlasted the wait; 404 for an unknown or disabled source.
+    /// <c>syncPending</c> when it outlasted the wait; 404 for an unknown or disabled source. A source that syncs only on
+    /// request moves to its branch's tip, as asking to sync now asks; the trace names who asked.
     /// </summary>
     private static async Task<Results<Ok<RepoSourceDto>, Accepted<RepoSourceDto>, ProblemHttpResult>> SyncNowAsync(
-        Guid id, CatalogDbContext db, TimeProvider clock, RepoSyncWaiter syncWaiter, RepoSyncSignal syncSignal,
+        Guid id, ClaimsPrincipal user, CatalogDbContext db, TimeProvider clock, RepoSyncWaiter syncWaiter, RepoSyncSignal syncSignal,
         CancellationToken ct)
     {
         var requestedUtc = clock.GetUtcNow().UtcDateTime;
-        if (!await QueueSyncAsync(db, id, "Sync requested", requestedUtc, clock, syncSignal, ct).ConfigureAwait(false))
+        var reason = $"Sync requested by {RequestActor.Of(user) ?? RequestActor.Unknown}";
+        if (!await QueueSyncAsync(db, id, reason, requestedUtc, clock, syncSignal, ct).ConfigureAwait(false))
         {
             return TypedResults.Problem(
                 detail: $"No enabled repo source '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
@@ -220,8 +283,9 @@ public static class RepoSourceEndpoints
 
     /// <summary>
     /// Asks the managed sync to run the repo synced from git as <paramref name="repoName"/> now, with a full lineage
-    /// recompute. False when the repo is not synced from an enabled git source (a local-path repo applies such a change
-    /// on its next <c>sqlflow db sync</c> instead).
+    /// recompute, at the commit it holds when it syncs only on request (<see cref="RepoSourceStore.ResyncAsync"/>). False
+    /// when the repo is not synced from an enabled git source (a local-path repo applies such a change on its next
+    /// <c>sqlflow db sync</c> instead).
     /// </summary>
     internal static async Task<bool> QueueSyncForRepoAsync(
         CatalogDbContext db, string repoName, string reason, TimeProvider clock, RepoSyncSignal syncSignal,
@@ -477,5 +541,6 @@ public static class RepoSourceEndpoints
         RepoSourceStore.ParseExcludedPaths(s.ExcludedFlowPaths).OrderBy(p => p, StringComparer.Ordinal).ToArray(),
         s.CreatedUtc, s.UpdatedUtc,
         s.SyncRequestedUtc, s.SyncStartedUtc, syncWaiter.IsPending(s), s.ConfiguredBy,
-        ToDto(GitMaterializer.DescribeCredential(s.CredentialReference, s.RemoteUrl)));
+        ToDto(GitMaterializer.DescribeCredential(s.CredentialReference, s.RemoteUrl)),
+        s.AutoSync, s.AutoSyncConfiguredBy, s.AutoSyncUpdatedBy, s.AutoSyncUpdatedUtc);
 }

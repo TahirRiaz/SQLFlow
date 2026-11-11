@@ -1,9 +1,20 @@
-// Entra's answer to a sign-in, told apart from a visit to the workbench, and the words the sign-in page gives MSAL's
-// failures now that MSAL 5 ships only their codes.
+// Entra's answer to a sign-in, told apart from a visit to the workbench and held for the login page; the account a
+// sign-in names to Entra; the state it carries there and back; and the words the sign-in page gives MSAL's failures now
+// that MSAL 5 ships only their codes.
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { entraSignInFailureMessage, isEntraSignInResponse } from "../src/auth/entraSignIn.ts";
+import {
+  decodeEntraSignInState,
+  encodeEntraSignInState,
+  entraLoginHint,
+  entraSignInFailureMessage,
+  holdEntraSignInAnswer,
+  isAbandonedSignIn,
+  isEntraSignInResponse,
+  sameAppPath,
+  takeEntraSignInAnswer,
+} from "../src/auth/entraSignIn.ts";
 
 describe("isEntraSignInResponse", () => {
   it("reads a code answer as Entra's", () => {
@@ -36,21 +47,96 @@ describe("isEntraSignInResponse", () => {
   });
 });
 
+describe("takeEntraSignInAnswer", () => {
+  it("hands the held answer over once", () => {
+    holdEntraSignInAnswer("#code=abc&state=xyz");
+    assert.equal(takeEntraSignInAnswer(), "#code=abc&state=xyz");
+    assert.equal(takeEntraSignInAnswer(), null);
+  });
+
+  it("holds nothing on a visit", () => {
+    assert.equal(takeEntraSignInAnswer(), null);
+  });
+});
+
+describe("entraLoginHint", () => {
+  it("names the account an email address is", () => {
+    assert.equal(entraLoginHint("TRIAZ@equinor.com"), "TRIAZ@equinor.com");
+    assert.equal(entraLoginHint("  ops@contoso.onmicrosoft.com "), "ops@contoso.onmicrosoft.com");
+  });
+
+  it("names no account for a local user name or an empty field", () => {
+    assert.equal(entraLoginHint("admin"), undefined);
+    assert.equal(entraLoginHint(""), undefined);
+    assert.equal(entraLoginHint("   "), undefined);
+  });
+
+  it("names no account for text that only looks like an address", () => {
+    for (const text of ["@contoso.com", "ops@", "a@b@c.com", "first last@contoso.com"]) {
+      assert.equal(entraLoginHint(text), undefined, text);
+    }
+  });
+});
+
+describe("sameAppPath", () => {
+  it("keeps a path of the GUI's own", () => {
+    assert.equal(sameAppPath("/runs?state=failed"), "/runs?state=failed");
+    assert.equal(sameAppPath("/"), "/");
+  });
+
+  it("turns a foreign or protocol-relative address into the home page", () => {
+    for (const path of ["https://evil.example/", "//evil.example/x", "runs", ""]) {
+      assert.equal(sameAppPath(path), "/", path);
+    }
+  });
+});
+
+describe("Entra sign-in state", () => {
+  it("comes back as it was sent", () => {
+    const state = { remember: true, returnTo: "/device?code=ABCD-EFGH" };
+    assert.deepEqual(decodeEntraSignInState(encodeEntraSignInState(state)), state);
+  });
+
+  it("re-checks the address it brings back", () => {
+    assert.deepEqual(
+      decodeEntraSignInState(JSON.stringify({ remember: true, returnTo: "//evil.example/" })),
+      { remember: true, returnTo: "/" },
+    );
+  });
+
+  it("reads a sign-in that sent no state of the GUI's as one that keeps nothing and goes home", () => {
+    const none = { remember: false, returnTo: "/" };
+    for (const state of [undefined, "", "not json", "null", "42", "[]", JSON.stringify({ remember: "yes", returnTo: 7 })]) {
+      assert.deepEqual(decodeEntraSignInState(state), none, String(state));
+    }
+  });
+});
+
+describe("isAbandonedSignIn", () => {
+  it("reads a sign-in mark with no request behind it as an abandoned sign-in", () => {
+    assert.equal(isAbandonedSignIn("no_token_request_cache_error"), true);
+    assert.equal(isAbandonedSignIn("unable_to_parse_token_request_cache_error"), true);
+  });
+
+  it("reads every other failure as one to show", () => {
+    for (const code of ["interaction_in_progress", "state_mismatch", "access_denied", "user_cancelled", ""]) {
+      assert.equal(isAbandonedSignIn(code), false, code);
+    }
+  });
+});
+
 describe("entraSignInFailureMessage", () => {
   const docsLink = (code: string) => `${code}: See https://aka.ms/msal.js.errors#${code} for details`;
 
   it("words a failure MSAL 3 described as MSAL 3 did", () => {
     assert.equal(entraSignInFailureMessage("user_cancelled", docsLink("user_cancelled")), "user_cancelled: User cancelled the flow.");
-    assert.equal(
-      entraSignInFailureMessage("popup_window_error", docsLink("popup_window_error")),
-      "popup_window_error: Error opening popup window. This can happen if you are using IE or if popups are blocked in the browser.",
-    );
+    assert.equal(entraSignInFailureMessage("state_mismatch", docsLink("state_mismatch")), "state_mismatch: State mismatch error");
   });
 
-  it("words the popup timeout, which is also how MSAL 5 reports a popup closed before signing in", () => {
+  it("words the redirect timeout, MSAL's report of a page that never left for Microsoft's sign-in", () => {
     assert.equal(
       entraSignInFailureMessage("timed_out", docsLink("timed_out")),
-      "timed_out: Sign-in did not complete in time. If the Microsoft sign-in window was closed before signing in, sign in again.",
+      "timed_out: The browser did not open Microsoft's sign-in page in time. Sign in again.",
     );
   });
 

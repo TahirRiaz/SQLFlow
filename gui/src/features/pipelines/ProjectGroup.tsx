@@ -47,7 +47,11 @@ export function groupByProject(pipelines: PipelineSummary[]): [string, PipelineS
  * repository laid out as `<project>/flows`, `<project>/data/<feed>/<well>` reads as the folders it actually has,
  * at whatever depth it has them, instead of one flat list where the structure survives only inside long path strings.
  */
-function FolderRows({ node, onOpen }: { node: FolderNode; onOpen: (pipelineId: string) => void }) {
+function FolderRows({ node, onOpen, waveLabel }: {
+  node: FolderNode;
+  onOpen: (pipelineId: string) => void;
+  waveLabel: (pipeline: PipelineSummary) => string | null;
+}) {
   return (
     <>
       {node.folders.map((child) => (
@@ -57,11 +61,11 @@ function FolderRows({ node, onOpen }: { node: FolderNode; onOpen: (pipelineId: s
           testId="repo-folder"
           label={<FolderLabel folder={child} />}
         >
-          <FolderRows node={child} onOpen={onOpen} />
+          <FolderRows node={child} onOpen={onOpen} waveLabel={waveLabel} />
         </TreeNode>
       ))}
       {node.pipelines.map((p) => (
-        <TreeNode key={p.id} id={p.id} testId="repo-pipeline" label={<PipelineLabel pipeline={p} />} />
+        <TreeNode key={p.id} id={p.id} testId="repo-pipeline" label={<PipelineLabel pipeline={p} wave={waveLabel(p)} />} />
       ))}
       {node.files.map((f) => (
         <TreeNode key={f.path} id={`file:${f.path}`} testId="repo-file" label={<FileLabel file={f} />} />
@@ -96,10 +100,16 @@ function FolderLabel({ folder }: { folder: FolderNode }) {
   );
 }
 
-/** A flow row: the name it runs under, its kind, its lineage wave, and whether it is active. The folders above it
- * already say where its file is, so the path is not repeated here. The row's glyph is its kind's, in the kind's colour,
- * so a folder of flows reads by kind down its left edge. */
-function PipelineLabel({ pipeline }: { pipeline: PipelineSummary }) {
+/** A flow's lineage wave, the label a row shows unless its view orders flows another way; none before lineage has
+ * placed it. */
+export function lineageWaveLabel(pipeline: PipelineSummary): string | null {
+  return pipeline.wave === -1 ? null : `wave ${pipeline.wave}`;
+}
+
+/** A flow row: the name it runs under, its kind, its wave, and whether it is active. The folders above it already say
+ * where its file is, so the path is not repeated here. The row's glyph is its kind's, in the kind's colour, so a folder
+ * of flows reads by kind down its left edge. */
+function PipelineLabel({ pipeline, wave }: { pipeline: PipelineSummary; wave: string | null }) {
   const identity = flowKindIdentity(pipeline.kind);
   const KindIcon = identity.icon;
   return (
@@ -109,8 +119,10 @@ function PipelineLabel({ pipeline }: { pipeline: PipelineSummary }) {
       </span>
       <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-medium">{pipeline.name}</span>
       <FlowKindBadge kind={pipeline.kind} testId="repo-pipeline-kind" />
-      {pipeline.wave !== -1 && (
-        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">wave {pipeline.wave}</span>
+      {wave !== null && (
+        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground" data-testid="repo-pipeline-wave">
+          {wave}
+        </span>
       )}
       <ActiveBadge active={pipeline.active} />
     </>
@@ -138,6 +150,7 @@ function FileLabel({ file }: { file: RepoTreeEntry }) {
  * matching flow in a project the user had collapsed. */
 export function ProjectGroup({
   project, rows, files = [], folders = [], repoId, filtered, defaultOpen = false, onOpen, onOpenFile, onRunBatch,
+  waveLabel = lineageWaveLabel,
 }: {
   project: string;
   rows: PipelineSummary[];
@@ -159,6 +172,8 @@ export function ProjectGroup({
   /** Opens a file that is not a flow, on a click or Enter on its row; absent, a file's row only takes the selection. */
   onOpenFile?: (file: RepoTreeEntry) => void;
   onRunBatch: (repoId: string, flowName: string) => void;
+  /** The wave a flow's row shows: its lineage wave, unless the view orders the flows another way (a schedule's fire). */
+  waveLabel?: (pipeline: PipelineSummary) => string | null;
 }) {
   // What the user has explicitly opened or closed, by folder path; every other folder is shut unless the rows are a
   // search's matches (opensFolder). Only the overrides are kept, never the whole expansion, so a folder that arrives
@@ -243,7 +258,7 @@ export function ProjectGroup({
         </div>
         <CollapsibleContent>
           <TreeRoot label={`${project} contents`} state={treeState} className="border-t py-1" testId="repo-project-tree">
-            <FolderRows node={tree} onOpen={onOpen} />
+            <FolderRows node={tree} onOpen={onOpen} waveLabel={waveLabel} />
           </TreeRoot>
         </CollapsibleContent>
       </Card>

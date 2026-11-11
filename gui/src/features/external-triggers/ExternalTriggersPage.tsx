@@ -12,22 +12,25 @@ import { CorrelationError } from "../../components/CorrelationError";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { ConnectSheet } from "./ConnectSheet";
+import { RepositoriesTab } from "./RepositoriesTab";
 import { RequestsTab } from "./RequestsTab";
 import { TriggerSheet } from "./TriggerSheet";
 import { TriggersTab } from "./TriggersTab";
 import { errorText, useRequestTracePanel } from "./triggerVisuals";
 
-type Tab = "triggers" | "requests";
+type Tab = "triggers" | "requests" | "repositories";
 
 function tabFromParam(value: string | null): Tab {
-  return value === "requests" ? "requests" : "triggers";
+  return value === "requests" || value === "repositories" ? value : "triggers";
 }
 
 /**
  * The callers outside SQLFlow that may sync a repository and fire a selection of its schedules (a GitHub workflow after a
  * merge, or a system holding a key), and every request they made. Triggers lists them, with how to connect each; Requests
- * lists what they asked for and how it went, each request's live trace opening in the bottom panel. `?tab=requests`
- * opens the requests, and `?request=<id>` (the link a GitHub job's summary carries) opens one request's trace.
+ * lists what they asked for and how it went, each request's live trace opening in the bottom panel; Repositories says,
+ * per repository, whether it syncs on its own or only when a trigger or a person asks, and turns that on or off.
+ * `?tab=requests` and `?tab=repositories` open those, and `?request=<id>` (the link a GitHub job's summary carries) opens
+ * one request's trace.
  */
 export default function ExternalTriggersPage() {
   const [searchParams] = useSearchParams();
@@ -87,6 +90,7 @@ export default function ExternalTriggersPage() {
             Triggers{triggersQuery.data ? <span className="ml-1 text-muted-foreground">{triggersQuery.data.length}</span> : null}
           </TabsTrigger>
           <TabsTrigger value="requests" className="flex-none" data-testid="external-triggers-tab-requests">Requests</TabsTrigger>
+          <TabsTrigger value="repositories" className="flex-none" data-testid="external-triggers-tab-repositories">Repositories</TabsTrigger>
         </TabsList>
 
         <TabsContent value="triggers">
@@ -111,6 +115,10 @@ export default function ExternalTriggersPage() {
             onTriggerChange={setRequestTrigger}
             onOpen={(request) => openRequest(request)}
           />
+        </TabsContent>
+
+        <TabsContent value="repositories" className="flex flex-col gap-3">
+          <RepositoriesTab triggers={triggersQuery.data} />
         </TabsContent>
       </Tabs>
 

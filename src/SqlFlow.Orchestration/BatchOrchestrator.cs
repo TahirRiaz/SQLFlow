@@ -5,6 +5,7 @@ using SqlFlow.Core.Lineage;
 using SqlFlow.Core.Runs;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Lineage;
+using SqlFlow.Lineage.Graph;
 
 namespace SqlFlow.Orchestration;
 
@@ -432,82 +433,21 @@ public sealed class BatchOrchestrator
         return map;
     }
 
-    /// <summary>Topological waves (the reported plan levels) over the member subgraph: modified Kahn with
-    /// max-level assignment (a member's wave is one past its latest dependency). Cycle members fall into a final
-    /// wave and are returned as unordered, never refused.</summary>
+    /// <summary>Topological waves (the reported plan levels) over the member subgraph (<see cref="MemberWaves"/>, the
+    /// one implementation a schedule's fire is ordered by too): a member's wave is one past its latest dependency. Cycle
+    /// members fall into a final wave and are returned as unordered, never refused.</summary>
     private static (List<IReadOnlyList<string>> Waves, List<string> Unordered) ComputeMemberWaves(
         IReadOnlyList<string> names, IReadOnlyList<LineageFlowDependency> dependencies)
     {
-        var n = names.Count;
-        if (n == 0)
-        {
-            return ([], []);
-        }
-
-        var index = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < n; i++)
-        {
-            index[names[i]] = i;
-        }
-
-        var deps = new HashSet<int>[n];
-        var forward = new List<int>[n];
-        for (var i = 0; i < n; i++)
-        {
-            deps[i] = [];
-            forward[i] = [];
-        }
-
-        foreach (var dep in dependencies)
-        {
-            if (index.TryGetValue(dep.FromFlow, out var from) && index.TryGetValue(dep.ToFlow, out var to) && from != to)
-            {
-                deps[to].Add(from);
-            }
-        }
-
-        var inDegree = new int[n];
-        for (var i = 0; i < n; i++)
-        {
-            inDegree[i] = deps[i].Count;
-            foreach (var j in deps[i])
-            {
-                forward[j].Add(i);
-            }
-        }
-
-        var level = new int[n];
-        var processed = new HashSet<int>();
-        var queue = new Queue<int>(Enumerable.Range(0, n).Where(i => inDegree[i] == 0));
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            processed.Add(current);
-            foreach (var dependent in forward[current])
-            {
-                level[dependent] = Math.Max(level[dependent], level[current] + 1);
-                if (--inDegree[dependent] == 0)
-                {
-                    queue.Enqueue(dependent);
-                }
-            }
-        }
-
-        var unordered = new List<string>();
-        if (processed.Count < n)
-        {
-            var fallback = (processed.Count > 0 ? processed.Max(i => level[i]) : -1) + 1;
-            foreach (var i in Enumerable.Range(0, n).Where(i => !processed.Contains(i)))
-            {
-                level[i] = fallback;
-                unordered.Add(names[i]);
-            }
-
-            unordered.Sort(StringComparer.OrdinalIgnoreCase);
-        }
-
-        var waves = Enumerable.Range(0, n)
-            .GroupBy(i => level[i])
+        var placed = MemberWaves.Compute(
+            names, dependencies.Select(d => (d.FromFlow, d.ToFlow)), StringComparer.OrdinalIgnoreCase);
+        var unordered = Enumerable.Range(0, names.Count)
+            .Where(i => placed[i].Unordered)
+            .Select(i => names[i])
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var waves = Enumerable.Range(0, names.Count)
+            .GroupBy(i => placed[i].Wave)
             .OrderBy(g => g.Key)
             .Select(g => (IReadOnlyList<string>)g.Select(i => names[i]).OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList())
             .ToList();

@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RunStatus, RunSummary } from "../../api/types";
-import { pipelineApi, runApi, scheduleApi } from "../../api/endpoints";
+import { pipelineApi, runApi } from "../../api/endpoints";
 import { activeFilterClass, FilterBar } from "../../components/FilterBar";
 import { FilterCombobox, type FilterOption } from "../../components/FilterCombobox";
 import { FlowKindBadge } from "../../components/FlowKindBadge";
@@ -27,6 +27,7 @@ import { useNow } from "../../hooks/useNow";
 import { secondsSince, setTiming } from "../../lib/runTiming";
 import { formatDurationSeconds, parseUtc } from "../../lib/time";
 import { contributedKinds, kindContribution } from "../../modules/registry";
+import { scheduleFilterOptions, useAllSchedules } from "../schedules/useAllSchedules";
 import { TriggerRunDialog } from "./TriggerRunDialog";
 
 const statuses: RunStatus[] = ["queued", "running", "succeeded", "failed", "cancelled", "skipped"];
@@ -344,8 +345,8 @@ export default function RunsPage() {
   const [flowName, setFlowName] = useState(() =>
     readLocalStorageState("sqlflow.filters.runs.flowName", "").trim());
   const [batch, setBatch] = useLocalStorageState("sqlflow.filters.runs.batch", "");
-  // The schedule name on the Schedules board deep-links here as /runs?scheduleId=<id>, so a click lands on that
-  // schedule's runs with the filter already applied. This is a transient deep-link context, not remembered.
+  // A link can open the board on one schedule's runs as /runs?scheduleId=<id>, with the filter already applied. This
+  // is a transient deep-link context, not remembered.
   const [scheduleId, setScheduleId] = useState(() => searchParams.get("scheduleId") ?? "");
   const [grouped, setGrouped] = useLocalStorageState("sqlflow.filters.runs.grouped", true);
   // "last" (the default) shows each flow's newest run: the outcome of the most recent execution, "what happened
@@ -365,12 +366,8 @@ export default function RunsPage() {
 
   // Schedules and batches are the estate's source list, not its flow list, so both are small, change rarely, and
   // load once for the whole board: they populate the schedule/batch filter dropdowns AND the grouping's
-  // run-to-schedule map. A big page covers every repo in one request.
-  const schedulesQuery = useQuery({
-    queryKey: ["schedules", "for-runs-board"],
-    queryFn: () => scheduleApi.list({ pageSize: 500 }),
-    staleTime: 60_000,
-  });
+  // run-to-schedule map.
+  const schedulesQuery = useAllSchedules();
 
   const batchesQuery = useQuery({
     queryKey: ["pipelines", "batches", "for-runs-board"],
@@ -378,16 +375,7 @@ export default function RunsPage() {
     staleTime: 60_000,
   });
 
-  // The schedule dropdown's options: one per schedule, valued by id (so two like-named schedules in different
-  // repos stay distinct), hinted with how many flows a fire runs. Ordered by name, as the server returns them.
-  const scheduleOptions = useMemo<FilterOption[]>(
-    () => (schedulesQuery.data?.items ?? []).map((schedule) => ({
-      value: schedule.id,
-      label: schedule.name,
-      hint: `${schedule.memberPipelineIds.length} ${schedule.memberPipelineIds.length === 1 ? "flow" : "flows"}`,
-    })),
-    [schedulesQuery.data],
-  );
+  const scheduleOptions = useMemo(() => scheduleFilterOptions(schedulesQuery.data?.items ?? []), [schedulesQuery.data]);
 
   // The batch dropdown's options: the estate's distinct batch labels (the same label in several repos is one
   // option, since the runs filter matches on the label), hinted with the total flow count, sorted by label.

@@ -87,9 +87,22 @@ public sealed class GitMaterializer
 
     private readonly string _cacheRoot;
 
-    /// <param name="cacheRoot">Where materialized commits are cached; defaults to a per-user temp location.</param>
+    /// <summary>The variable that names where a node keeps its checkouts, for an environment that keeps them to itself.</summary>
+    public const string CacheRootVariable = "SQLFLOW_NODE_CACHE";
+
+    /// <summary>
+    /// Where this process keeps checkouts and staged flow versions: <see cref="CacheRootVariable"/>, or a per-user temp
+    /// location. A run writes its history beside the flow file, so the checkouts of two environments on one machine share
+    /// that history unless they are kept apart: an incremental flow reads its watermark from it.
+    /// </summary>
+    public static string DefaultCacheRoot
+        => Environment.GetEnvironmentVariable(CacheRootVariable) is { Length: > 0 } root
+            ? root
+            : Path.Combine(Path.GetTempPath(), "sqlflow", "node-cache");
+
+    /// <param name="cacheRoot">Where materialized commits are cached; defaults to <see cref="DefaultCacheRoot"/>.</param>
     public GitMaterializer(string? cacheRoot = null)
-        => _cacheRoot = cacheRoot ?? Path.Combine(Path.GetTempPath(), "sqlflow", "node-cache");
+        => _cacheRoot = cacheRoot ?? DefaultCacheRoot;
 
     private static object LockFor(string workingDir)
         => WorkingDirLocks.GetOrAdd(Path.GetFullPath(workingDir), static _ => new object());

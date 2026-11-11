@@ -181,13 +181,16 @@ internal sealed record ScheduleCreated(Guid Id, DateTime? NextFireUtc);
 /// schedule), plus the run group and member count when the fire expanded to a wave-ordered set.</summary>
 internal sealed record ScheduleRunAccepted(Guid RunId, Guid? GroupId = null, int MemberCount = 1);
 
-/// <summary>A managed source the control plane keeps the catalog synced from: a git remote, or a local path read live.</summary>
+/// <summary>A managed source the control plane keeps the catalog synced from: a git remote, or a local path read live.
+/// <see cref="AutoSync"/> is whether it syncs on its own, or only when a trigger request or a sync-now asks, with the
+/// setting that sets it, or who last turned it on or off and when.</summary>
 internal sealed record RepoSourceDto(
     Guid Id, string Name, string? RemoteUrl, string? LocalPath, string Branch, bool Enabled, int SyncIntervalSeconds,
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
     DateTime CreatedUtc, DateTime UpdatedUtc,
-    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false);
+    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false, string? ConfiguredBy = null,
+    bool AutoSync = true, string? AutoSyncConfiguredBy = null, string? AutoSyncUpdatedBy = null, DateTime? AutoSyncUpdatedUtc = null);
 
 /// <summary>Registers (upserts by name) a managed source, with exactly one of a git remote and a local path; the
 /// credential is a ${...} reference, never a raw token.</summary>

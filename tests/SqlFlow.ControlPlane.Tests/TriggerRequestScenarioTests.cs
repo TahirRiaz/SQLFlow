@@ -127,6 +127,69 @@ public sealed class TriggerRequestScenarioTests
         Assert.Contains(trace, e => e.Message.Contains("which contains", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// The case automatic sync off is for: an environment that takes a merge only when its own trigger reports it. The
+    /// branch moved on past the merge (a later merge not yet approved for this environment), and the repository moves to
+    /// the merge the request names, not to the tip.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_repository_that_syncs_only_on_request_moves_to_the_merge_asked_for_and_not_past_it()
+    {
+        var (cs, factory, client, admin) = await StartAsync();
+        await using var _ = factory;
+        using var __ = client;
+        await using var estate = TriggerEstate.Seed(cs, "trg_gated", [new("land", "nightly")]);
+        await estate.RegisterAsync(client, admin);
+        await TurnAutoSyncOffAsync(client, admin, estate);
+        var merged = estate.Commit("data/a.csv", "id\n1\n");
+        var later = estate.Commit("data/b.csv", "id\n2\n");
+
+        var (_, request, _) = await TriggerEstate.RequestAsync(client, admin, new CreateTriggerRequest(estate.RepoName, Commit: merged, Schedules: ["nightly"]));
+
+        var running = await TriggerEstate.WaitAsync(client, admin, request!.Id, d => d.Request.State == TriggerRequestStates.Running);
+        Assert.Equal(merged, running.Request.SyncedCommit);
+        Assert.Equal(merged, running.Request.Schedules[0].CommitSha);
+        var trace = await estate.TraceAsync(request.Id);
+        Assert.Contains(trace, e => e.Step == "sync" && e.Message.Contains("syncs only on request, so the sync moves it to", StringComparison.Ordinal));
+        Assert.Contains(trace, e => e.Step == "sync:target" && e.Message.StartsWith("Moving from ", StringComparison.Ordinal));
+        Assert.NotEqual(later, await estate.WithCatalogAsync(db => db.RepoSources.Where(s => s.Id == estate.SourceId).Select(s => s.LastSyncedSha).SingleAsync()));
+    }
+
+    /// <summary>
+    /// A request for an earlier merge, reaching a repository that syncs only on request after a later merge's request did,
+    /// finds the merge already there: the repository stays on the later commit, and the request fires on it.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_repository_that_syncs_only_on_request_never_moves_back_to_an_earlier_merge()
+    {
+        var (cs, factory, client, admin) = await StartAsync();
+        await using var _ = factory;
+        using var __ = client;
+        await using var estate = TriggerEstate.Seed(cs, "trg_noback", [new("land", "nightly")]);
+        await estate.RegisterAsync(client, admin);
+        await TurnAutoSyncOffAsync(client, admin, estate);
+        var earlier = estate.Commit("data/a.csv", "id\n1\n");
+        var later = estate.Commit("data/b.csv", "id\n2\n");
+
+        var (_, first, _) = await TriggerEstate.RequestAsync(client, admin, new CreateTriggerRequest(estate.RepoName, Commit: later));
+        Assert.Equal(later, (await TriggerEstate.WaitForEndAsync(client, admin, first!.Id)).Request.SyncedCommit);
+        var (_, second, _) = await TriggerEstate.RequestAsync(client, admin, new CreateTriggerRequest(estate.RepoName, Commit: earlier));
+
+        var done = await TriggerEstate.WaitForEndAsync(client, admin, second!.Id);
+        Assert.Equal(TriggerRequestStates.Succeeded, done.Request.State);
+        Assert.Equal(TriggerSyncOutcomes.Current, done.Request.SyncOutcome);
+        Assert.Equal(later, done.Request.SyncedCommit);
+        var trace = await estate.TraceAsync(second.Id);
+        Assert.Contains(trace, e => e.Message.Contains("does not move back", StringComparison.Ordinal));
+    }
+
+    private static async Task TurnAutoSyncOffAsync(HttpClient client, string admin, TriggerEstate estate)
+    {
+        using var response = await TriggerEstate.Send(
+            client, admin, HttpMethod.Put, $"/api/v1/repos/sources/{estate.SourceId:D}/auto-sync", new SetAutoSyncRequest(false));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [SkippableFact]
     public async Task A_commit_the_tracked_branch_does_not_hold_fires_nothing_and_says_why()
     {

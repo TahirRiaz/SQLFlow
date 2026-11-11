@@ -14,7 +14,8 @@ namespace SqlFlow.ControlPlane.Tests;
 /// and re-publishes, which a third flow reads again. It then asserts that <c>/lineage/projects</c> lists the
 /// (repo, project) pairs, that <c>/lineage/project-graph</c> seeded on the project returns the whole downstream
 /// closure across the repo boundary, that a hop-depth cap stops the walk and reports the cut object as a frontier,
-/// and that seeding on an object (a deep-link) returns its immediate producer and consumer. Every seeded row is
+/// that seeding on an object (a deep-link) returns its immediate producer and consumer, and that a repository named
+/// with no project seeds on every flow it holds. Every seeded row is
 /// removed in a finally so repeated runs stay isolated in a shared catalog.
 /// </summary>
 [Trait("Category", "Integration")]
@@ -134,8 +135,22 @@ public sealed class LineageProjectGraphApiTests
             Assert.Contains(p1, objectIds);
             Assert.Contains(p2, objectIds);
 
-            // A project with no seed and no expand is a bad request, not an empty graph.
-            using var noSeed = await SendAsync(client, token, $"/api/v1/lineage/project-graph?repoId={repoA}");
+            // A repository named with no project seeds on every active flow it holds: both of repo A's projects,
+            // the flow that shares nothing with the chain included, and what is downstream of them in repo B.
+            var wholeRepo = await GetJsonAsync<ProjectGraphDto>(
+                client, token, $"/api/v1/lineage/project-graph?repoId={repoA}");
+            var repoSeeds = wholeRepo.Pipelines.Where(p => p.IsSeed).Select(p => p.Id).ToHashSet();
+            Assert.Equal(new HashSet<Guid> { p1, pOther }, repoSeeds);
+            var repoIds = wholeRepo.Pipelines.Select(p => p.Id).ToHashSet();
+            Assert.Contains(p2, repoIds);
+            Assert.Contains(p4, repoIds);
+            var repoKeys = wholeRepo.Objects.Select(o => o.Key).ToHashSet();
+            Assert.Contains(o3, repoKeys);
+            Assert.Contains(ox, repoKeys);
+            Assert.Contains(oy, repoKeys);
+
+            // Nothing to seed from is a bad request, not an empty graph.
+            using var noSeed = await SendAsync(client, token, "/api/v1/lineage/project-graph");
             Assert.Equal(HttpStatusCode.BadRequest, noSeed.StatusCode);
         }
         finally

@@ -305,7 +305,9 @@ public sealed class YamlDocumentLoader
     /// A loader over the built-in flow kinds plus the kinds and companion document types a host registered. A
     /// registered kind may not claim a built-in <c>flowType</c>, and no two registrations may share a
     /// <c>flowType</c> or a <c>documentType</c>: each would make one of them unreachable, so it is refused at
-    /// construction rather than surfacing as a wrongly parsed document later.
+    /// construction rather than surfacing as a wrongly parsed document later. <paramref name="fireDefaults"/> is the
+    /// width the host's product gives a schedule that leaves <c>maxConcurrency</c> out (<see cref="FireDefaults"/>);
+    /// SQLFlow's when null.
     /// </summary>
     public YamlDocumentLoader(
         YamlFlowLoader fileFlows,
@@ -323,8 +325,10 @@ public sealed class YamlDocumentLoader
         YamlTranslateFlowLoader translateFlows,
         YamlSchemaRegistrationFlowLoader schemaRegistrationFlows,
         IEnumerable<IFlowDocumentKind> kinds,
-        IEnumerable<ICompanionDocumentKind> companions)
+        IEnumerable<ICompanionDocumentKind> companions,
+        ScheduleFireDefaults? fireDefaults = null)
     {
+        FireDefaults = fireDefaults ?? ScheduleFireDefaults.SqlFlow;
         ArgumentNullException.ThrowIfNull(fileFlows);
         ArgumentNullException.ThrowIfNull(ingestionFlows);
         ArgumentNullException.ThrowIfNull(exportFlows);
@@ -404,15 +408,27 @@ public sealed class YamlDocumentLoader
     }
 
     /// <summary>A loader over the built-in flow kinds, plus <paramref name="kinds"/> and <paramref name="companions"/>
-    /// when given: what a component that has no dependency injection of its own parses with.</summary>
+    /// when given, with <paramref name="fireDefaults"/> (SQLFlow's when null): what a component that has no dependency
+    /// injection of its own parses with.</summary>
     public static YamlDocumentLoader CreateDefault(
-        IEnumerable<IFlowDocumentKind>? kinds = null, IEnumerable<ICompanionDocumentKind>? companions = null)
+        IEnumerable<IFlowDocumentKind>? kinds = null, IEnumerable<ICompanionDocumentKind>? companions = null,
+        ScheduleFireDefaults? fireDefaults = null)
         => new(
             new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
             new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
             new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
             new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-            new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader(), kinds ?? [], companions ?? []);
+            new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader(), kinds ?? [], companions ?? [], fireDefaults);
+
+    /// <summary>
+    /// The width this loader's product gives a schedule that leaves <c>maxConcurrency</c> out, which every schedule it
+    /// reads resolves with: an inline block here, and a schedule library through <see cref="ScheduleLibraries"/>. The
+    /// repository sync, the proposal preflight and the CLI read schedules through a loader, so they agree with it.
+    /// </summary>
+    public ScheduleFireDefaults FireDefaults { get; }
+
+    /// <summary>A schedule library reader that resolves an omitted <c>maxConcurrency</c> with <see cref="FireDefaults"/>.</summary>
+    public YamlScheduleLibraryLoader ScheduleLibraries() => new(FireDefaults);
 
     /// <summary>The flow kinds a host registered beside the built-in ones.</summary>
     public IReadOnlyCollection<IFlowDocumentKind> Kinds => _kinds.Values;
@@ -482,7 +498,7 @@ public sealed class YamlDocumentLoader
     {
         var probe = Probe(yaml, source);
         var flowType = probe?.FlowType?.Trim();
-        var schedule = MapSchedule(probe?.Schedule, source);
+        var schedule = MapSchedule(probe?.Schedule, source, FireDefaults);
         var mode = YamlDocumentParts.ParseExecutionMode(probe?.Mode, "mode", source);
 
         // A schedule's operation and values are run arguments like a trigger's, so the document's kind must accept them:
@@ -595,7 +611,8 @@ public sealed class YamlDocumentLoader
             "health check, 'scm' for a database source-control snapshot, 'sch' to register an external database's " +
             "tables and views in the catalog, 'batch' for an ordered multi-flow batch, " +
             "'api' for a generic acquisition flow (HTTP / SFTP / Azure Table), 'cpy' for a file-copy flow "
-            + "(local / Azure storage / S3, with optional zip/unzip), 'cal' for a generated calendar dimension, "
+            + "(local / Azure storage / S3, with optional zip/unzip), 'sftp' for an SFTP download or upload, "
+            + "'cal' for a generated calendar dimension, "
             + "'trl' for a JSON translation flow (query result to shaped documents, optionally delivered to an API), "
             + "or omit flowType for a file flow."
             + (_kinds.Count == 0
@@ -666,7 +683,7 @@ public sealed class YamlDocumentLoader
         return document with { Schedule = schedule, Mode = mode, Lifecycle = lifecycle };
     }
 
-    private static ScheduleSpec? MapSchedule(ScheduleYaml? schedule, string source)
+    private static ScheduleSpec? MapSchedule(ScheduleYaml? schedule, string source, ScheduleFireDefaults fireDefaults)
     {
         if (schedule is null)
         {
@@ -698,10 +715,10 @@ public sealed class YamlDocumentLoader
             Timezone = string.IsNullOrWhiteSpace(schedule.Timezone) ? "UTC" : schedule.Timezone.Trim(),
             Enabled = schedule.Enabled ?? true,
             Catchup = schedule.Catchup ?? false,
-            // Omitted takes the product default; 0 is the explicit unbounded opt-out. The probe has nowhere to
+            // Omitted takes the product's default; 0 is the explicit unbounded opt-out. The probe has nowhere to
             // surface a warning, so a meaningless negative simply falls back to the default (the schedule-library
             // loader, which does have a warning channel, reports it).
-            MaxConcurrency = ScheduleDefaults.Resolve(schedule.MaxConcurrency, out _),
+            MaxConcurrency = fireDefaults.Resolve(schedule.MaxConcurrency, out _),
             Operation = string.IsNullOrWhiteSpace(schedule.Operation) ? null : schedule.Operation.Trim(),
             Values = ScheduleValues(schedule.Values, source),
         };

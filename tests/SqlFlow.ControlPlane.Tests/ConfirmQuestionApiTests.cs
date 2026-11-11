@@ -1,9 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Api;
+using SqlFlow.ControlPlane.Security;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
@@ -37,6 +41,47 @@ public sealed class ConfirmQuestionApiTests
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         Assert.Contains(
             "ControlPlane__AiContext__Enabled", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A GUI chat run's delegated token carries the person's own id, so a confirmation the model made with it would be
+    /// stored as the person's verdict: it is refused with the endpoint's own reason, before anything is read or stored,
+    /// whatever the outcome it claims. The fence admits the call (the Slack bot confirms through it under its own
+    /// credential), so the refusal is the endpoint's.
+    /// </summary>
+    [SkippableFact]
+    public async Task AConfirmationFromAChatRunsDelegatedToken_IsRefused_AndStoresNothing()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var question = $"Which depot shipped the most on {Guid.NewGuid():N}?";
+        var sql = "SELECT Depot FROM Shipments";
+        var hash = SemanticExampleHash.Compute(question, sql);
+        await using var factory = Enabled(cs);
+        using var client = factory.CreateClient();
+        var person = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(JwtRegisteredClaimNames.Sub, "chat-person"),
+            new Claim("uid", Guid.NewGuid().ToString("D")),
+            new Claim("role", "Operator"),
+            new Claim("scope", "read operate"),
+        ], "test"));
+        var delegated = factory.Services.GetRequiredService<TokenIssuer>()
+            .IssueAssistantDelegation(person, TimeSpan.FromMinutes(4), DateTime.UtcNow).Token;
+        await using var db = CatalogDatabase.Create(cs);
+
+        foreach (var outcome in new[] { QuestionConfirmationOutcome.Accepted, QuestionConfirmationOutcome.Corrected })
+        {
+            using var response = await ConfirmAsync(client, delegated, new ConfirmQuestionRequest(question, sql, outcome));
+
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Contains(QuestionExampleEndpoints.ConfirmationIsThePersonsTitle, body, StringComparison.Ordinal);
+            Assert.DoesNotContain(AssistantDelegationMiddleware.DeniedTitle, body, StringComparison.Ordinal);
+        }
+
+        Assert.False(await db.SemanticExamples.AnyAsync(e => e.ContentHash == hash));
     }
 
     [SkippableFact]

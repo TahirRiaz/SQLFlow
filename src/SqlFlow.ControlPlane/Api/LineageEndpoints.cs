@@ -257,8 +257,10 @@ public sealed record SubscriberReportVisualDto(
 /// <c>manual</c> (a person added or edited it, and generation leaves it alone).</param>
 /// <param name="UpdatedBy">Who last added or edited it; null for a generated question.</param>
 /// <param name="UpdatedUtc">When a person last added or edited it.</param>
+/// <param name="Model">For a generated question, the model that wrote it; null for a person's question and for one
+/// generated before questions recorded it.</param>
 public sealed record SubscriberReportQuestionDto(
-    long Id, string Question, string Origin, string? UpdatedBy, DateTime? UpdatedUtc);
+    long Id, string Question, string Origin, string? UpdatedBy, DateTime? UpdatedUtc, string? Model);
 
 /// <summary>One page of a report, with the visuals on it. <c>ReportFile</c> names which <c>.pbix</c> the page
 /// came from, which only distinguishes pages when a subscriber's <c>pbix:</c> names a directory of several
@@ -1840,7 +1842,7 @@ public static class LineageEndpoints
                 questionsByVisual[v.VisualKey].Select(q => q.Question).ToList(),
                 v.VisualKey,
                 questionsByVisual[v.VisualKey]
-                    .Select(q => new SubscriberReportQuestionDto(q.Id, q.Question, q.Origin, q.UpdatedBy, q.UpdatedUtc))
+                    .Select(q => new SubscriberReportQuestionDto(q.Id, q.Question, q.Origin, q.UpdatedBy, q.UpdatedUtc, q.Model))
                     .ToList())))
             .ToLookup(x => x.PageKey, x => x.Dto);
 
@@ -2049,8 +2051,9 @@ public static class LineageEndpoints
         string ObjectKey, string ObjectName, string Tier);
 
     /// <summary>
-    /// A project's lineage as a single cross-repo subgraph. The seed is the selected project's active flows (the base
-    /// objects they read and the tables they write); from there the walk follows data strictly downstream, crossing
+    /// A repository's or a project's lineage as a single cross-repo subgraph. The seed is the active flows of the
+    /// selected project, or, when a repository is named with no project, of the whole repository (the base objects
+    /// they read and the tables they write); from there the walk follows data strictly downstream, crossing
     /// repo boundaries freely because objects are global and an object's origin repo does not gate how data flows
     /// through it. The walk is bounded two ways so a widely-consumed project cannot return the whole estate: a hop
     /// depth (<paramref name="depth"/>, clamped) and a node cap. Objects at the depth boundary that still have
@@ -2060,8 +2063,8 @@ public static class LineageEndpoints
     private static async Task<Results<Ok<ProjectGraphDto>, ProblemHttpResult>> GetProjectGraphAsync(
         CatalogDbContext db, Guid? repoId, string? project, int? depth, string[]? expand, CancellationToken ct)
     {
-        // The seed is either a project (a repo-root folder) or, for a deep-link onto a specific node, one or more
-        // expand tokens. A GUID token is a pipeline re-seeded at depth 0; any other token is an object key whose
+        // The seed is a repository, one of its projects (a repo-root folder) or, for a deep-link onto a specific node,
+        // one or more expand tokens. A GUID token is a pipeline re-seeded at depth 0; any other token is an object key whose
         // producers (its immediate upstream) and consumers (downstream) both re-enter the walk, so a jumped-to object
         // shows where it comes from and where it goes without a separate whole-repo drawing path.
         var expandPipelineIds = new HashSet<Guid>();
@@ -2091,10 +2094,10 @@ public static class LineageEndpoints
             return NotFound("repo", checkRepo);
         }
 
-        if (!hasProject && !hasExpand)
+        if (!hasProject && !hasExpand && repoId is null)
         {
             return TypedResults.Problem(
-                detail: "Provide a 'project' (a repo-root folder) or an 'expand' node to seed the lineage graph.",
+                detail: "Provide a 'repoId' (a whole repository), a 'project' (a repo-root folder) or an 'expand' node to seed the lineage graph.",
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "No seed");
         }
@@ -2109,10 +2112,11 @@ public static class LineageEndpoints
 
         var maxDepth = Math.Clamp(depth ?? DefaultGraphDepth, 1, MaxGraphDepth);
 
-        // Seed pipelines: the selected project's active flows in its repo. The project is derived in memory (a path
-        // split SQL should not carry), so only this repo's (id, path) pairs are pulled, not the whole table.
+        // Seed pipelines: the active flows of the selected project, or of the whole repository when it is named with
+        // no project. The project is derived in memory (a path split SQL should not carry), so only this repo's
+        // (id, path) pairs are pulled, not the whole table.
         var seedPipelineIds = new HashSet<Guid>();
-        if (hasProject)
+        if (repoId is not null)
         {
             var repoPipelines = await db.Pipelines.AsNoTracking()
                 .Where(p => p.RepoId == repoId!.Value && p.Active)
@@ -2120,7 +2124,7 @@ public static class LineageEndpoints
                 .ToListAsync(ct).ConfigureAwait(false);
             foreach (var p in repoPipelines)
             {
-                if (ProjectPath.Of(p.RelativePath) == project)
+                if (!hasProject || ProjectPath.Of(p.RelativePath) == project)
                 {
                     seedPipelineIds.Add(p.Id);
                 }

@@ -371,4 +371,47 @@ public static class ComputeTaskStore
             .Select(t => t.TaskId)
             .ToListAsync(ct).ConfigureAwait(false);
     }
+
+    /// <summary>How many finished tasks one retention delete removes: a result is a bounded JSON document, so this keeps
+    /// each delete's lock short and a backlog a few round-trips.</summary>
+    public const int RetentionBatchSize = 1000;
+
+    /// <summary>How many finished tasks (succeeded, failed or cancelled) were enqueued before
+    /// <paramref name="olderThanUtc"/>: what the Maintenance page's retention on compute tasks removes. A task still queued
+    /// or running is never counted, whatever its age.</summary>
+    public static Task<long> CountFinishedBeforeAsync(
+        CatalogDbContext catalog, DateTime olderThanUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        return catalog.ComputeTasks.LongCountAsync(
+            t => (t.Status == RunStatuses.Succeeded || t.Status == RunStatuses.Failed || t.Status == RunStatuses.Cancelled)
+                && t.EnqueuedUtc < olderThanUtc,
+            ct);
+    }
+
+    /// <summary>Deletes the finished tasks <see cref="CountFinishedBeforeAsync"/> counts, their results with them, in
+    /// bounded batches that seek the (Status, EnqueuedUtc) index. A task still queued or running is never removed.
+    /// Returns the tasks removed.</summary>
+    public static async Task<long> RemoveFinishedBeforeAsync(
+        CatalogDbContext catalog, DateTime olderThanUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        long removed = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var deleted = await catalog.Database.ExecuteSqlAsync(
+                $"""
+                 DELETE TOP ({RetentionBatchSize}) FROM [catalog].[ComputeTask]
+                 WHERE [Status] IN ({RunStatuses.Succeeded}, {RunStatuses.Failed}, {RunStatuses.Cancelled})
+                   AND [EnqueuedUtc] < {olderThanUtc}
+                 """,
+                ct).ConfigureAwait(false);
+            removed += deleted;
+            if (deleted < RetentionBatchSize)
+            {
+                return removed;
+            }
+        }
+    }
 }

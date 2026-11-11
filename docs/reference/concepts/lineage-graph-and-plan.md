@@ -186,6 +186,7 @@ The wave is lineage's primary output:
 
 - `sqlflow db sync` stamps each pipeline's wave onto the catalog (`pipeline.Wave` in src/SqlFlow.Catalog/CatalogSync.cs), per repository.
 - Batch flows (`flowType: batch`) order their members from the same dependency data: the orchestrator computes the lineage report over the folder, then recomputes concurrency waves over just the included member subset from the report's `FlowDependencies` (the same modified-Kahn, max-level algorithm, scoped to the batch), and runs members wave by wave (src/SqlFlow.Orchestration/BatchOrchestrator.cs). See [batch flows](../flow/batch.md).
+- A schedule's fire and a flow run with its descendants are ordered the same way, over the flows they run: the catalog's flow-to-flow edges between members, with `MemberWaves` (src/SqlFlow.Lineage/Graph/MemberWaves.cs), the one implementation batch flows use too, so a flow the run does not include holds back none that it does. The stamped `pipeline.Wave` counts every flow of the repository and is not a fire's order. See [schedule](../flow/schedule.md#membership-what-a-fire-runs).
 
 ### Determinism
 

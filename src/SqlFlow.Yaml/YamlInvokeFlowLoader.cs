@@ -33,6 +33,7 @@ public sealed class YamlInvokeFlowLoader
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .WithAttemptingUnquotedStringTypeDeserialization()
+        .WithExactDecimals()
         .Build();
 
     public InvokeDocument LoadFile(string path)

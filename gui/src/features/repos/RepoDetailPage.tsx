@@ -17,7 +17,9 @@ import { DetailPair } from "../../components/DetailPair";
 import { EmptyState } from "../../components/EmptyState";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RichTooltip } from "../../components/RichTooltip";
 import { SearchInput } from "../../components/SearchInput";
 import { TruncatedText } from "../../components/TruncatedText";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
@@ -25,11 +27,12 @@ import { fetchAllPipelines } from "../pipelines/fetchAllPipelines";
 import { groupByProject, pipelineMatches, ProjectGroup } from "../pipelines/ProjectGroup";
 import { projectOf } from "./project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
-import { useSyncTracePanel } from "./useSyncTracePanel";
+import { useFollowSyncTrace, useSyncTracePanel } from "./useSyncTracePanel";
 import { GitCredentialChip } from "./GitCredentialChip";
 import { useRepoAccessCheck } from "./useRepoAccessCheck";
 import { useRepoFileWindow } from "./RepoFileWindow";
 import { announceSyncOutcome, repoSourcesRefetchInterval } from "./syncOutcome";
+import { syncModeDetail, syncModeText, syncNowConfirmText, syncNowMoves } from "./autoSync";
 
 /** The most repos/sources a single control plane realistically holds; one page covers the by-name lookup. */
 const SOURCE_LOOKUP_CAP = 200;
@@ -296,9 +299,11 @@ export default function RepoDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const openSyncTrace = useSyncTracePanel();
+  const followSyncTrace = useFollowSyncTrace();
   const [triggerOpen, setTriggerOpen] = useState(false);
   const [runBatchFlow, setRunBatchFlow] = useState<string | null>(null);
   const [pipelineFilter, setPipelineFilter] = useState("");
+  const [confirmSync, setConfirmSync] = useState(false);
 
   const repoQuery = useQuery({
     queryKey: ["repos", "detail", repoId],
@@ -411,8 +416,13 @@ export default function RepoDetailPage() {
                   size="sm"
                   disabled={!source.enabled || syncNow.isPending || source.syncPending}
                   onClick={() => {
-                    syncNow.mutate(source.id);
-                    openSyncTrace(source.id, repo.name);
+                    // A repository that syncs only on request holds its commit on purpose: moving it to the tip is confirmed.
+                    if (syncNowMoves(source)) {
+                      setConfirmSync(true);
+                    } else {
+                      syncNow.mutate(source.id);
+                      followSyncTrace(source.id, repo.name);
+                    }
                   }}
                   data-testid="repo-sync-now"
                 >
@@ -498,9 +508,11 @@ export default function RepoDetailPage() {
           </DetailPair>
           <DetailPair label="Branch">{source?.branch ?? "-"}</DetailPair>
           <DetailPair label="Sync">
-            {source === undefined
-              ? "manual (CLI)"
-              : source.enabled ? `every ${source.syncIntervalSeconds}s` : "paused"}
+            {source === undefined ? "manual (CLI)" : (
+              <RichTooltip title="How it syncs" body={syncModeDetail(source)}>
+                <span data-testid="repo-sync-mode">{syncModeText(source)}</span>
+              </RichTooltip>
+            )}
           </DetailPair>
           <DetailPair label="Synced commit">
             <Mono>{source?.lastSyncedSha?.slice(0, 10) ?? "-"}</Mono>
@@ -551,6 +563,20 @@ export default function RepoDetailPage() {
           flowName={runBatchFlow}
         />
       )}
+      <ConfirmDialog
+        open={confirmSync && source !== undefined}
+        title="Move to the tip of its branch"
+        message={source === undefined ? "" : syncNowConfirmText(source)}
+        confirmLabel="Sync now"
+        onConfirm={() => {
+          setConfirmSync(false);
+          if (source !== undefined && repo !== undefined) {
+            syncNow.mutate(source.id);
+            followSyncTrace(source.id, repo.name);
+          }
+        }}
+        onClose={() => setConfirmSync(false)}
+      />
     </Page>
   );
 }

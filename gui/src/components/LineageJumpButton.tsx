@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -20,6 +20,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { isApiError } from "../api/client";
@@ -129,6 +132,206 @@ function JumpOption({
 }
 
 /**
+ * What the picker holds: what is about to open, and each graph or node it opens in, resolved once `active` says the menu
+ * holding it is open. Any menu can host it: the jump button's own, or a submenu of a menu another surface opens. Selecting
+ * an option deep-links the graph focused on that node; `onClose` closes the host for a choice that is not one of its items.
+ */
+function LineageJumpOptions({ target, active, onClose }: {
+  target: LineageJumpTarget;
+  active: boolean;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+
+  // Resolve which repos' graphs an object appears in (writing repo first), only once the picker is opened.
+  const repos = useQuery({
+    queryKey: ["lineage-object-repos", target.kind === "object" ? target.objectKey : ""],
+    queryFn: () => lineageApi.objectRepos(target.kind === "object" ? target.objectKey : ""),
+    enabled: active && target.kind === "object",
+  });
+
+  // Resolve which pipeline(s) ingest a file by matching it against the flow source specs in the catalog.
+  const filePipelines = useQuery({
+    queryKey: ["file-pipelines", target.kind === "file" ? target.filePath : ""],
+    queryFn: () => lineageApi.filePipelines(target.kind === "file" ? target.filePath : ""),
+    enabled: active && target.kind === "file",
+  });
+
+  // Resolve the node(s) a dataset is by its system and name, only once the picker is opened. The listing's search
+  // narrows by name on the server; which of the answers are this dataset is decided here, on the exact name.
+  const datasets = useQuery({
+    queryKey: ["lineage-dataset-nodes", target.kind === "dataset" ? target.system : "", target.kind === "dataset" ? target.name : ""],
+    queryFn: () => lineageApi.datasets(target.kind === "dataset" ? { system: target.system, search: target.name } : {}),
+    enabled: active && target.kind === "dataset",
+  });
+
+  // repoId is optional: a subscriber's or a dataset's graph walk is repo-agnostic (it seeds on the node's own key,
+  // not a project), so no repo needs choosing for it, unlike an object (which can live in several repos' graphs).
+  const go = (focusId: string, repoId?: string) => {
+    onClose();
+    const params = new URLSearchParams({ focus: focusId });
+    if (repoId !== undefined) {
+      params.set("repoId", repoId);
+    }
+    navigate(`/lineage?${params.toString()}`);
+  };
+
+  const objectRepos = target.kind === "object" ? (repos.data ?? []) : [];
+  const multi = objectRepos.length > 1;
+  const datasetNodes = target.kind === "dataset" ? datasetJumpNodes(target, datasets.data ?? []) : [];
+
+  return (
+    <>
+      <div className="px-2 py-1.5" data-testid="lineage-jump-menu">
+        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Open in lineage graph
+        </div>
+        <div className="mt-1 flex items-center gap-2">
+          <TargetIcon target={target} />
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-semibold">{target.label}</div>
+            {target.sublabel !== undefined && (
+              <div className="truncate text-xs text-muted-foreground">{target.sublabel}</div>
+            )}
+          </div>
+        </div>
+      </div>
+      <DropdownMenuSeparator />
+
+      {target.kind === "node" && (
+        <JumpOption
+          primary={target.repoName}
+          secondary="Trace this flow in the graph"
+          onSelect={() => go(target.focusId, target.repoId)}
+        />
+      )}
+
+      {target.kind === "subscriber" && (
+        <JumpOption
+          primary={target.label}
+          secondary="Trace what it reads and how those tables are populated"
+          onSelect={() => go(target.subscriberKey)}
+        />
+      )}
+
+      {target.kind === "dataset" && (
+        datasets.isPending ? (
+          <div className="flex items-center gap-2 px-2 py-2 text-[13px] text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Finding nodes
+          </div>
+        ) : datasets.isError ? (
+          <p className="px-2 py-2 text-[13px] text-destructive" data-testid="lineage-jump-error">
+            {`The lineage nodes could not be read: ${isApiError(datasets.error) ? datasets.error.message : String(datasets.error)}`}
+          </p>
+        ) : datasetNodes.length === 0 ? (
+          <div className="px-2 py-2" data-testid="lineage-jump-empty">
+            <p className="text-[13px] text-muted-foreground">
+              No synced flow reads or writes this dataset, so it is not in any graph.
+            </p>
+          </div>
+        ) : (
+          <>
+            {datasetNodes.length > 1 && (
+              <div className="px-2 py-1 text-xs text-muted-foreground">
+                {`Declared as ${datasetNodes.length} nodes; choose one`}
+              </div>
+            )}
+            {datasetNodes.map((node) => (
+              <JumpOption
+                key={node.key}
+                primary={`${node.namespace}.${node.group}`}
+                secondary={datasetUse(node)}
+                onSelect={() => go(node.key)}
+              />
+            ))}
+          </>
+        )
+      )}
+
+      {target.kind === "object" && (
+        repos.isPending ? (
+          <div className="flex items-center gap-2 px-2 py-2 text-[13px] text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Finding graphs
+          </div>
+        ) : repos.isError ? (
+          <p className="px-2 py-2 text-[13px] text-destructive" data-testid="lineage-jump-error">
+            {`The graphs holding it could not be read: ${isApiError(repos.error) ? repos.error.message : String(repos.error)}`}
+          </p>
+        ) : objectRepos.length === 0 ? (
+          <div className="px-2 py-2" data-testid="lineage-jump-empty">
+            <p className="text-[13px] text-muted-foreground">
+              This object has no recorded lineage yet, so it is not in any graph.
+            </p>
+            <button
+              type="button"
+              className="mt-1 text-[13px] text-primary hover:underline"
+              onClick={() => {
+                onClose();
+                navigate("/lineage/objects");
+              }}
+            >
+              Open in the object explorer
+            </button>
+          </div>
+        ) : (
+          <>
+            {multi && (
+              <div className="px-2 py-1 text-xs text-muted-foreground">
+                {`Appears in ${objectRepos.length} repos; choose one`}
+              </div>
+            )}
+            {objectRepos.map((repo) => (
+              <JumpOption
+                key={repo.repoId}
+                primary={repo.repoName}
+                secondary={`${repo.edgeCount} lineage reference${repo.edgeCount === 1 ? "" : "s"}`}
+                flag={repo.writes ? "populates" : undefined}
+                onSelect={() => go(target.objectKey, repo.repoId)}
+              />
+            ))}
+          </>
+        )
+      )}
+
+      {target.kind === "file" && (
+        filePipelines.isPending ? (
+          <div className="flex items-center gap-2 px-2 py-2 text-[13px] text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Matching flows
+          </div>
+        ) : filePipelines.isError ? (
+          <p className="px-2 py-2 text-[13px] text-destructive" data-testid="lineage-jump-error">
+            {`The flows ingesting it could not be read: ${isApiError(filePipelines.error) ? filePipelines.error.message : String(filePipelines.error)}`}
+          </p>
+        ) : (filePipelines.data?.length ?? 0) === 0 ? (
+          <div className="px-2 py-2" data-testid="lineage-jump-empty">
+            <p className="text-[13px] text-muted-foreground">
+              No file flow's source pattern matches this file.
+            </p>
+          </div>
+        ) : (
+          <>
+            {(filePipelines.data?.length ?? 0) > 1 && (
+              <div className="px-2 py-1 text-xs text-muted-foreground">
+                {`Ingested by ${filePipelines.data!.length} flows; choose one`}
+              </div>
+            )}
+            {filePipelines.data!.map((match) => (
+              <JumpOption
+                key={match.pipelineId}
+                primary={match.pipelineName}
+                secondary={`${match.repoName} matches ${match.pattern}`}
+                flag={match.pathConfirmed ? "path match" : undefined}
+                onSelect={() => go(match.pipelineId, match.repoId)}
+              />
+            ))}
+          </>
+        )
+      )}
+    </>
+  );
+}
+
+/**
  * The lineage jump: a labeled action that opens a small picker showing exactly what you are about to open and,
  * for an object that lives in more than one repo, every graph it appears in (the repo whose flow populates it
  * flagged "populates") so you choose which to trace. A single target still shows the picker so the destination
@@ -145,45 +348,7 @@ export function LineageJumpButton({
    * The label moves to the tooltip, which the aria-label already carried for assistive tech. */
   iconOnly?: boolean;
 }) {
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-
-  // Resolve which repos' graphs an object appears in (writing repo first), only once the picker is opened.
-  const repos = useQuery({
-    queryKey: ["lineage-object-repos", target.kind === "object" ? target.objectKey : ""],
-    queryFn: () => lineageApi.objectRepos(target.kind === "object" ? target.objectKey : ""),
-    enabled: open && target.kind === "object",
-  });
-
-  // Resolve which pipeline(s) ingest a file by matching it against the flow source specs in the catalog.
-  const filePipelines = useQuery({
-    queryKey: ["file-pipelines", target.kind === "file" ? target.filePath : ""],
-    queryFn: () => lineageApi.filePipelines(target.kind === "file" ? target.filePath : ""),
-    enabled: open && target.kind === "file",
-  });
-
-  // Resolve the node(s) a dataset is by its system and name, only once the picker is opened. The listing's search
-  // narrows by name on the server; which of the answers are this dataset is decided here, on the exact name.
-  const datasets = useQuery({
-    queryKey: ["lineage-dataset-nodes", target.kind === "dataset" ? target.system : "", target.kind === "dataset" ? target.name : ""],
-    queryFn: () => lineageApi.datasets(target.kind === "dataset" ? { system: target.system, search: target.name } : {}),
-    enabled: open && target.kind === "dataset",
-  });
-
-  // repoId is optional: a subscriber's or a dataset's graph walk is repo-agnostic (it seeds on the node's own key,
-  // not a project), so no repo needs choosing for it, unlike an object (which can live in several repos' graphs).
-  const go = (focusId: string, repoId?: string) => {
-    setOpen(false);
-    const params = new URLSearchParams({ focus: focusId });
-    if (repoId !== undefined) {
-      params.set("repoId", repoId);
-    }
-    navigate(`/lineage?${params.toString()}`);
-  };
-
-  const objectRepos = target.kind === "object" ? (repos.data ?? []) : [];
-  const multi = objectRepos.length > 1;
-  const datasetNodes = target.kind === "dataset" ? datasetJumpNodes(target, datasets.data ?? []) : [];
 
   const trigger = (
     <Button
@@ -220,144 +385,39 @@ export function LineageJumpButton({
         className="w-80"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="px-2 py-1.5" data-testid="lineage-jump-menu">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Open in lineage graph
-          </div>
-          <div className="mt-1 flex items-center gap-2">
-            <TargetIcon target={target} />
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold">{target.label}</div>
-              {target.sublabel !== undefined && (
-                <div className="truncate text-xs text-muted-foreground">{target.sublabel}</div>
-              )}
-            </div>
-          </div>
-        </div>
-        <DropdownMenuSeparator />
-
-        {target.kind === "node" && (
-          <JumpOption
-            primary={target.repoName}
-            secondary="Trace this flow in the graph"
-            onSelect={() => go(target.focusId, target.repoId)}
-          />
-        )}
-
-        {target.kind === "subscriber" && (
-          <JumpOption
-            primary={target.label}
-            secondary="Trace what it reads and how those tables are populated"
-            onSelect={() => go(target.subscriberKey)}
-          />
-        )}
-
-        {target.kind === "dataset" && (
-          datasets.isPending ? (
-            <div className="flex items-center gap-2 px-2 py-2 text-[13px] text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Finding nodes
-            </div>
-          ) : datasets.isError ? (
-            <p className="px-2 py-2 text-[13px] text-destructive" data-testid="lineage-jump-error">
-              {`The lineage nodes could not be read: ${isApiError(datasets.error) ? datasets.error.message : String(datasets.error)}`}
-            </p>
-          ) : datasetNodes.length === 0 ? (
-            <div className="px-2 py-2" data-testid="lineage-jump-empty">
-              <p className="text-[13px] text-muted-foreground">
-                No synced flow reads or writes this dataset, so it is not in any graph.
-              </p>
-            </div>
-          ) : (
-            <>
-              {datasetNodes.length > 1 && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">
-                  {`Declared as ${datasetNodes.length} nodes; choose one`}
-                </div>
-              )}
-              {datasetNodes.map((node) => (
-                <JumpOption
-                  key={node.key}
-                  primary={`${node.namespace}.${node.group}`}
-                  secondary={datasetUse(node)}
-                  onSelect={() => go(node.key)}
-                />
-              ))}
-            </>
-          )
-        )}
-
-        {target.kind === "object" && (
-          repos.isPending ? (
-            <div className="flex items-center gap-2 px-2 py-2 text-[13px] text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Finding graphs
-            </div>
-          ) : objectRepos.length === 0 ? (
-            <div className="px-2 py-2" data-testid="lineage-jump-empty">
-              <p className="text-[13px] text-muted-foreground">
-                This object has no recorded lineage yet, so it is not in any graph.
-              </p>
-              <button
-                type="button"
-                className="mt-1 text-[13px] text-primary hover:underline"
-                onClick={() => {
-                  setOpen(false);
-                  navigate("/lineage/objects");
-                }}
-              >
-                Open in the object explorer
-              </button>
-            </div>
-          ) : (
-            <>
-              {multi && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">
-                  {`Appears in ${objectRepos.length} repos; choose one`}
-                </div>
-              )}
-              {objectRepos.map((repo) => (
-                <JumpOption
-                  key={repo.repoId}
-                  primary={repo.repoName}
-                  secondary={`${repo.edgeCount} lineage reference${repo.edgeCount === 1 ? "" : "s"}`}
-                  flag={repo.writes ? "populates" : undefined}
-                  onSelect={() => go(target.objectKey, repo.repoId)}
-                />
-              ))}
-            </>
-          )
-        )}
-
-        {target.kind === "file" && (
-          filePipelines.isPending ? (
-            <div className="flex items-center gap-2 px-2 py-2 text-[13px] text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Matching flows
-            </div>
-          ) : (filePipelines.data?.length ?? 0) === 0 ? (
-            <div className="px-2 py-2" data-testid="lineage-jump-empty">
-              <p className="text-[13px] text-muted-foreground">
-                No file flow's source pattern matches this file.
-              </p>
-            </div>
-          ) : (
-            <>
-              {(filePipelines.data?.length ?? 0) > 1 && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">
-                  {`Ingested by ${filePipelines.data!.length} flows; choose one`}
-                </div>
-              )}
-              {filePipelines.data!.map((match) => (
-                <JumpOption
-                  key={match.pipelineId}
-                  primary={match.pipelineName}
-                  secondary={`${match.repoName} matches ${match.pattern}`}
-                  flag={match.pathConfirmed ? "path match" : undefined}
-                  onSelect={() => go(match.pipelineId, match.repoId)}
-                />
-              ))}
-            </>
-          )
-        )}
+        <LineageJumpOptions target={target} active={open} onClose={() => setOpen(false)} />
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * The lineage jump as an entry of a menu another surface opens, such as a right-click menu on a canvas: a submenu
+ * holding the same picker the button opens, resolved once the submenu opens. Selecting an option closes the whole
+ * menu, as any of its items does; `onClose` closes it for the one choice that is not an item (the object explorer).
+ */
+export function LineageJumpSubmenu({
+  target, label = "Open in lineage", glyph, onClose, testId = "lineage-jump-submenu",
+}: {
+  target: LineageJumpTarget;
+  /** What the entry reads in its menu; the picker it opens names the target itself. */
+  label?: string;
+  /** The entry's glyph, for a menu listing several things to trace; the lineage glyph otherwise. */
+  glyph?: ReactNode;
+  /** Closes the menu hosting the entry. */
+  onClose: () => void;
+  testId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <DropdownMenuSub open={open} onOpenChange={setOpen}>
+      <DropdownMenuSubTrigger data-testid={testId}>
+        {glyph ?? <Network />}
+        <span className="min-w-0 truncate">{label}</span>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-80" onClick={(event) => event.stopPropagation()}>
+        <LineageJumpOptions target={target} active={open} onClose={onClose} />
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

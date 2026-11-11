@@ -1,4 +1,6 @@
-﻿using SqlFlow.Core;
+﻿using Microsoft.Extensions.DependencyInjection;
+using SqlFlow.Core;
+using SqlFlow.Execution;
 using SqlFlow.Yaml;
 using Xunit;
 
@@ -105,12 +107,108 @@ public sealed class ScheduleMaxConcurrencyTests
         Assert.Null(unbounded.MaxConcurrency);
     }
 
+    [Theory]
+    [InlineData(null)] // unbounded
+    [InlineData(16)]
+    public void AHostsDefault_IsWhatAnOmittedBoundTakes_InALibraryAndInline(int? hostDefault)
+    {
+        var documents = YamlDocumentLoader.CreateDefault(fireDefaults: new ScheduleFireDefaults(hostDefault));
+        var library = documents.ScheduleLibraries().Parse(
+            """
+            schedules:
+              untuned:
+                cron: "0 7 * * *"
+              serial:
+                cron: "0 5 * * *"
+                maxConcurrency: 1
+              unbounded:
+                cron: "0 6 * * *"
+                maxConcurrency: 0
+            """);
+
+        Assert.Empty(library.Warnings);
+        Assert.Equal(hostDefault, Spec(library, "untuned").MaxConcurrency);
+        Assert.Equal(1, Spec(library, "serial").MaxConcurrency);
+        Assert.Null(Spec(library, "unbounded").MaxConcurrency);
+        Assert.Equal(hostDefault, Inline(null, documents).MaxConcurrency);
+        Assert.Equal(2, Inline("  maxConcurrency: 2", documents).MaxConcurrency);
+    }
+
+    [Fact]
+    public void AHostsDefault_IsNamedInTheWarningOnAnUnusableBound()
+    {
+        var library = YamlDocumentLoader.CreateDefault(fireDefaults: ScheduleFireDefaults.Unbounded).ScheduleLibraries().Parse(
+            """
+            schedules:
+              broken:
+                cron: "0 4 * * *"
+                maxConcurrency: -1
+            """,
+            "schedules.yaml");
+
+        Assert.Null(Spec(library, "broken").MaxConcurrency);
+        var warning = Assert.Single(library.Warnings);
+        Assert.Contains("using the default of unbounded (use 0 for unbounded)", warning, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-2)]
+    public void AHostsDefault_IsABoundOfAtLeastOne_OrUnbounded(int bound)
+        => Assert.Throws<ArgumentOutOfRangeException>(() => new ScheduleFireDefaults(bound));
+
+    [Fact]
+    public void ALoaderWithoutAHostDefault_KeepsSqlFlows()
+    {
+        Assert.Same(ScheduleFireDefaults.SqlFlow, YamlDocumentLoader.CreateDefault().FireDefaults);
+        Assert.Equal(ScheduleDefaults.MaxConcurrency, ScheduleFireDefaults.SqlFlow.MaxConcurrency);
+        using var services = new ServiceCollection().AddLogging().AddSqlFlowEngine().BuildServiceProvider();
+        Assert.Same(ScheduleFireDefaults.SqlFlow, services.GetRequiredService<YamlDocumentLoader>().FireDefaults);
+    }
+
+    [Fact]
+    public void TheEngineLoader_CarriesTheDefaultTheHostRegistered()
+    {
+        using var services = new ServiceCollection().AddLogging().AddSqlFlowEngine()
+            .AddSingleton(ScheduleFireDefaults.Unbounded)
+            .BuildServiceProvider();
+
+        Assert.Same(ScheduleFireDefaults.Unbounded, services.GetRequiredService<YamlDocumentLoader>().FireDefaults);
+    }
+
+    [Fact]
+    public void TheEstateScan_ReadsLibrariesWithTheLoadersDefault()
+    {
+        var root = Directory.CreateTempSubdirectory("sqlflow-fire-width-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "schedules.yaml"), "schedules:\n  nightly:\n    cron: \"0 4 * * *\"\n");
+
+            var sqlFlows = new SqlFlow.Lineage.Collection.FlowSetCollector(YamlDocumentLoader.CreateDefault()).Collect(root);
+            var unbounded = new SqlFlow.Lineage.Collection.FlowSetCollector(
+                YamlDocumentLoader.CreateDefault(fireDefaults: ScheduleFireDefaults.Unbounded)).Collect(root);
+
+            Assert.Equal(ScheduleDefaults.MaxConcurrency, Assert.Single(sqlFlows.Schedules).Spec.MaxConcurrency);
+            Assert.Null(Assert.Single(unbounded.Schedules).Spec.MaxConcurrency);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static ScheduleSpec Spec(ScheduleLibrary library, string name)
         => Assert.Single(library.Schedules, s => s.Name == name).Spec;
 
-    private static ScheduleSpec Inline(string? boundLine)
+    private static ScheduleSpec Inline(string? boundLine, YamlDocumentLoader documents)
     {
-        var yaml = "flowType: ing\n"
+        var document = documents.Parse(InlineYaml(boundLine));
+        Assert.NotNull(document.Schedule);
+        return document.Schedule;
+    }
+
+    private static string InlineYaml(string? boundLine)
+        => "flowType: ing\n"
             + "name: some_flow_02_ing\n"
             + "schedule:\n"
             + "  name: nightly\n"
@@ -128,14 +226,14 @@ public sealed class ScheduleMaxConcurrencyTests
             + "load:\n"
             + "  keyColumns: [id]\n";
 
+    private static ScheduleSpec Inline(string? boundLine)
+    {
         var loader = new YamlDocumentLoader(
             new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
             new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
             new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
             new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(), new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
 
-        var document = loader.Parse(yaml);
-        Assert.NotNull(document.Schedule);
-        return document.Schedule;
+        return Inline(boundLine, loader);
     }
 }

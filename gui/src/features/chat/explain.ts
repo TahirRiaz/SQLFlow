@@ -111,11 +111,24 @@ export function explainCodeQuestion(code: ExplainCode, page: ExplainPage, produc
   return `${intro}\n\n${block(shown.text, code.language)}${shown.note}\n\n${LOOK_IT_UP}`;
 }
 
+/** An explanation before it is asked: what it is about, in a few words, and the question that opens its conversation. */
+export interface ExplainQuestion {
+  subject: string;
+  question: string;
+}
+
+/** What explaining a piece of code asks, wherever its conversation is held: the drawer, or a panel of the page itself. */
+export function codeExplanation(code: ExplainCode, page: ExplainPage, productName: string): ExplainQuestion {
+  return { subject: codeSubject(code), question: explainCodeQuestion(code, page, productName) };
+}
+
 /** Two versions of one document, as a comparison window shows them. */
 export interface ExplainChange {
   original: string;
   modified: string;
   language: string;
+  /** What the window names each side; without names, the original is the earlier version and the modified the later. */
+  sides?: { original: string; modified: string };
 }
 
 /** What is being explained when it is a change, in a few words: the sheet's subtitle. */
@@ -123,16 +136,26 @@ export function changeSubject(change: ExplainChange): string {
   return `the change to this ${languageName(change.language)}`;
 }
 
-/** The question that explains what changed between two versions of a document, and what the change does. */
+/**
+ * The question that explains what changed between two versions of a document, and what the change does. Where the window
+ * names its sides, each version is introduced by its name, and the question asks what differs, since two named sides
+ * need not be an earlier and a later one.
+ */
 export function explainChangeQuestion(change: ExplainChange, page: ExplainPage, productName: string): string {
   const name = languageName(change.language);
-  const intro = `I'm new to ${productName}. What changed between these two versions of a ${name} document, compared `
-    + `on ${pageLine(page)}, and what does the change do?`;
-  const room = Math.floor((MAX_EXPLAIN_LENGTH - intro.length - LOOK_IT_UP.length - 300) / 2);
+  const intro = change.sides === undefined
+    ? `I'm new to ${productName}. What changed between these two versions of a ${name} document, compared `
+      + `on ${pageLine(page)}, and what does the change do?`
+    : `I'm new to ${productName}. What differs between these two versions of a ${name} document, compared `
+      + `on ${pageLine(page)}, and what does each difference mean?`;
+  const [first, second] = change.sides === undefined
+    ? ["The earlier version", "The later version"]
+    : [`The version shown as "${change.sides.original}"`, `The version shown as "${change.sides.modified}"`];
+  const room = Math.floor((MAX_EXPLAIN_LENGTH - intro.length - first.length - second.length - LOOK_IT_UP.length - 300) / 2);
   const before = fit(change.original, room);
   const after = fit(change.modified, room);
-  return `${intro}\n\nThe earlier version:\n\n${block(before.text, change.language)}${before.note}`
-    + `\n\nThe later version:\n\n${block(after.text, change.language)}${after.note}\n\n${LOOK_IT_UP}`;
+  return `${intro}\n\n${first}:\n\n${block(before.text, change.language)}${before.note}`
+    + `\n\n${second}:\n\n${block(after.text, change.language)}${after.note}\n\n${LOOK_IT_UP}`;
 }
 
 /** A fenced block of code. */

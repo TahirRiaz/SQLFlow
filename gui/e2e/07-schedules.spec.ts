@@ -35,11 +35,25 @@ test.describe.serial("schedules", () => {
     await expect(row.getByTestId("schedule-badge")).toHaveText("enabled", { timeout: 15_000 });
   });
 
-  test("the flow name links to the pipeline detail", async ({ adminPage }) => {
+  test("the schedule's name opens its run board", async ({ adminPage }) => {
     await adminPage.getByTestId("nav-schedules").click();
     const row = adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first();
-    await row.getByTestId("schedule-flow-link").click();
-    await expect(adminPage.getByTestId("page-pipeline-detail")).toBeVisible({ timeout: 15_000 });
+    await row.getByTestId("schedule-name-run").click();
+    const sheet = adminPage.getByTestId("run-schedule-dialog");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByTestId("run-schedule-name")).toHaveText("Csv_Basic");
+    await expect(sheet.getByTestId("run-schedule-summary")).toHaveText("1 flow", { timeout: 15_000 });
+    await adminPage.keyboard.press("Escape");
+  });
+
+  test("the flows count opens the schedule's flows on the Pipelines page", async ({ adminPage }) => {
+    await adminPage.getByTestId("nav-schedules").click();
+    const row = adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first();
+    await row.getByTestId("schedule-flows-link").click();
+    await expect(adminPage.getByTestId("page-pipelines")).toBeVisible({ timeout: 15_000 });
+    await expect(adminPage.getByTestId("filter-schedule")).toHaveText("Csv_Basic");
+    await expect(adminPage.getByTestId("repo-pipeline")).toHaveCount(1, { timeout: 15_000 });
+    await expect(adminPage.getByTestId("repo-pipeline")).toContainText("Csv_Basic");
   });
 
   test("the definition sheet says an API schedule has no YAML behind it", async ({ adminPage }) => {

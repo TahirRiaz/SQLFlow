@@ -139,7 +139,7 @@ public static class SemanticReportEndpoints
             detail: $"No report question with id '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
 
     private static SubscriberReportQuestionDto ToDto(CatalogSubscriberReportVisualQuestion row)
-        => new(row.Id, row.Question, row.Origin, row.UpdatedBy, row.UpdatedUtc);
+        => new(row.Id, row.Question, row.Origin, row.UpdatedBy, row.UpdatedUtc, row.Model);
 
     /// <summary>The Power BI subscribers the repositories declare, which are what a report can be attached to.</summary>
     private static async Task<Ok<IReadOnlyList<SemanticReportSubscriberDto>>> ListSubscribersAsync(

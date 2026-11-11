@@ -3,7 +3,7 @@ import { activityApi } from "../../api/endpoints";
 import type { ActivityEvent } from "../../api/types";
 
 export interface LiveActivityTrace {
-  /** Every line received so far, in id (timeline) order. Resets when the stream re-opens for a new nonce. */
+  /** Every line received so far, in id (timeline) order. */
   entries: ActivityEvent[];
   /** True while the SSE connection is open; false during a reconnect backoff. */
   connected: boolean;
@@ -16,19 +16,14 @@ export interface LiveActivityTrace {
  * operation persists them, and a dropped connection reconnects after two seconds resuming from the last id (no
  * replay, no gaps). The append-only log is keyed by a stable, monotonic id, so every line arrives exactly once and
  * there is no client-side de-duplication. When the server sends the terminal `end` frame `onEnded` fires once (so a
- * page can refresh at-rest state) and the stream stops reconnecting. Bumping `nonce` re-opens a fresh stream from
- * the start, which is how a repeat trigger (a new "Sync now") restarts a completed trace. The subscription closes
- * when the component unmounts.
+ * page can refresh at-rest state) and the stream stops reconnecting. The subscription closes when the component
+ * unmounts; a repeat trigger (a new "Sync now") mounts the view again, as the trace tray starts a held trace over, so a
+ * completed trace restarts from the top.
  *
  * This is the general-purpose twin of useRunTraceStream: the same tail-an-append-only-log mechanism, keyed by a
  * kind + subject instead of a run id, so any traced operation reuses it.
  */
-export function useActivityTraceStream(
-  kind: string,
-  subject: string,
-  nonce: number,
-  onEnded?: () => void,
-): LiveActivityTrace {
+export function useActivityTraceStream(kind: string, subject: string, onEnded?: () => void): LiveActivityTrace {
   const [entries, setEntries] = useState<ActivityEvent[]>([]);
   const [connected, setConnected] = useState(false);
   const [ended, setEnded] = useState(false);
@@ -88,7 +83,7 @@ export function useActivityTraceStream(
       controller.abort();
       setConnected(false);
     };
-  }, [kind, subject, nonce]);
+  }, [kind, subject]);
 
   return { entries, connected, ended };
 }

@@ -114,6 +114,8 @@ sqlflow repos register --name bb --local-path C:\flows [--interval 60]
                  # a directory the control plane reads live on its interval, no git step: uncommitted and
                  # untracked files sync as they sit on disk; the control plane must run where the directory is
 sqlflow repos discover --remote-url https://...    # preview a remote's flows without importing
+sqlflow repos auto-sync <name> on|off            # admin: sync on its interval, or only when a trigger request
+                 # or 'repos sync' asks, holding its commit until then (concepts/repository-auto-sync.md)
 sqlflow pipelines list [--repo r --kind ing --active true] | show <id> [--yaml|--definition]
                  | columns <id> | files <id>
 sqlflow search <term> [--objects|--columns|--definitions|--files|--flows]

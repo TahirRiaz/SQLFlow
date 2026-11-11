@@ -42,14 +42,16 @@ test.describe("explore", () => {
   test("the flows graph focuses on click and opens the pipeline from the panel", async ({ adminPage }) => {
     await adminPage.getByTestId("nav-lineage").click();
     await adminPage.getByTestId("graph-project-select").click();
-    await adminPage.getByRole("option", { name: "e2e-repo" }).click();
+    await adminPage.getByTestId("graph-scope-repo").first().click();
 
     const node = adminPage.locator(".react-flow__node").first();
     const noLineage = adminPage.getByTestId("graph-no-lineage");
     await expect(node.or(noLineage)).toBeVisible({ timeout: 60_000 });
 
     if (await node.isVisible()) {
-      await expect(adminPage.getByTestId("wave-list")).toBeVisible();
+      // A repository opens as its flows alone, and the line under the bar says so.
+      await expect(adminPage.getByTestId("graph-status-line")).toContainText("flows only");
+      await expect(adminPage.locator('[data-testid="graph-node"][data-node-type="object"]')).toHaveCount(0);
 
       // Click focuses (upstream/downstream trace) instead of leaving the page; the panel opens the pipeline.
       await node.click();
@@ -81,18 +83,24 @@ test.describe("explore", () => {
     await expect(flowHit).toBeVisible({ timeout: 30_000 });
     await expect(adminPage.getByTestId("graph-search-object").first()).toBeVisible();
 
-    // Picking a hit re-seeds the graph on that node: it becomes ?focus= and lands focused. The user got there
-    // without first having to guess which project the flow lives in.
+    // Picking a flow draws its repository traced around it: it becomes ?focus= and lands selected, with only what
+    // is upstream and downstream of it drawn. The user got there without first having to guess where the flow lives.
     await flowHit.click();
     await expect(adminPage.getByTestId("graph-focus-panel")).toBeVisible({ timeout: 60_000 });
     expect(new URL(adminPage.url()).searchParams.get("focus")).not.toBeNull();
+    await expect(adminPage.getByTestId("graph-status-trace")).toContainText("trace of Csv_Basic");
+
+    // Taking the trace back from the status line draws the whole repository again.
+    await adminPage.getByTestId("graph-status-remove-trace").click();
+    await expect(adminPage.getByTestId("graph-status-trace")).toHaveCount(0);
+    await expect(adminPage.getByTestId("graph-trace-control")).toHaveCount(0);
   });
 
-  test("the objects view draws the data flow between file and table, colored per flow", async ({ adminPage }) => {
+  test("the data-only level draws the data flow between file and table", async ({ adminPage }) => {
     await adminPage.getByTestId("nav-lineage").click();
     await adminPage.getByTestId("graph-project-select").click();
-    await adminPage.getByRole("option", { name: "e2e-repo" }).click();
-    await adminPage.getByTestId("graph-view-objects").click();
+    await adminPage.getByTestId("graph-scope-project").first().click();
+    await adminPage.getByTestId("graph-level-objects").click();
 
     // The seeded csv flow reads a file object and writes a table object: at least two nodes and an edge.
     const node = adminPage.locator(".react-flow__node").first();
@@ -102,7 +110,7 @@ test.describe("explore", () => {
     if (await node.isVisible()) {
       expect(await adminPage.locator(".react-flow__node").count()).toBeGreaterThanOrEqual(2);
       await expect(adminPage.locator(".react-flow__edge").first()).toBeVisible();
-      await expect(adminPage.getByTestId("graph-flow-legend")).toContainText("Csv_Basic");
+      await expect(adminPage.getByTestId("graph-status-line")).toContainText("data only");
 
       // Focusing an object shows its trace and deep-links into the explorer.
       await node.click();
@@ -117,7 +125,7 @@ test.describe("explore", () => {
       const returned = new URL(adminPage.url()).searchParams;
       expect(returned.get("repoId")).not.toBeNull();
       expect(returned.get("project")).not.toBeNull();
-      expect(returned.get("view")).toBe("objects");
+      expect(returned.get("show")).toBe("objects");
       await expect(adminPage.locator(".react-flow__node").first()).toBeVisible({ timeout: 60_000 });
     }
   });

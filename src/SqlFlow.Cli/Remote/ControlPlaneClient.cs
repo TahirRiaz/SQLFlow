@@ -419,6 +419,10 @@ internal sealed class ControlPlaneClient : IDisposable
     public Task<RepoSourceDto?> SyncRepoSourceAsync(Guid sourceId, CancellationToken ct)
         => PostOrNullAsync<RepoSourceDto>($"/api/v1/repos/sources/{sourceId}/sync", null, SyncNowTimeout, ct);
 
+    /// <summary>Turns a managed source's automatic sync on or off (an administrator's call) and returns the source as it now stands.</summary>
+    public Task<RepoSourceDto> SetRepoSourceAutoSyncAsync(Guid sourceId, bool autoSync, CancellationToken ct)
+        => PutAsync<RepoSourceDto>($"/api/v1/repos/sources/{sourceId}/auto-sync", new { autoSync }, ct);
+
     /// <summary>Re-syncs a local-path repo (the CLI-registered kind) through the control plane.</summary>
     public Task<RepoSyncResultDto?> SyncLocalRepoAsync(Guid repoId, CancellationToken ct)
         => PostOrNullAsync<RepoSyncResultDto>($"/api/v1/repos/{repoId}/sync", null, ct);

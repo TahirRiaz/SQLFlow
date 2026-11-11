@@ -15,11 +15,49 @@ public enum RepoSourceMutation
 /// A repo source the control plane's configuration names, as the control plane writes it at start: exactly one of
 /// <see cref="RemoteUrl"/> and <see cref="LocalPath"/>, the branch, the sync interval, a git credential as a reference
 /// (never a token), and the flow files to leave out. <see cref="Setting"/> is the configuration key that names it, which
-/// the API names when it refuses to change the source.
+/// the API names when it refuses to change the source. <see cref="AutoSync"/> is whether it syncs on its own, when the
+/// configuration says (<c>&lt;Setting&gt;:AutoSync</c>); null leaves the choice to an administrator.
 /// </summary>
 public sealed record ConfiguredRepository(
     string Name, string? RemoteUrl, string? LocalPath, string Branch, int SyncIntervalSeconds, string? CredentialReference,
-    string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths, string Setting);
+    string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths, string Setting, bool? AutoSync = null)
+{
+    /// <summary>The configuration key of <see cref="AutoSync"/>.</summary>
+    public string AutoSyncSetting => Setting + ":AutoSync";
+}
+
+/// <summary>
+/// What a requested sync reads when its source syncs only on request (<see cref="CatalogRepoSource.AutoSync"/> off). A
+/// source that syncs on its own reads the tip of its branch whatever the request says.
+/// </summary>
+public enum RepoSyncMove
+{
+    /// <summary>The commit the source holds, again: a change that needs the catalog recomputed, never a newer commit.</summary>
+    Hold,
+
+    /// <summary>The tip of the source's branch (a sync-now, or a trigger request that names no commit).</summary>
+    BranchTip,
+
+    /// <summary>The commit the request names, which must be on the branch; a source already holding it stays.</summary>
+    Commit,
+}
+
+/// <summary>How turning a source's automatic sync on or off went.</summary>
+public enum AutoSyncChange
+{
+    Applied,
+
+    /// <summary>The source already syncs that way; nothing was written.</summary>
+    Unchanged,
+
+    NotFound,
+
+    /// <summary>The control plane's configuration sets it (<see cref="AutoSyncChangeResult.Setting"/>).</summary>
+    SetByConfiguration,
+}
+
+/// <summary>The outcome of turning automatic sync on or off, with the setting that refused it when the configuration did.</summary>
+public sealed record AutoSyncChangeResult(AutoSyncChange Outcome, string? Setting = null);
 
 /// <summary>What writing the configured sources changed: the sources added, the ones updated, the ones released.</summary>
 public sealed record ConfiguredRepositoriesApplied(IReadOnlyList<string> Registered, IReadOnlyList<string> Updated, IReadOnlyList<string> Released)
@@ -45,8 +83,11 @@ public sealed record ConfiguredRepositoriesApplied(IReadOnlyList<string> Registe
 public static class RepoSourceStore
 {
     /// <summary>Registers or refreshes a tracked repo (keyed by name, so re-registering updates in place). A new
-    /// source is due to sync immediately; an existing one keeps its schedule but takes the refreshed settings.
-    /// Exactly one of <paramref name="remoteUrl"/> (a git remote the managed sync clones and pulls) and
+    /// source is due to sync immediately and syncs on its own (<see cref="CatalogRepoSource.AutoSync"/>); an existing one
+    /// keeps its schedule and its automatic sync, which only an administrator turns on or off
+    /// (<see cref="SetAutoSyncAsync"/>), but takes the refreshed settings. A change of where it reads from (the remote, the
+    /// directory or the branch) makes it due now and asks it to move to the new branch's tip, since the commit it held
+    /// belongs to the old one. Exactly one of <paramref name="remoteUrl"/> (a git remote the managed sync clones and pulls) and
     /// <paramref name="localPath"/> (a directory the control-plane host reads live, with no git step, for a
     /// working copy that has never been committed or pushed) must be given. <paramref name="credentialReference"/>
     /// is a secret reference (never a secret value) for the git token, and <paramref name="credentialUsername"/>
@@ -90,6 +131,7 @@ public static class RepoSourceStore
                     Branch = effectiveBranch,
                     Enabled = enabled,
                     SyncIntervalSeconds = interval,
+                    AutoSync = true,
                     CredentialReference = reference,
                     CredentialUsername = username,
                     ExcludedFlowPaths = excludedJson,
@@ -100,6 +142,8 @@ public static class RepoSourceStore
                 return id;
             }
 
+            var moved = existing.RemoteUrl != effectiveRemoteUrl || existing.LocalPath != effectiveLocalPath
+                || existing.Branch != effectiveBranch;
             existing.RemoteUrl = effectiveRemoteUrl;
             existing.LocalPath = effectiveLocalPath;
             existing.Branch = effectiveBranch;
@@ -109,7 +153,13 @@ public static class RepoSourceStore
             existing.CredentialUsername = username;
             existing.ExcludedFlowPaths = excludedJson;
             existing.UpdatedUtc = nowUtc;
-            // Re-enabling a source (or one that never got a next-sync) becomes due now.
+            if (moved)
+            {
+                RequestMoveToNewLocation(existing, nowUtc);
+            }
+
+            // Re-enabling a source (or one that never got a next-sync, as one that syncs only on request has between
+            // requests) becomes due now: the sync applies the refreshed settings at the commit it holds.
             if (enabled && existing.NextSyncUtc is null)
             {
                 existing.NextSyncUtc = nowUtc;
@@ -117,6 +167,15 @@ public static class RepoSourceStore
 
             return id;
         }, ct);
+    }
+
+    /// <summary>A source now reading another remote, directory or branch: the commit it held belongs to the old one, so
+    /// its next sync, due now, reads the new branch's tip, whether it syncs on its own or only on request.</summary>
+    private static void RequestMoveToNewLocation(CatalogRepoSource source, DateTime nowUtc)
+    {
+        source.MoveRequestedUtc = nowUtc;
+        source.MoveToCommit = null;
+        source.NextSyncUtc = nowUtc;
     }
 
     /// <summary>Serializes an excluded-flow selection to the stored JSON array: trimmed, forward-slashed, distinct,
@@ -199,7 +258,9 @@ public static class RepoSourceStore
     /// not hold (due to sync at once), brings each one it holds in line with the configuration and marks it as set by it
     /// (an existing source keeps its sync schedule and history), and releases each source marked as configured that the
     /// configuration no longer names, keeping it as an ordinary source. Writing the same configuration again changes
-    /// nothing. A configured source is always enabled: a deployment that names a repository wants it synced.
+    /// nothing. A configured source is always enabled: a deployment that names a repository wants it synced. Its automatic
+    /// sync is the configuration's when the configuration says (<see cref="ConfiguredRepository.AutoSync"/>), and an
+    /// administrator's otherwise: a value the configuration stops stating stays as it was, for an administrator to change.
     /// </summary>
     public static Task<ConfiguredRepositoriesApplied> ApplyConfiguredAsync(
         CatalogDbContext catalog, IReadOnlyList<ConfiguredRepository> configured, DateTime nowUtc, CancellationToken ct = default)
@@ -223,6 +284,7 @@ public static class RepoSourceStore
                 var reference = string.IsNullOrWhiteSpace(repository.CredentialReference) ? null : repository.CredentialReference.Trim();
                 var username = string.IsNullOrWhiteSpace(repository.CredentialUsername) ? null : repository.CredentialUsername.Trim();
                 var excluded = SerializeExcludedPaths(repository.ExcludedFlowPaths);
+                var autoSyncBy = repository.AutoSync is null ? null : repository.AutoSyncSetting;
                 var existing = await catalog.RepoSources.AsTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
                 if (existing is null)
                 {
@@ -235,6 +297,8 @@ public static class RepoSourceStore
                         Branch = branch,
                         Enabled = true,
                         SyncIntervalSeconds = interval,
+                        AutoSync = repository.AutoSync ?? true,
+                        AutoSyncConfiguredBy = autoSyncBy,
                         CredentialReference = reference,
                         CredentialUsername = username,
                         ExcludedFlowPaths = excluded,
@@ -247,10 +311,13 @@ public static class RepoSourceStore
                     continue;
                 }
 
-                var changed = existing.RemoteUrl != remote || existing.LocalPath != local || existing.Branch != branch
+                var autoSync = repository.AutoSync ?? existing.AutoSync;
+                var moved = existing.RemoteUrl != remote || existing.LocalPath != local || existing.Branch != branch;
+                var changed = moved
                     || !existing.Enabled || existing.SyncIntervalSeconds != interval || existing.CredentialReference != reference
                     || existing.CredentialUsername != username || existing.ExcludedFlowPaths != excluded
-                    || existing.ConfiguredBy != repository.Setting || existing.Name != repository.Name;
+                    || existing.ConfiguredBy != repository.Setting || existing.Name != repository.Name
+                    || existing.AutoSync != autoSync || existing.AutoSyncConfiguredBy != autoSyncBy;
                 if (!changed)
                 {
                     continue;
@@ -265,11 +332,23 @@ public static class RepoSourceStore
                 existing.CredentialUsername = username;
                 existing.ExcludedFlowPaths = excluded;
                 existing.ConfiguredBy = repository.Setting;
+                existing.AutoSyncConfiguredBy = autoSyncBy;
                 existing.UpdatedUtc = nowUtc;
                 if (!existing.Enabled || existing.NextSyncUtc is null)
                 {
                     existing.Enabled = true;
                     existing.NextSyncUtc = nowUtc;
+                }
+
+                if (moved)
+                {
+                    RequestMoveToNewLocation(existing, nowUtc);
+                }
+
+                if (existing.AutoSync != autoSync)
+                {
+                    existing.AutoSync = autoSync;
+                    ScheduleAfterAutoSyncChange(existing, nowUtc);
                 }
 
                 updated.Add(repository.Name);
@@ -280,7 +359,9 @@ public static class RepoSourceStore
                 .ToListAsync(ct).ConfigureAwait(false);
             foreach (var source in stale.Where(s => !named.Contains(s.Id)))
             {
+                // Kept as an ordinary source, syncing as it did; its automatic sync is an administrator's from now on.
                 source.ConfiguredBy = null;
+                source.AutoSyncConfiguredBy = null;
                 source.UpdatedUtc = nowUtc;
                 released.Add(source.Name);
             }
@@ -306,6 +387,82 @@ public static class RepoSourceStore
         return catalog.RepoSources.AsNoTracking().Where(s => s.Name == trimmed).Select(s => s.ConfiguredBy).FirstOrDefaultAsync(ct);
     }
 
+    /// <summary>
+    /// Turns a source's automatic sync on or off for <paramref name="actor"/>, recording who and when. On, the source is due
+    /// at once, so it catches up with the tip of its branch now rather than an interval later. Off, its next periodic sync is
+    /// cancelled and it holds the commit it last synced until a trigger request or a sync-now moves it; a sync already due
+    /// (one asked for, or one that never succeeded and is still retrying) still runs, and reads the commit it holds. Refused,
+    /// naming the setting, when the control plane's configuration sets the value; unchanged when it already syncs that way.
+    /// </summary>
+    public static Task<AutoSyncChangeResult> SetAutoSyncAsync(
+        CatalogDbContext catalog, Guid id, bool autoSync, string actor, DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actor);
+        var who = actor.Trim();
+        who = who.Length > 256 ? who[..256] : who;
+        return CatalogTransaction.InSerializableAsync(catalog, async () =>
+        {
+            var source = await catalog.RepoSources.AsTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
+            if (source is null)
+            {
+                return new AutoSyncChangeResult(AutoSyncChange.NotFound);
+            }
+
+            if (source.AutoSyncConfiguredBy is { } setting)
+            {
+                return new AutoSyncChangeResult(AutoSyncChange.SetByConfiguration, setting);
+            }
+
+            if (source.AutoSync == autoSync)
+            {
+                return new AutoSyncChangeResult(AutoSyncChange.Unchanged);
+            }
+
+            source.AutoSync = autoSync;
+            source.AutoSyncUpdatedBy = who;
+            source.AutoSyncUpdatedUtc = nowUtc;
+            source.UpdatedUtc = nowUtc;
+            ScheduleAfterAutoSyncChange(source, nowUtc);
+            return new AutoSyncChangeResult(AutoSyncChange.Applied);
+        }, ct);
+    }
+
+    /// <summary>
+    /// The next sync of a source whose automatic sync was just turned on or off. On, it is due now. Off, a next sync in the
+    /// future is the periodic one, which no longer happens; one already due stays, since it was asked for or is overdue, and
+    /// the attempt reads the commit the source holds unless a move asked for another. A source that has never synced keeps
+    /// its schedule, so its first sync still retries until it succeeds.
+    /// </summary>
+    private static void ScheduleAfterAutoSyncChange(CatalogRepoSource source, DateTime nowUtc)
+    {
+        if (source.AutoSync)
+        {
+            source.NextSyncUtc = nowUtc;
+            return;
+        }
+
+        if (source.LastSyncedSha is not null && source.NextSyncUtc > nowUtc)
+        {
+            source.NextSyncUtc = null;
+        }
+    }
+
+    /// <summary>Whether <paramref name="value"/> is a git commit id, full or abbreviated: 7 to 64 hexadecimal characters.</summary>
+    public static bool IsCommitId(string? value)
+        => value is { Length: >= 7 and <= 64 } && value.All(char.IsAsciiHexDigit);
+
+    /// <summary>
+    /// Whether the attempt of <paramref name="source"/> that started at <see cref="CatalogRepoSource.SyncStartedUtc"/> answers
+    /// the move asked for (<see cref="CatalogRepoSource.MoveRequestedUtc"/>): the move was asked for at or before the attempt
+    /// started. A move asked for while the attempt runs is the next attempt's.
+    /// </summary>
+    public static bool AnswersMove(CatalogRepoSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return source.MoveRequestedUtc is { } move && source.SyncStartedUtc is { } started && move <= started;
+    }
+
     /// <summary>The enabled sources whose next sync has arrived, oldest-due first.</summary>
     public static async Task<IReadOnlyList<CatalogRepoSource>> ListDueAsync(
         CatalogDbContext catalog, DateTime nowUtc, int max, CancellationToken ct = default)
@@ -320,7 +477,9 @@ public static class RepoSourceStore
 
     /// <summary>Atomically claims a due source by advancing its next-sync from the observed value, so exactly one
     /// control-plane node syncs it this interval, and stamps the attempt's start
-    /// (<see cref="CatalogRepoSource.SyncStartedUtc"/>). Returns true if this caller won.</summary>
+    /// (<see cref="CatalogRepoSource.SyncStartedUtc"/>). Returns true if this caller won. A source that syncs only on request
+    /// (<see cref="CatalogRepoSource.AutoSync"/> off) is given no next sync, so it waits for the next request; one that has
+    /// never synced successfully keeps <paramref name="newNextSyncUtc"/>, so its first sync retries on its interval.</summary>
     public static async Task<bool> TryClaimSyncAsync(
         CatalogDbContext catalog, Guid id, DateTime observedNextSyncUtc, DateTime newNextSyncUtc, DateTime nowUtc,
         CancellationToken ct = default)
@@ -329,7 +488,7 @@ public static class RepoSourceStore
         var affected = await catalog.RepoSources
             .Where(s => s.Id == id && s.NextSyncUtc == observedNextSyncUtc)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(x => x.NextSyncUtc, newNextSyncUtc)
+                .SetProperty(x => x.NextSyncUtc, x => x.AutoSync || x.LastSyncedSha == null ? newNextSyncUtc : (DateTime?)null)
                 .SetProperty(x => x.SyncStartedUtc, nowUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
             .ConfigureAwait(false);
@@ -339,7 +498,8 @@ public static class RepoSourceStore
     /// <summary>Records a successful sync: the pulled commit and the time, clearing any prior error and the
     /// one-shot force-lineage request a manual sync-now made, when this attempt answered it. A sync-now made while the
     /// attempt was already running is not answered by it: its flag stays, and the source, made due by the request,
-    /// syncs again on the next tick with the full recompute the operator asked for.</summary>
+    /// syncs again on the next tick with the full recompute the operator asked for. A move the attempt answered
+    /// (<see cref="AnswersMove"/>) is cleared the same way, and one asked for while it ran stays.</summary>
     /// <remarks><paramref name="activityId"/> is the attempt's activity trace, recorded so whatever waited for the attempt
     /// reads exactly its lines.</remarks>
     public static Task RecordSuccessAsync(
@@ -356,11 +516,22 @@ public static class RepoSourceStore
                 .SetProperty(
                     x => x.ForceLineageOnNextSync,
                     x => x.SyncRequestedUtc != null && x.SyncStartedUtc != null && x.SyncRequestedUtc > x.SyncStartedUtc)
+                .SetProperty(
+                    x => x.MoveToCommit,
+                    x => x.MoveRequestedUtc != null && x.SyncStartedUtc != null && x.MoveRequestedUtc <= x.SyncStartedUtc
+                        ? null
+                        : x.MoveToCommit)
+                .SetProperty(
+                    x => x.MoveRequestedUtc,
+                    x => x.MoveRequestedUtc != null && x.SyncStartedUtc != null && x.MoveRequestedUtc <= x.SyncStartedUtc
+                        ? null
+                        : x.MoveRequestedUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
     }
 
     /// <summary>Records a failed sync: keeps the last successful commit and stores the (redacted) error, with the
-    /// attempt's activity trace (<paramref name="activityId"/>).</summary>
+    /// attempt's activity trace (<paramref name="activityId"/>). A move the attempt answered is answered by the failure
+    /// (whoever asked reads the error) and cleared; a source that syncs only on request does not retry it on its own.</summary>
     public static Task RecordFailureAsync(
         CatalogDbContext catalog, Guid id, string error, DateTime nowUtc, Guid? activityId = null, CancellationToken ct = default)
     {
@@ -371,11 +542,21 @@ public static class RepoSourceStore
                 .SetProperty(x => x.LastSyncUtc, nowUtc)
                 .SetProperty(x => x.LastSyncActivityId, activityId)
                 .SetProperty(x => x.LastError, error)
+                .SetProperty(
+                    x => x.MoveToCommit,
+                    x => x.MoveRequestedUtc != null && x.SyncStartedUtc != null && x.MoveRequestedUtc <= x.SyncStartedUtc
+                        ? null
+                        : x.MoveToCommit)
+                .SetProperty(
+                    x => x.MoveRequestedUtc,
+                    x => x.MoveRequestedUtc != null && x.SyncStartedUtc != null && x.MoveRequestedUtc <= x.SyncStartedUtc
+                        ? null
+                        : x.MoveRequestedUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
     }
 
-    /// <summary>Queues the managed sync of the enabled source that produces the repo named
-    /// <paramref name="repoName"/>, returning its id; null when the repo is not synced from an enabled source (a
+    /// <summary>Queues a sync of the enabled source that produces the repo named <paramref name="repoName"/> to recompute
+    /// the catalog (<see cref="ResyncAsync"/>), returning its id; null when the repo is not synced from an enabled source (a
     /// local-path repo applies a change on its next <c>sqlflow db sync</c> instead).</summary>
     public static async Task<Guid?> TriggerForRepoAsync(
         CatalogDbContext catalog, string repoName, DateTime nowUtc, CancellationToken ct = default)
@@ -387,7 +568,7 @@ public static class RepoSourceStore
             .Select(s => (Guid?)s.Id)
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         return sourceId is { } id
-            && await TriggerNowAsync(catalog, id, nowUtc, ct).ConfigureAwait(false) == RepoSourceMutation.Applied
+            && await ResyncAsync(catalog, id, nowUtc, ct).ConfigureAwait(false) == RepoSourceMutation.Applied
             ? id
             : null;
     }
@@ -450,29 +631,83 @@ public static class RepoSourceStore
     /// the unchanged-estate shortcut that a periodic sync relies on (which is what recomputes waves and populates
     /// object bodies/columns from the persisted run trace). The flag clears once the sync succeeds. The request's time
     /// is recorded (<see cref="CatalogRepoSource.SyncRequestedUtc"/>), so the caller can tell when an attempt has
-    /// answered it (<see cref="IsSyncAnswered"/>).</summary>
+    /// answered it (<see cref="IsSyncAnswered"/>). A source that syncs only on request moves to the tip of its branch: a
+    /// person asking to sync now is asking for what the branch holds.</summary>
     public static Task<RepoSourceMutation> TriggerNowAsync(
         CatalogDbContext catalog, Guid id, DateTime nowUtc, CancellationToken ct = default)
-        => RequestSyncAsync(catalog, id, nowUtc, forceLineage: true, ct);
+        => RequestSyncAsync(catalog, id, nowUtc, forceLineage: true, RepoSyncMove.BranchTip, commit: null, ct);
+
+    /// <summary>
+    /// Makes a source due immediately to recompute the catalog from it, with a full lineage recompute, as a change that
+    /// alters what the sync derives (a registration run, an uploaded report, a host module's own registry) needs. It never
+    /// moves a source that syncs only on request: that one syncs the commit it holds again, so nothing merged since reaches
+    /// the catalog without a request for it. A source that syncs on its own reads its branch's tip, as every sync of it does.
+    /// </summary>
+    public static Task<RepoSourceMutation> ResyncAsync(
+        CatalogDbContext catalog, Guid id, DateTime nowUtc, CancellationToken ct = default)
+        => RequestSyncAsync(catalog, id, nowUtc, forceLineage: true, RepoSyncMove.Hold, commit: null, ct);
 
     /// <summary>
     /// Makes a source due immediately and records the request's time, as <see cref="TriggerNowAsync"/> does, but asks for
     /// the full lineage recompute only when <paramref name="forceLineage"/> is set. A trigger request after a merge leaves
     /// it off: the merge changed the estate, so the sync recomputes what changed anyway, and an unchanged estate needs
     /// nothing recomputed. A force-lineage request already pending stays pending.
+    /// <para>
+    /// <paramref name="move"/> is what the sync reads when the source syncs only on request: the commit it holds
+    /// (<see cref="RepoSyncMove.Hold"/>, which leaves a move already asked for in place), the tip of its branch, or
+    /// <paramref name="commit"/>. Two moves asked for before an attempt takes them become one: the tip wins over a commit,
+    /// since it contains every commit on the branch, and of two commits the later request's is kept; the sync never moves
+    /// back past what the source holds, and a request whose commit the sync did not reach asks again.
+    /// </para>
     /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="move"/> is <see cref="RepoSyncMove.Commit"/> and
+    /// <paramref name="commit"/> is not a commit id.</exception>
     public static async Task<RepoSourceMutation> RequestSyncAsync(
-        CatalogDbContext catalog, Guid id, DateTime nowUtc, bool forceLineage, CancellationToken ct = default)
+        CatalogDbContext catalog, Guid id, DateTime nowUtc, bool forceLineage, RepoSyncMove move, string? commit,
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        var affected = await catalog.RepoSources
-            .Where(s => s.Id == id && s.Enabled)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(x => x.NextSyncUtc, nowUtc)
-                .SetProperty(x => x.ForceLineageOnNextSync, x => forceLineage || x.ForceLineageOnNextSync)
-                .SetProperty(x => x.SyncRequestedUtc, nowUtc)
-                .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
-            .ConfigureAwait(false);
+        if (move == RepoSyncMove.Commit && !IsCommitId(commit))
+        {
+            throw new ArgumentException("A move to a commit names it by its id: 7 to 64 hexadecimal characters.", nameof(commit));
+        }
+
+        var enabled = catalog.RepoSources.Where(s => s.Id == id && s.Enabled);
+        var affected = move switch
+        {
+            RepoSyncMove.Hold => await enabled
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.NextSyncUtc, nowUtc)
+                    .SetProperty(x => x.ForceLineageOnNextSync, x => forceLineage || x.ForceLineageOnNextSync)
+                    .SetProperty(x => x.SyncRequestedUtc, nowUtc)
+                    .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
+                .ConfigureAwait(false),
+            RepoSyncMove.BranchTip => await enabled
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.NextSyncUtc, nowUtc)
+                    .SetProperty(x => x.ForceLineageOnNextSync, x => forceLineage || x.ForceLineageOnNextSync)
+                    .SetProperty(x => x.SyncRequestedUtc, nowUtc)
+                    .SetProperty(x => x.MoveRequestedUtc, nowUtc)
+                    .SetProperty(x => x.MoveToCommit, (string?)null)
+                    .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
+                .ConfigureAwait(false),
+            RepoSyncMove.Commit => await enabled
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.NextSyncUtc, nowUtc)
+                    .SetProperty(x => x.ForceLineageOnNextSync, x => forceLineage || x.ForceLineageOnNextSync)
+                    .SetProperty(x => x.SyncRequestedUtc, nowUtc)
+                    // A move to the tip that no attempt has taken yet stays one: the tip holds this commit too.
+                    .SetProperty(
+                        x => x.MoveToCommit,
+                        x => x.MoveRequestedUtc != null && x.MoveToCommit == null
+                            && (x.SyncStartedUtc == null || x.MoveRequestedUtc > x.SyncStartedUtc)
+                                ? null
+                                : commit)
+                    .SetProperty(x => x.MoveRequestedUtc, nowUtc)
+                    .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
+                .ConfigureAwait(false),
+            _ => throw new ArgumentOutOfRangeException(nameof(move), move, "Not a kind of sync request."),
+        };
         return affected > 0 ? RepoSourceMutation.Applied : RepoSourceMutation.NotFound;
     }
 }

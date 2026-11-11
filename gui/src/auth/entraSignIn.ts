@@ -1,5 +1,5 @@
-// How the GUI recognises Entra's answer to a sign-in and how it words MSAL's failures. Kept apart from MSAL, with
-// nothing to import, so the unit suite reads it.
+// How the GUI recognises Entra's answer to a sign-in, what a sign-in carries through Entra and back, and how it words
+// MSAL's failures. Kept apart from MSAL, with nothing to import, so the unit suite reads it.
 
 /**
  * Whether a page load is Entra answering a sign-in rather than a visit to the workbench. MSAL asks for the answer in
@@ -16,22 +16,109 @@ export function isEntraSignInResponse(hash: string): boolean {
   return params.has("state") && (params.has("code") || params.has("error"));
 }
 
+/** Entra's answer, held from the page load that brought it until the login page finishes the sign-in with it. */
+let heldAnswer: string | null = null;
+
+/** Holds Entra's answer (the URL fragment Entra loaded the GUI with) for the login page to finish the sign-in with. */
+export function holdEntraSignInAnswer(hash: string): void {
+  heldAnswer = hash;
+}
+
+/**
+ * Hands over the held answer, once: a sign-in is finished a single time, so a second call (React's strict mode runs
+ * the login page's effects twice) finds none.
+ */
+export function takeEntraSignInAnswer(): string | null {
+  const answer = heldAnswer;
+  heldAnswer = null;
+  return answer;
+}
+
+/**
+ * The account a sign-in names to Entra, so that Entra signs that account in without asking which one to use: the
+ * username on the login form when it reads as an email address, which an Entra user name is and which the form holds
+ * after an Entra sign-in (it prefills the last sign-in's name). A local user name names no Microsoft account and is not
+ * sent; Entra then asks which account only when the browser holds more than one.
+ */
+export function entraLoginHint(username: string): string | undefined {
+  const name = username.trim();
+  const at = name.indexOf("@");
+  const isAddress = at > 0 && at === name.lastIndexOf("@") && at < name.length - 1 && !/\s/.test(name);
+  return isAddress ? name : undefined;
+}
+
+/**
+ * The address a sign-in may send the page to: a path of the GUI's own. Anything else (a foreign origin, or a
+ * protocol-relative "//host") must never become a navigation target, and the page goes to the workbench's home instead.
+ */
+export function sameAppPath(path: string): string {
+  return path.startsWith("/") && !path.startsWith("//") ? path : "/";
+}
+
+/** What a sign-in carries through Entra and back in the request's state: how to keep the session, and where to go. */
+export interface EntraSignInState {
+  /** Whether the sign-in asked to be kept on this device. */
+  remember: boolean;
+  /** The GUI address the sign-in was asked for from, where the page goes once it is signed in. */
+  returnTo: string;
+}
+
+/** The state a sign-in sends to Entra, which Entra hands back unchanged with its answer. */
+export function encodeEntraSignInState(state: EntraSignInState): string {
+  return JSON.stringify({ remember: state.remember, returnTo: state.returnTo });
+}
+
+/**
+ * Reads the state an answer brought back. MSAL has already matched the answer to the request this tab sent, so the
+ * state is the GUI's own; a sign-in that a GUI before this one started sent none, and it signs in as a sign-in that
+ * keeps nothing and asks for the home page does. The address is re-checked as any other returnTo is.
+ */
+export function decodeEntraSignInState(state: string | undefined): EntraSignInState {
+  const fallback: EntraSignInState = { remember: false, returnTo: "/" };
+  if (state === undefined || state === "") {
+    return fallback;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(state);
+  } catch {
+    return fallback;
+  }
+
+  if (typeof parsed !== "object" || parsed === null) {
+    return fallback;
+  }
+
+  const { remember, returnTo } = parsed as Partial<Record<keyof EntraSignInState, unknown>>;
+  return {
+    remember: remember === true,
+    returnTo: typeof returnTo === "string" ? sameAppPath(returnTo) : "/",
+  };
+}
+
+/**
+ * Whether MSAL could not settle a sign-in an earlier page load left marked in progress because its request is not in the
+ * tab's storage. The popup sign-in of the GUI before this one marked itself in progress in session storage and kept its
+ * request in memory, so a page load while its popup was open (a reload, a dev server restart) left the mark with nothing
+ * behind it. MSAL clears the mark as it reports this, and that sign-in is gone either way, so a new one may start.
+ */
+export function isAbandonedSignIn(errorCode: string): boolean {
+  return errorCode === "no_token_request_cache_error" || errorCode === "unable_to_parse_token_request_cache_error";
+}
+
 /**
  * What each MSAL failure a sign-in can meet means. MSAL 5 no longer ships its error text (an error's message is a link
  * to its documentation), so the failures MSAL 3 described keep MSAL 3's sentences, and the ones MSAL 5 added have
  * sentences of their own. An error Entra itself returns carries Entra's description and is not listed.
  */
 const signInFailureText = new Map<string, string>([
-  // Opening and following the sign-in popup.
-  ["popup_window_error", "Error opening popup window. This can happen if you are using IE or if popups are blocked in the browser."],
-  ["empty_window_error", "window.open returned null or undefined window object."],
+  // Leaving for Microsoft's sign-in page.
   ["user_cancelled", "User cancelled the flow."],
-  ["block_nested_popups", "Request was blocked inside a popup because MSAL detected it was running in a popup."],
   ["interaction_in_progress", "Interaction is currently in progress. Please ensure that this interaction has been completed before calling an interactive API."],
   ["interaction_in_progress_cancelled", "The sign-in in progress was cancelled because another one started."],
-  ["timed_out", "Sign-in did not complete in time. If the Microsoft sign-in window was closed before signing in, sign in again."],
-  ["empty_response", "The sign-in window holds no answer from Microsoft. Please verify that the request originated from msal."],
-  ["redirect_bridge_empty_response", "The sign-in window passed back an empty answer from Microsoft."],
+  ["timed_out", "The browser did not open Microsoft's sign-in page in time. Sign in again."],
+  ["redirect_in_iframe", "Microsoft sign-in cannot open inside a frame. Open the GUI in a browser tab of its own and sign in there."],
   // Reading Entra's answer.
   ["hash_empty_error", "Hash value cannot be processed because it is empty. Please verify that your redirectUri is not clearing the hash."],
   ["hash_does_not_contain_known_properties", "Hash does not contain known properties. Please verify that your redirectUri is not changing the hash."],

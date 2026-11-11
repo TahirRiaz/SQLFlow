@@ -45,6 +45,7 @@ sourceRefs:
   - src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs
   - src/SqlFlow.Lineage/Collection/LineageFacts.cs
   - src/SqlFlow.Core/ScheduleSpec.cs
+  - src/SqlFlow.Core/ScheduleFireDefaults.cs
   - src/SqlFlow.Core/Runs/ExecutionMode.cs
   - src/SqlFlow.Catalog/ScheduleClock.cs
   - src/SqlFlow.Catalog/ScheduleStore.cs
@@ -53,6 +54,7 @@ sourceRefs:
   - src/SqlFlow.Catalog/CatalogDbContext.cs
   - src/SqlFlow.Catalog/RunQueueStore.cs
   - src/SqlFlow.Catalog/RunScopeExpander.cs
+  - src/SqlFlow.Lineage/Graph/MemberWaves.cs
   - src/SqlFlow.Dispatch/DispatchState.cs
   - src/SqlFlow.ControlPlane/Background/SchedulerService.cs
   - src/SqlFlow.ControlPlane/Background/ScheduleFire.cs
@@ -96,7 +98,7 @@ When `schedule:` is a name or a list of names, the flow joins those schedules an
 | `timezone` | string | no | `"UTC"` | IANA time zone id the cron expression is evaluated in, for example `Europe/Oslo`. Ignored for interval schedules. |
 | `enabled` | bool | no | `true` | Whether the schedule fires on its own. A disabled schedule is recorded in the catalog with its members but is never fired by the clock or by a chain; it still runs when fired on demand through the run-now endpoint. |
 | `catchup` | bool | no | `false` | Whether missed occurrences are replayed. With `false` an overdue schedule fires once when the scheduler next sees it and its next fire is computed strictly after now, so any further missed occurrences are dropped. With `true` the next fire is computed from the occurrence just fired, so every missed occurrence fires, one per scheduler tick, until the schedule is current. |
-| `maxConcurrency` | int | no | `4` | How many of the schedule's members execute at the same time, when a fire has more than one. Because waves are gated, this is the width of the running wave. `1` runs the fire strictly serially; `0` opts out and runs the wave unbounded. See [Fire width](#fire-width-maxconcurrency). |
+| `maxConcurrency` | int | no | `4` (the product's default) | How many of the schedule's members execute at the same time, when a fire has more than one. Because waves are gated, this is the width of the running wave. `1` runs the fire strictly serially; `0` opts out and runs the wave unbounded. Omitted takes the product's default: SQLFlow's is 4, and a host may give its product another. See [Fire width](#fire-width-maxconcurrency). |
 | `name` | string | no | the declaring flow's name | The schedule's name. Other flows join this schedule by writing `schedule: <name>`, and every fire then runs the declaring flow and every flow that joined as one wave-ordered group. See [Shared schedules and membership](#shared-schedules-and-membership). |
 | `operation` | string | no | none | The operation each fire runs on the members whose registered flow kind declares it; left out, each member runs its kind's default operation. 1 to 32 characters of lowercase letters, digits and `-`, starting with a letter. See [operation and values](#operation-and-values). |
 | `values` | map of string to string or list of strings | no | none | Parameter values each fire passes to the members of a registered flow kind. At most 32 entries; each name is an identifier of at most 64 characters, each value at most 1000 characters without control characters. A sequence gives the parameter several values: 1 to 100 of them, at most 16,000 characters as a list. See [operation and values](#operation-and-values). |
@@ -125,9 +127,15 @@ node too. The bound belongs to the thing that fans out.
 
 **Values.**
 
-- Omitted takes the product default of **4** (`ScheduleDefaults.MaxConcurrency`). This is deliberately bounded rather
-  than unbounded: a schedule nobody has tuned should not be able to open an unlimited number of connections against
-  one server.
+- Omitted takes the product's default. SQLFlow's is **4** (`ScheduleDefaults.MaxConcurrency`), deliberately bounded
+  rather than unbounded: a schedule nobody has tuned should not be able to open an unlimited number of connections
+  against one server. A node runs four flows at once, so with this default one fire never asks for a second node; a
+  schedule whose waves should spread over nodes sets a wider bound or `0`.
+- A host whose flows bound their own load on what they share may give its product another default: it registers a
+  `ScheduleFireDefaults` in its services (`services.AddSingleton(ScheduleFireDefaults.Unbounded)`, or a bound of its
+  own). The document loader carries it (`YamlDocumentLoader.FireDefaults`), so the repository sync, the proposal
+  preflight, `sqlflow validate` and the API's create path all resolve an omitted key to the same bound. A host that
+  registers none keeps SQLFlow's.
 - `1` makes the fire strictly serial, one member after another.
 - `0` is the explicit opt-out: the wave runs unbounded, limited only by worker capacity.
 - A negative value is not a usable bound and falls back to the default: the schedule-library loader reports it as a
@@ -161,20 +169,22 @@ schedules:
 schedule: sales_daily
 ```
 
-At fire time the members are read from the catalog (src/SqlFlow.Catalog/RunScopeExpander.cs, `ExpandScheduleAsync`) and ordered by each pipeline's lineage wave, renumbered from 0 over the members that actually run. Several members are enqueued as one wave-gated run group, and the control plane's dispatcher hands a member to a node only once every member in a lower wave is terminal (src/SqlFlow.Dispatch/DispatchState.cs), which gives these guarantees:
+At fire time the members are read from the catalog (src/SqlFlow.Catalog/RunScopeExpander.cs, `ExpandScheduleAsync`) and ordered in waves by the lineage dependencies among the members that actually run (`RunScopeExpander.InWaves`): a member waits for a member it depends on, in as many waves as its longest chain of them, numbered from 0. A dependency on a flow the fire does not run orders nothing, and neither does a path through one: that flow changes nothing in this fire, so two members that lineage orders only through flows of another schedule, or through members a batch filter left out, run in the same wave. A member the fire passes over for its mode (`mode: manual` or `mode: disabled`) is the exception: a path through such members orders the members at its ends, so a disabled flow in the middle of a chain leaves the flows after it where they were rather than moving them into the first wave (a load, a disabled transform and the check after it still run load first and check last). Members on a dependency cycle, and those behind one, go to one last wave, as lineage places a cycle. A flow's wave in the repository's lineage (the pipeline's `Wave`, which counts every flow) is not a fire's order. Several members are enqueued as one wave-gated run group, and the control plane's dispatcher hands a member to a node only once every member in a lower wave is terminal (src/SqlFlow.Dispatch/DispatchState.cs), which gives these guarantees:
 
-- **Waves run in order.** Wave N+1 starts only after every flow in wave N has finished, so a flow never runs before what it depends on.
+- **Waves run in order.** Wave N+1 starts only after every flow in wave N has finished, so a flow never runs before a member it depends on.
 - **A wave runs concurrently.** Members sharing a wave have no gate against each other and run together, up to `maxConcurrency`.
 - **A failure stops what depends on it.** When a member fails, every still-queued member that transitively depends on it is marked `skipped` with the reason `skipped: an upstream dependency ('<flow>') did not succeed.`; independent members continue.
 - **A flow never overlaps itself.** A run never starts while another run of the same flow, outside its own group, is executing.
 
 Lineage never adds a flow to a fire: every flow that should run must join the schedule. A flow may join several schedules, and each of them runs it. The estate scan warns about every `mode: auto` flow that joins no schedule: `'<flow>' (<file>) is attached to no schedule and is not 'mode: manual' or 'mode: disabled', so nothing will ever run it; join one with 'schedule: <name>'.`
 
-A schedule fire, automatic or on demand, never includes an inactive, `mode: manual` or `mode: disabled` member: a manual flow reserved itself for a direct trigger, and a disabled one is deactivated. Both remain directly runnable. A schedule whose member set resolves to nothing runnable enqueues nothing and logs `Schedule {ScheduleId} ('{ScheduleName}') resolved to no runnable flow: nothing joins it, or every member is deactivated or mode: manual. Nothing enqueued this occurrence.`; a run-now request answers 409.
+A schedule fire, automatic or on demand, never includes an inactive, `mode: manual` or `mode: disabled` member: a manual flow reserved itself for a direct trigger, and a disabled one is deactivated. Both remain directly runnable, and both keep the members around them in order (see the waves above); so does a flow with its descendants for a manual or disabled descendant it leaves out. A schedule whose member set resolves to nothing runnable enqueues nothing and logs `Schedule {ScheduleId} ('{ScheduleName}') resolved to no runnable flow: nothing joins it, or every member is deactivated or mode: manual. Nothing enqueued this occurrence.`; a run-now request answers 409.
 
 ### Reading a schedule's plan
 
 `GET /api/v1/schedules/{id}/plan` returns the cadence together with the resolved members in wave order, from the same expander the fire uses: `{scheduleId, repoId, name, cron, intervalSeconds, timezone, enabled, paused, nextFireUtc, lastFireUtc, anchor, memberCount, waveCount, members: [{flowName, flowKind, wave, batch, pipelineId}]}`. `anchor` is the schedule name, waves start at 0, and `batch` is `default` for a flow that declares none. A chained schedule's plan has a null `nextFireUtc`; its parents are on the schedule itself (`afterSchedules`). It is the authoritative answer to "when does this source next update, and what runs in which order", and is exposed to the MCP server as `get_schedule_plan`.
+
+On the Schedules page a schedule's name opens this plan as the run board, the same one **Run now** opens, where Start fires it. The flows that joined a schedule are also listed as pipelines: `GET /api/v1/pipelines?scheduleId={id}` narrows the pipelines list to them, a schedule's flow count on the Schedules page opens the Pipelines page on them in the schedule's repo (`/pipelines?repo=<repoId>&schedule=<id>`, which clears the search, the active state and the kind an earlier visit left), and the Pipelines page's Schedule filter picks any schedule. With a schedule picked, the Pipelines page reads its plan: each flow's row shows the wave of the fire it runs in, numbered from 1 as the run board numbers them, in place of its lineage wave (which counts every flow of the repository), a member the fire passes over shows `not in a fire`, and when the fire has more than one wave a Wave filter narrows the tree to one of them (`&wave=<n>`, held in the address and dropped when the schedule changes).
 
 ### Reading what a schedule gives each flow
 
@@ -378,7 +388,7 @@ The control plane also manages schedules directly (src/SqlFlow.ControlPlane/Api/
 | `POST /schedules/{id}/resume` | Clear `paused` and recompute the next fire from now, so a long pause never releases a burst of missed fires. A schedule with no computable next fire (a chained or a parked one) keeps none. 200 with the schedule; 404 when unknown. |
 | `DELETE /schedules/{id}` | Remove the schedule and its memberships; 204 on success, 404 when unknown. Deleting a `yaml` schedule is undone by the next sync while git still declares it. |
 
-A run-now backfill (`from`, optionally `to`; `to` requires `from` and must be after it) reprocesses the source for that range by each member's role: the members of the fire's first wave whose kind is `cpy`, `api`, `sftp` or `file` take the window and re-land their files, every `ing` member re-reads from the source minimum so the re-landed rows are picked up, and every other member runs with default parameters.
+A run-now backfill (`from`, optionally `to`; `to` requires `from` and must be after it) reprocesses the source for that range by each member's role: the members of the fire's first wave whose kind is `cpy`, `api`, `sftp` or `file` take the window and re-land their files, a file flow dated from the file's name or path takes the window wherever it sits, since a re-landed file keeps that date, every `ing` member re-reads from the source minimum so the re-landed rows are picked up, and every other member runs with default parameters.
 
 `ScheduleDto` fields: `id`, `repoId`, `name`, `memberPipelineIds`, `cron`, `intervalSeconds`, `timezone`, `enabled`, `catchup`, `paused`, `source`, `nextFireUtc`, `lastFireUtc`, `lastRunId`, `lastGroupId`, `lastGroupActive`, `createdUtc`, `updatedUtc`, `maxConcurrency` (null means unbounded), `lastCounts`, `afterSchedules` (the parents, in declaration order), `triggersSchedules` (the schedules this one sets off, each `{id, name, depth, memberCount, enabled, paused}`; null when none), `parentFreshnessHours`, `lastStaleParents`, `operation`, `values`, `lastStartedUtc`, `lastEndedUtc`, `lastDurationSeconds`.
 

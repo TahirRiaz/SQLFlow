@@ -666,7 +666,9 @@ public static class ControlPlaneHost
             // The Maintenance page's writes: an area's retention, and a cleanup now.
             .MapMaintenanceAdminEndpoints()
             // The External triggers page: the GitHub workflows and keys that may sync a repository and fire its schedules.
-            .MapExternalTriggerEndpoints();
+            .MapExternalTriggerEndpoints()
+            // Its Repositories tab: whether each repository syncs on its own, or only when a trigger or a person asks.
+            .MapRepoSourceAdminEndpoints();
 
         // The node protocol: compute nodes poll for work and report outcomes here, under the "node" scope. This is the
         // only way work leaves the control plane; a node needs no catalog access to take or finish a run.

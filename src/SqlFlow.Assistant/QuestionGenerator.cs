@@ -42,6 +42,9 @@ public sealed class QuestionGenerator : IDisposable
 
     public void Dispose() => _client.Dispose();
 
+    /// <summary>The model that writes the questions, which each stored question records as its author.</summary>
+    public string Model => _options.Model;
+
     /// <summary>The model's answer: 1-3 questions this visual answers, in the order a person would find most
     /// natural to ask them.</summary>
     [SchemaClass("1 to 3 natural-language business questions a dashboard chart answers")]

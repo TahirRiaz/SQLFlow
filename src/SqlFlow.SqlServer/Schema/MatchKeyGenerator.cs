@@ -28,6 +28,11 @@ public sealed record MatchKeyScriptOptions
     /// <summary>The soft-delete stamp column (DeletedDate_DW). Required for Tag mode.</summary>
     public string? DeletedDateColumn { get; init; }
 
+    /// <summary>The column stamped whenever a row is written (UpdatedDate_DW): a resurrected row is written, so it is
+    /// stamped as the upsert stamps a row it updates. A tag leaves it as it is (the tag's moment is the soft-delete
+    /// column's). Null to skip.</summary>
+    public string? UpdatedDateColumn { get; init; }
+
     /// <summary>The row-status column (RowStatus_DW), stamped 'D' on tag and reset 'U' on resurrect; null to skip.</summary>
     public string? RowStatusColumn { get; init; }
 }
@@ -60,7 +65,8 @@ public sealed record MatchKeyCounters
 /// legacy client-side engine, deliberate: the comparison happens in SQL (no stream-misalignment false
 /// positives), the action threshold is actually enforced and a breach is reported (legacy carried the column
 /// but hardcoded 20 and skipped silently), and a tagged row whose key REAPPEARS in the source is un-tagged
-/// (legacy never cleared DeletedDate_DW). One script, one result row of counters. Pure text generation.
+/// (legacy never cleared DeletedDate_DW) and stamped UpdatedDate_DW, so a reader windowing on the update column
+/// meets the row again. One script, one result row of counters. Pure text generation.
 /// </summary>
 public static class MatchKeyGenerator
 {
@@ -121,12 +127,19 @@ public static class MatchKeyGenerator
         }
 
         // Tag mode also reconciles resurrections: a tagged row whose key is back in the source is un-tagged,
-        // independent of the threshold (un-deleting is always safe).
+        // independent of the threshold (un-deleting is always safe). Un-tagging changes the row, so it is stamped
+        // updated: a reader windowing on the update column would otherwise never meet the row again, and would go
+        // on treating it as deleted.
         var resurrect = string.Empty;
         if (options.Action == MatchKeyAction.Tag)
         {
             var deleted = Escape(options.DeletedDateColumn!);
             var resurrectStamps = $"trg.[{deleted}] = NULL";
+            if (!string.IsNullOrWhiteSpace(options.UpdatedDateColumn))
+            {
+                resurrectStamps += $", trg.[{Escape(options.UpdatedDateColumn!)}] = SYSUTCDATETIME()";
+            }
+
             if (!string.IsNullOrWhiteSpace(options.RowStatusColumn))
             {
                 resurrectStamps += $", trg.[{Escape(options.RowStatusColumn!)}] = 'U'";

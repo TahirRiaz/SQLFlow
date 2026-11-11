@@ -32,6 +32,6 @@ subscribers:
       # interpreted data model how the business relates them.
       - name: OrdersByCountry
         sql: |
-          SELECT   r.Country, r.OrderCount, f.OrderId
+          SELECT   r.country, r.order_count, f.customer_id
           FROM     SqlFlowCatalogTests.demo.Fact_CountryRollup AS r
-          JOIN     SqlFlowCatalogTests.demo.Fact_OrderSummary  AS f ON f.Country = r.Country
+          JOIN     SqlFlowCatalogTests.demo.Fact_OrderSummary  AS f ON f.country = r.country

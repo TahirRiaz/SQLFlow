@@ -251,7 +251,7 @@ export function expectedRhythm(pattern: StreamPattern, expectedGapDays: number):
  * a label rather than standing on color alone.
  */
 export function useChartInk() {
-  const { mode } = useThemeMode();
+  const { palette } = useThemeMode();
   return useMemo(() => {
     const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     return {
@@ -261,7 +261,7 @@ export function useChartInk() {
       grid: token("--border"),
       cursor: token("--muted"),
     };
-  }, [mode]);
+  }, [palette]);
 }
 
 /** Row counts, compact enough for a table cell or an axis tick when asked. */

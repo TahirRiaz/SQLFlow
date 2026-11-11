@@ -16,8 +16,8 @@ metadata's `FetchDataTypes` defaults off for Parquet):
 | int64 | `bigint` |
 | float / double | `real` / `float` |
 | decimal(p,s) | `decimal(p,s)` (precision/scale from the file) |
-| timestamp | `datetime2` |
-| date / time | `date` / `time` |
+| timestamp, date | `datetime2` |
+| time | `nvarchar(max)` |
 | string | `nvarchar(max)` |
 | binary | `varbinary(max)` |
 | uuid | `uniqueidentifier` |

@@ -250,8 +250,14 @@ public sealed partial class Dispatcher : IDisposable
             // Read on every pass: a drain can arrive while this poll is parked, and the wake that follows must find the
             // node handed nothing from then on.
             var draining = Nodes.IsDraining(request.Node);
-            var runSlots = draining ? 0 : freeRunSlots;
-            var taskSlots = draining ? 0 : freeTaskSlots;
+
+            // What this node has reported finished since it polled is a slot it is freeing. A poll that reported no free slot
+            // at all takes none of them: its node cancels it the moment a slot frees, so a hand-out on it would be lost.
+            var freed = freeRunSlots + freeTaskSlots > 0
+                ? Queue.FreedSlots(request.Node, request.HoldingRuns, request.HoldingTasks)
+                : (Runs: 0, Tasks: 0);
+            var runSlots = draining ? 0 : Math.Min(freeRunSlots + freed.Runs, Math.Max(freeRunSlots, request.RunSlots));
+            var taskSlots = draining ? 0 : Math.Min(freeTaskSlots + freed.Tasks, Math.Max(freeTaskSlots, request.TaskSlots));
 
             var revokedRuns = Queue.RenewRunLeases(request.Node, request.HoldingRuns, leaseExpires);
             var revokedTasks = Queue.RenewTaskLeases(request.Node, request.HoldingTasks, leaseExpires);
@@ -484,7 +490,7 @@ public sealed partial class Dispatcher : IDisposable
             return record.Status;
         }
 
-        Queue.RemoveRun(runId);
+        Queue.RemoveReportedRun(runId, request.Node);
         foreach (var skipped in record.SkippedRunIds)
         {
             Queue.RemoveRun(skipped);
@@ -583,7 +589,7 @@ public sealed partial class Dispatcher : IDisposable
             .ConfigureAwait(false);
         if (recorded)
         {
-            Queue.RemoveTask(taskId);
+            Queue.RemoveReportedTask(taskId, request.Node);
         }
         else
         {

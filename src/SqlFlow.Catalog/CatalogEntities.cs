@@ -1048,6 +1048,10 @@ public class CatalogSubscriberReportVisualQuestion
 
     /// <summary>When it was last added or edited by a person; null for a generated question.</summary>
     public DateTime? UpdatedUtc { get; set; }
+
+    /// <summary>For a generated question, the model that wrote it, so a stored question says what generated it; null for
+    /// a person's question and for one generated before questions recorded it.</summary>
+    public string? Model { get; set; }
 }
 
 /// <summary>Where a <see cref="CatalogSubscriberReportVisualQuestion"/> came from, named once so the generator, the
@@ -1979,10 +1983,45 @@ public class CatalogRepoSource
     /// selection lives here, but nothing reaches the catalog until a sync runs, which is what the scheduler reads.</summary>
     public string? ExcludedFlowPaths { get; set; }
 
-    /// <summary>Whether the control plane auto-syncs this source. A disabled source is kept but never pulled.</summary>
+    /// <summary>Whether the control plane syncs this source at all. A disabled source is kept but never pulled, whoever
+    /// asks; <see cref="AutoSync"/> decides when an enabled one syncs.</summary>
     public bool Enabled { get; set; } = true;
 
     public int SyncIntervalSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Whether the control plane syncs this source on its own, every <see cref="SyncIntervalSeconds"/>, reading the tip of
+    /// its branch each time, so a merge reaches the catalog within one interval (the default). Off, the source syncs only
+    /// when asked and holds the commit it last synced until then: a trigger request moves it to the commit the request
+    /// names (or the branch's tip when it names none), a sync-now moves it to the tip, and a change that only needs the
+    /// catalog recomputed (a registration run, an uploaded report, a host module's own) syncs the commit it holds again.
+    /// A move goes forward only (<see cref="MoveToCommit"/>). A source that has never synced retries on its interval until
+    /// its first sync succeeds, so a deployment comes up from its configuration alone. Applies to a git source; a
+    /// local-path source has no commits to hold, so off it only stops syncing on its interval.
+    /// </summary>
+    public bool AutoSync { get; set; } = true;
+
+    /// <summary>The control-plane setting that sets <see cref="AutoSync"/>
+    /// (<c>ControlPlane:Bootstrap:Repositories:&lt;name&gt;:AutoSync</c>), or null when an administrator sets it, as for every
+    /// source whose configuration does not say. The API refuses to change a value the configuration sets, naming this.</summary>
+    public string? AutoSyncConfiguredBy { get; set; }
+
+    /// <summary>Who last turned <see cref="AutoSync"/> on or off through the API; null until someone has.</summary>
+    public string? AutoSyncUpdatedBy { get; set; }
+
+    /// <summary>When <see cref="AutoSyncUpdatedBy"/> turned it on or off (UTC).</summary>
+    public DateTime? AutoSyncUpdatedUtc { get; set; }
+
+    /// <summary>When a sync that moves the source to a newer commit was last asked for (UTC): by a trigger request or a
+    /// sync-now. It decides what a sync reads only while <see cref="AutoSync"/> is off. The attempt that starts at or after
+    /// it answers it, and the outcome that attempt records clears it; one asked for while an attempt runs stays for the
+    /// next attempt.</summary>
+    public DateTime? MoveRequestedUtc { get; set; }
+
+    /// <summary>The commit the move asks for (as the request named it, full or abbreviated), or null for the tip of the
+    /// branch. The sync checks it is on the branch, stays on the commit it holds when that already contains it, and
+    /// refuses a commit that would drop what the held commit has (one on a separate line of history).</summary>
+    public string? MoveToCommit { get; set; }
 
     /// <summary>The control-plane setting that names this source (<c>ControlPlane:Bootstrap:Repositories:&lt;name&gt;</c>), or null
     /// for a source registered through the API. The control plane writes a configured source at every start, and the API
@@ -2893,8 +2932,8 @@ public class CatalogSchedule
 
     /// <summary>
     /// How many of this schedule's members may EXECUTE concurrently, or null for unbounded (a schedule declared
-    /// without the key stores the product default, <see cref="Core.ScheduleDefaults.MaxConcurrency"/>; a row stored
-    /// before the column existed stays null). Because a group's waves are gated, this is the width of the running wave:
+    /// without the key stores its product's default, <see cref="Core.ScheduleFireDefaults"/>, which is
+    /// <see cref="Core.ScheduleDefaults.MaxConcurrency"/> in SQLFlow; a row stored before the column existed stays null). Because a group's waves are gated, this is the width of the running wave:
     /// 1 makes a fire strictly serial. It bounds the FIRE rather than the estate, so one fragile upstream can be
     /// protected without throttling every other source's throughput. Stamped onto each member run at enqueue
     /// (<see cref="CatalogRun.GroupMaxConcurrency"/>) and applied by the control plane's dispatcher, which hands out no
@@ -3395,6 +3434,10 @@ public static class ChatMessageRoles
 /// </summary>
 public class CatalogChatMessage
 {
+    /// <summary>The longest model name stored, here and with a generated question: a deployment's or a model's name is
+    /// far shorter, and a longer one is cut rather than refused, since the answer it marks is already written.</summary>
+    public const int MaxModelLength = 128;
+
     /// <summary>The append-only, monotonically increasing id (SQL Server IDENTITY).</summary>
     public long Id { get; set; }
 
@@ -3423,6 +3466,15 @@ public class CatalogChatMessage
     /// <c>estate</c>), so the next message starts from it even when the assistant switched without a command; null for
     /// a person's message and for an answer recorded before modes were.</summary>
     public string? AssistantMode { get; set; }
+
+    /// <summary>For an assistant answer, the provider of the model that wrote it (an <c>AssistantProvider</c> name, such
+    /// as <c>AzureFoundry</c>), so a stored answer says it was generated and by what; null for a person's message and
+    /// for an answer stored before answers recorded it.</summary>
+    public string? ModelProvider { get; set; }
+
+    /// <summary>For an assistant answer, the model that wrote it (the Foundry deployment's name, or the OpenAI or
+    /// Anthropic model id); null for a person's message and for an answer stored before answers recorded it.</summary>
+    public string? Model { get; set; }
 
     public DateTime CreatedUtc { get; set; }
 }

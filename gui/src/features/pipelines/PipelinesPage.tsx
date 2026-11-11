@@ -1,18 +1,19 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, FolderGit2 } from "lucide-react";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { useLocalStorageState, useUrlSeed } from "@/hooks/useLocalStorageState";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isApiError } from "../../api/client";
-import { repoApi } from "../../api/endpoints";
-import type { PipelineSummary } from "../../api/types";
+import { repoApi, scheduleApi } from "../../api/endpoints";
+import type { PipelineSummary, SchedulePlan } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
 import { FilterBar } from "../../components/FilterBar";
+import { FilterCombobox } from "../../components/FilterCombobox";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { SearchInput } from "../../components/SearchInput";
@@ -20,7 +21,9 @@ import { builtInFlowKinds } from "../../modules/flowKinds";
 import { contributedKinds } from "../../modules/registry";
 import { fetchAllPipelines, type FetchResult } from "./fetchAllPipelines";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
-import { groupByProject, pipelineMatches, ProjectGroup } from "./ProjectGroup";
+import { scheduleFilterOptions, useAllSchedules } from "../schedules/useAllSchedules";
+import { groupByProject, lineageWaveLabel, pipelineMatches, ProjectGroup } from "./ProjectGroup";
+import { scheduleWaves, type ScheduleWaves } from "./scheduleWaves";
 
 /** The kinds the filter offers: the built-in ones the loader recognises, acquisition-first then transform/utility,
  * then the kinds registered modules add, so a module's flows are filtered like any other. Read while rendering rather
@@ -36,12 +39,13 @@ const ALL = "all";
 /** One repo's pipelines: a collapsible section holding the repo's project groups. Rendered only in the all-repos view;
  * when a single repo is selected the page drops this level and shows its projects directly. */
 function RepoGroup({
-  repoName, repoId, pipelines, filtered, onOpen, onRunBatch,
+  repoName, repoId, pipelines, filtered, waveLabel, onOpen, onRunBatch,
 }: {
   repoName: string;
   repoId: string;
   pipelines: PipelineSummary[];
   filtered: boolean;
+  waveLabel: (pipeline: PipelineSummary) => string | null;
   onOpen: (pipelineId: string) => void;
   onRunBatch: (repoId: string, flowName: string) => void;
 }) {
@@ -70,6 +74,7 @@ function RepoGroup({
                 repoId={repoId}
                 filtered={filtered}
                 defaultOpen={filtered}
+                waveLabel={waveLabel}
                 onOpen={onOpen}
                 onRunBatch={onRunBatch}
               />
@@ -81,30 +86,62 @@ function RepoGroup({
   );
 }
 
-/** All pipelines across repos, grouped as a repo -> project folder tree. Server-side filters (repo, kind, active) shape
- * the fetched set; a free-text box narrows it in the browser by name, path, kind, or project. A link can set the repo and
- * the kind (?repo=, ?kind=), which wins over the filters remembered from an earlier visit; picking a filter here replaces
- * what the link set, so the address never disagrees with the dropdown. */
+/** All pipelines across repos, grouped as a repo -> project folder tree. Server-side filters (repo, schedule, kind,
+ * active) shape the fetched set; a free-text box narrows it in the browser by name, path, kind, or project, and with a
+ * schedule picked a wave of its fire narrows it too. A link can set the repo, the schedule, the wave and the kind
+ * (?repo=, ?schedule=, ?wave=, ?kind=), which wins over the filters remembered from an earlier visit; picking a filter
+ * here replaces what the link set, so the address never disagrees with the dropdown. */
 export default function PipelinesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [storedRepo, setStoredRepo] = useLocalStorageState("sqlflow.filters.pipelines.repo", "");
+  const [storedSchedule, setStoredSchedule] = useLocalStorageState("sqlflow.filters.pipelines.schedule", "");
   const [storedKind, setStoredKind] = useLocalStorageState("sqlflow.filters.pipelines.kind", "");
   const repoFilter = searchParams.get("repo") ?? storedRepo;
+  const scheduleFilter = searchParams.get("schedule") ?? storedSchedule;
   const kindFilter = searchParams.get("kind") ?? storedKind;
-  const choose = (key: "repo" | "kind", store: (value: string) => void) => (value: string) => {
+  // The wave of the schedule's fire to show, numbered as its run board numbers them. It means nothing without its
+  // schedule, so it is held in the address alone, never remembered, and goes when the schedule does.
+  const waveParam = searchParams.get("wave");
+  const waveFilter = scheduleFilter !== "" && waveParam !== null && /^[1-9]\d*$/.test(waveParam) ? Number(waveParam) : null;
+  // Every key a pick drops from the address goes in one update: two updates in one handler each start from the address
+  // last drawn, so the second would put back what the first removed.
+  const choose = (keys: readonly string[], store: (value: string) => void) => (value: string) => {
     store(value);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
-      next.delete(key);
+      for (const key of keys) {
+        next.delete(key);
+      }
       return next;
     }, { replace: true });
   };
-  const setRepoFilter = choose("repo", setStoredRepo);
-  const setKindFilter = choose("kind", setStoredKind);
+  const setRepoFilter = choose(["repo"], setStoredRepo);
+  const setScheduleFilter = choose(["schedule", "wave"], setStoredSchedule);
+  const setKindFilter = choose(["kind"], setStoredKind);
+  const setWaveFilter = (wave: number | null) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (wave === null) {
+        next.delete("wave");
+      } else {
+        next.set("wave", String(wave));
+      }
+      return next;
+    }, { replace: true });
+  };
   const [activeFilter, setActiveFilter] = useLocalStorageState("sqlflow.filters.pipelines.active", "");
   const [search, setSearch] = useLocalStorageState("sqlflow.filters.pipelines.name", "");
   const [runBatch, setRunBatch] = useState<{ repoId: string; flowName: string } | null>(null);
+
+  // A link naming a schedule (a schedule's flows on the Schedules page) asks for exactly the flows that joined it, so on
+  // arrival it lifts what an earlier visit left narrowing the tree: the search, the active state and a remembered kind.
+  // The link's own repo and schedule win over the remembered ones already, and every filter it leaves reads in the bar.
+  useUrlSeed(searchParams.get("schedule"), () => {
+    setSearch("");
+    setActiveFilter("");
+    setStoredKind("");
+  });
 
   const repos = useQuery({
     queryKey: ["repos", "all-for-pipeline-filter"],
@@ -113,23 +150,56 @@ export default function PipelinesPage() {
   const repoOptions = repos.data?.items ?? [];
   const repoNameById = new Map(repoOptions.map((r) => [r.id, r.name]));
 
+  const schedules = useAllSchedules();
+  const scheduleOptions = useMemo(() => scheduleFilterOptions(schedules.data?.items ?? []), [schedules.data]);
+
   const query = useQuery({
-    queryKey: ["pipelines", "grouped", repoFilter, kindFilter, activeFilter],
+    queryKey: ["pipelines", "grouped", repoFilter, scheduleFilter, kindFilter, activeFilter],
     queryFn: () => fetchAllPipelines({
       repoId: repoFilter === "" ? undefined : repoFilter,
+      scheduleId: scheduleFilter === "" ? undefined : scheduleFilter,
       kind: kindFilter === "" ? undefined : kindFilter,
       active: activeFilter === "" ? undefined : activeFilter === "active",
     }),
   });
 
+  // The order the picked schedule's fire runs its flows in: the plan its run board draws, shared with it through the
+  // query key. A flow's lineage wave counts every flow of its repository, so it is not that order.
+  const plan = useQuery({
+    queryKey: ["schedule-plan", scheduleFilter],
+    queryFn: () => scheduleApi.plan(scheduleFilter),
+    enabled: scheduleFilter !== "",
+  });
+  const fire = useMemo(
+    () => (scheduleFilter === "" || plan.data === undefined ? null : scheduleWaves(plan.data.members)),
+    [scheduleFilter, plan.data],
+  );
+  // Under a schedule a row says which wave of its fire the flow runs in, the number the wave filter and the run board
+  // use; a member the fire passes over (deactivated, manual or disabled) says so. Otherwise it is the lineage wave.
+  const waveLabel = useMemo(() => {
+    if (scheduleFilter === "") {
+      return lineageWaveLabel;
+    }
+
+    return (pipeline: PipelineSummary): string | null => {
+      if (fire === null) {
+        return null;
+      }
+
+      const wave = fire.waveOf.get(pipeline.id);
+      return wave === undefined ? "not in a fire" : `wave ${wave}`;
+    };
+  }, [scheduleFilter, fire]);
+
   const needle = search.trim().toLowerCase();
-  // A kind, an active state or a search picks pipelines out of the tree, so it opens onto them: the reader asked for those
-  // flows, not for an outline to dig them out of. The repo alone only scopes the tree to one repo's project outline.
-  const narrowed = needle !== "" || kindFilter !== "" || activeFilter !== "";
+  // A schedule, a wave, a kind, an active state or a search picks pipelines out of the tree, so it opens onto them: the
+  // reader asked for those flows, not for an outline to dig them out of. The repo alone only scopes the tree to one
+  // repo's project outline.
+  const narrowed = needle !== "" || scheduleFilter !== "" || waveFilter !== null || kindFilter !== "" || activeFilter !== "";
   // What the tree's expansion is derived from. Each change remounts the groups, so a folder opened or closed under the
   // previous filters never hides a match of the new ones. The search text itself is left out, so typing does not undo
   // a fold made while the search runs.
-  const view = JSON.stringify([repoFilter, kindFilter, activeFilter, needle !== ""]);
+  const view = JSON.stringify([repoFilter, scheduleFilter, waveFilter, kindFilter, activeFilter, needle !== ""]);
 
   return (
     <Page data-testid="page-pipelines">
@@ -159,6 +229,38 @@ export default function PipelinesPage() {
             ))}
           </SelectContent>
         </Select>
+        {/* Searchable rather than a plain dropdown: an estate runs hundreds of schedules. */}
+        <FilterCombobox
+          options={scheduleOptions}
+          value={scheduleFilter}
+          onChange={setScheduleFilter}
+          placeholder="all schedules"
+          searchPlaceholder="Search schedules"
+          emptyText="No schedules found."
+          ariaLabel="Schedule"
+          testId="filter-schedule"
+          className="w-48"
+        />
+        {/* Only once a schedule is picked, and only when its fire has waves to choose between; a wave the address names
+            stays clearable even when the fire has come down to one. */}
+        {fire !== null && (fire.waves.length > 1 || waveFilter !== null) && (
+          <Select
+            value={waveFilter === null ? ALL : String(waveFilter)}
+            onValueChange={(value) => setWaveFilter(value === ALL ? null : Number(value))}
+          >
+            <SelectTrigger size="sm" active={waveFilter !== null} className="h-8 w-40" aria-label="Wave" data-testid="filter-wave">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>all waves</SelectItem>
+              {fire.waves.map((wave) => (
+                <SelectItem key={wave.number} value={String(wave.number)}>
+                  wave {wave.number} · {wave.flows} {wave.flows === 1 ? "flow" : "flows"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select
           value={kindFilter === "" ? ALL : kindFilter}
           onValueChange={(value) => setKindFilter(value === ALL ? "" : value)}
@@ -191,6 +293,10 @@ export default function PipelinesPage() {
       <PipelinesTree
         query={query}
         needle={needle}
+        wave={waveFilter}
+        plan={plan}
+        fire={fire}
+        waveLabel={waveLabel}
         narrowed={narrowed}
         view={view}
         singleRepo={repoFilter !== ""}
@@ -212,13 +318,18 @@ export default function PipelinesPage() {
 }
 
 /** Renders the fetched pipelines as the grouped tree, plus the load/error/empty/no-match states and the fetch-cap
- * note. Split out so the page component stays about filters and wiring. `narrowed` opens every group and folder onto
+ * note. Split out so the page component stays about filters and wiring. `wave` keeps the flows that run in that wave
+ * of the schedule's fire, which `fire` reads from the schedule's `plan`; `narrowed` opens every group and folder onto
  * the matches; `view` keys the groups so each filter change starts their expansion afresh. */
 function PipelinesTree({
-  query, needle, narrowed, view, singleRepo, repoNameById, onOpen, onRunBatch,
+  query, needle, wave, plan, fire, waveLabel, narrowed, view, singleRepo, repoNameById, onOpen, onRunBatch,
 }: {
   query: UseQueryResult<FetchResult>;
   needle: string;
+  wave: number | null;
+  plan: UseQueryResult<SchedulePlan>;
+  fire: ScheduleWaves | null;
+  waveLabel: (pipeline: PipelineSummary) => string | null;
   narrowed: boolean;
   view: string;
   singleRepo: boolean;
@@ -226,14 +337,16 @@ function PipelinesTree({
   onOpen: (pipelineId: string) => void;
   onRunBatch: (repoId: string, flowName: string) => void;
 }) {
-  if (query.isError) {
-    return isApiError(query.error)
-      ? <CorrelationError error={query.error} />
-      : <p className="text-[13px] text-destructive">{String(query.error)}</p>;
+  const failed = query.isError ? query.error : wave !== null && plan.isError ? plan.error : null;
+  if (failed !== null) {
+    return isApiError(failed)
+      ? <CorrelationError error={failed} />
+      : <p className="text-[13px] text-destructive">{String(failed)}</p>;
   }
 
+  // A wave is applied only once the plan says which flows run in it, never to the whole schedule in the meantime.
   const result = query.data;
-  if (result === undefined) {
+  if (result === undefined || (wave !== null && fire === null)) {
     return <Skeleton className="h-40 w-full rounded-lg" />;
   }
 
@@ -247,7 +360,8 @@ function PipelinesTree({
     );
   }
 
-  const matches = needle === "" ? result.items : result.items.filter((p) => pipelineMatches(p, needle));
+  const matches = result.items.filter((p) =>
+    (needle === "" || pipelineMatches(p, needle)) && (wave === null || fire?.waveOf.get(p.id) === wave));
 
   const cappedNote = result.capped && (
     <p className="text-xs text-warning" data-testid="pipelines-capped">
@@ -262,7 +376,9 @@ function PipelinesTree({
         {cappedNote}
         <EmptyState
           title="No matches"
-          description={`No pipeline matches "${needle}". Search by name, path, kind, or project.`}
+          description={needle !== ""
+            ? `No pipeline${wave === null ? "" : ` in wave ${wave}`} matches "${needle}". Search by name, path, kind, or project.`
+            : `No flow the filters keep runs in wave ${wave} of this schedule's fire.`}
           data-testid="pipelines-no-matches"
         />
       </div>
@@ -282,6 +398,7 @@ function PipelinesTree({
             repoId={rows[0].repoId}
             filtered={narrowed}
             defaultOpen={narrowed}
+            waveLabel={waveLabel}
             onOpen={onOpen}
             onRunBatch={onRunBatch}
           />
@@ -314,6 +431,7 @@ function PipelinesTree({
           repoName={name}
           pipelines={pipelines}
           filtered={narrowed}
+          waveLabel={waveLabel}
           onOpen={onOpen}
           onRunBatch={onRunBatch}
         />

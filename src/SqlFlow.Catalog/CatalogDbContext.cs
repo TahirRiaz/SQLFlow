@@ -416,6 +416,7 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(q => q.Origin).HasMaxLength(16).IsRequired()
                 .HasDefaultValue(SubscriberQuestionOrigin.Generated);
             entity.Property(q => q.UpdatedBy).HasMaxLength(256);
+            entity.Property(q => q.Model).HasMaxLength(CatalogChatMessage.MaxModelLength);
             entity.HasIndex(q => q.VisualKey);
             entity.HasIndex(q => q.RepoId);
         });
@@ -860,6 +861,10 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(s => s.ExcludedFlowPaths);
             // The configuration key that sets the source, as an operator reads it in an error.
             entity.Property(s => s.ConfiguredBy).HasMaxLength(200);
+            entity.Property(s => s.AutoSyncConfiguredBy).HasMaxLength(256);
+            entity.Property(s => s.AutoSyncUpdatedBy).HasMaxLength(256);
+            // A commit id, full (40 or 64 hexadecimal characters) or abbreviated, as a trigger request names it.
+            entity.Property(s => s.MoveToCommit).HasMaxLength(64);
             entity.HasIndex(s => s.Name).IsUnique();
             // The sync loop scans for enabled sources whose next sync is due.
             entity.HasIndex(s => s.NextSyncUtc);
@@ -1027,6 +1032,8 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(c => c.Title).HasMaxLength(200).IsRequired();
             // The owner's conversation list, newest activity first.
             entity.HasIndex(c => new { c.UserId, c.UpdatedUtc });
+            // The retention an admin sets on the Maintenance page seeks the conversations idle since its cut-off.
+            entity.HasIndex(c => c.UpdatedUtc);
         });
 
         modelBuilder.Entity<CatalogChatMessage>(entity =>
@@ -1035,6 +1042,8 @@ public sealed class CatalogDbContext : DbContext
             entity.HasKey(m => m.Id);
             entity.Property(m => m.Role).HasMaxLength(16).IsRequired();
             entity.Property(m => m.AssistantMode).HasMaxLength(16);
+            entity.Property(m => m.ModelProvider).HasMaxLength(32);
+            entity.Property(m => m.Model).HasMaxLength(CatalogChatMessage.MaxModelLength);
             // Text / ImagesJson / ToolCallsJson are nvarchar(max): an answer, a set of pasted
             // screenshots, or a long tool trail has no useful column bound.
             entity.Property(m => m.Text).IsRequired();

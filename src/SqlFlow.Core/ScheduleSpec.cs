@@ -4,11 +4,12 @@ namespace SqlFlow.Core;
 public static class ScheduleDefaults
 {
     /// <summary>
-    /// How many members of one fire execute at once when the schedule does not say. Bounded rather than unbounded
-    /// because the members of a wave almost always share one upstream, and a wide source (23 flows off a single
-    /// modest SQL Server, say) exhausts that server's connections long before the estate runs out of workers. Four
-    /// keeps a fire meaningfully parallel while leaving a small source room to breathe; a source that can take more
-    /// raises it explicitly, and <c>maxConcurrency: 0</c> opts out entirely.
+    /// How many members of one fire execute at once when the schedule does not say, in SQLFlow. Bounded rather than
+    /// unbounded because the members of a wave almost always share one upstream, and a wide source (23 flows off a
+    /// single modest SQL Server, say) exhausts that server's connections long before the estate runs out of workers.
+    /// Four keeps a fire meaningfully parallel while leaving a small source room to breathe; a source that can take more
+    /// raises it explicitly, and <c>maxConcurrency: 0</c> opts out entirely. A host may give its product another
+    /// default (<see cref="ScheduleFireDefaults"/>).
     /// </summary>
     public const int MaxConcurrency = 4;
 
@@ -21,33 +22,11 @@ public static class ScheduleDefaults
     public const int ParentFreshnessHours = 24;
 
     /// <summary>
-    /// Resolves a declared <c>maxConcurrency</c> to the effective bound, where null means UNBOUNDED. The one
-    /// implementation both YAML loaders and the API create path use, so a schedule means the same thing however it
-    /// was declared:
-    /// <list type="bullet">
-    /// <item>omitted (<paramref name="declared"/> null) takes <see cref="MaxConcurrency"/>;</item>
-    /// <item><c>0</c> is the explicit opt-out and returns null (unbounded);</item>
-    /// <item>a positive value is taken verbatim;</item>
-    /// <item>a negative value is meaningless, so <paramref name="invalid"/> is signalled and the default applies;
-    /// it is never stored, because a bound below zero would leave every member of the fire unclaimable.</item>
-    /// </list>
+    /// Resolves a declared <c>maxConcurrency</c> to the effective bound with SQLFlow's default, where null means
+    /// UNBOUNDED: <see cref="ScheduleFireDefaults.Resolve"/> of <see cref="ScheduleFireDefaults.SqlFlow"/>. The loaders
+    /// and the API resolve with the default their host registered instead.
     /// </summary>
-    public static int? Resolve(int? declared, out bool invalid)
-    {
-        invalid = false;
-        switch (declared)
-        {
-            case null:
-                return MaxConcurrency;
-            case 0:
-                return null;
-            case > 0:
-                return declared;
-            default:
-                invalid = true;
-                return MaxConcurrency;
-        }
-    }
+    public static int? Resolve(int? declared, out bool invalid) => ScheduleFireDefaults.SqlFlow.Resolve(declared, out invalid);
 }
 
 /// <summary>
@@ -148,8 +127,9 @@ public sealed record ScheduleSpec
     /// <summary>
     /// How many of this schedule's members may EXECUTE at the same time, already resolved through
     /// <see cref="ScheduleDefaults.Resolve"/>: a positive bound, or null for UNBOUNDED (which the YAML asks for with
-    /// <c>maxConcurrency: 0</c>). A schedule that says nothing gets <see cref="ScheduleDefaults.MaxConcurrency"/>;
-    /// a value of 1 makes the fire strictly serial, one member after another.
+    /// <c>maxConcurrency: 0</c>). A schedule that says nothing gets its product's default
+    /// (<see cref="ScheduleFireDefaults"/>, SQLFlow's being <see cref="ScheduleDefaults.MaxConcurrency"/>); a value of 1
+    /// makes the fire strictly serial, one member after another.
     /// <para>
     /// The bound is per FIRE, and because a group's waves are gated (no member is claimable until every lower wave
     /// is terminal), only one wave is ever eligible at a time; this is therefore the width of the running wave.

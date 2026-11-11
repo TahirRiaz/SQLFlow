@@ -7,7 +7,8 @@
 
   Dark mode is keyed on the `dark` class the theme provider sets on <html>; shadcn semantic tokens
   (--background, --primary, ...) are the single source of truth, and the workbench chrome tokens
-  (--activity-bar, --status-bar, ...) extend them for the shell.
+  (--activity-bar, --status-bar, ...) extend them for the shell. These are SQLFlow's design; a module's design sets the
+  same tokens under `[data-sf-design="<id>"]` in its own stylesheet (DESIGN.md section 3.7).
 
   The palette is three families and nothing else (DESIGN.md section 3): the navy neutrals every surface, hairline and
   text step is cut from, one blue for everything a person acts on or that is in motion, and three status hues. Each
@@ -61,7 +62,14 @@
   --info: var(--primary);
   --info-foreground: var(--primary-foreground);
 
-  /* Workbench chrome: activity bar and status bar stay branded in both modes. */
+  /* Workbench chrome: activity bar and status bar stay branded in both modes. The title bar shares the activity bar's
+     ground, and what sits on it draws in --title-bar-foreground (and its opacities, with --title-bar-subtle for the
+     attribution), so a design may make it light;
+     --chrome-border is the hairline such a design draws where the title bar and the activity bar meet the workbench. */
+  --title-bar: var(--activity-bar);
+  --title-bar-foreground: #ffffff;
+  --title-bar-subtle: color-mix(in oklab, var(--title-bar-foreground) 45%, transparent);
+  --chrome-border: transparent;
   --activity-bar: var(--brand-navy);
   --activity-bar-foreground: #b6c4d6;
   --activity-bar-active: #ffffff;
@@ -128,6 +136,10 @@
   --info: var(--primary);
   --info-foreground: var(--primary-foreground);
 
+  --title-bar: var(--activity-bar);
+  --title-bar-foreground: #ffffff;
+  --title-bar-subtle: color-mix(in oklab, var(--title-bar-foreground) 45%, transparent);
+  --chrome-border: transparent;
   --activity-bar: #0c1420;
   --activity-bar-foreground: #7d90a8;
   --activity-bar-active: #ffffff;
@@ -197,6 +209,10 @@
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
 
+  --color-title-bar: var(--title-bar);
+  --color-title-bar-foreground: var(--title-bar-foreground);
+  --color-title-bar-subtle: var(--title-bar-subtle);
+  --color-chrome-border: var(--chrome-border);
   --color-activity-bar: var(--activity-bar);
   --color-activity-bar-foreground: var(--activity-bar-foreground);
   --color-activity-bar-active: var(--activity-bar-active);
@@ -276,6 +292,57 @@
 
   100% {
     transform: translateX(350%);
+  }
+}
+
+/*
+  The title bar's trace indicator (layout/workbench/TraceIndicator.tsx), used under motion-safe only. While a trace runs,
+  an arc turns around the icon, lengthening and shortening as it goes (its circle is drawn with pathLength 100, so the
+  lengths here are shares of the ring), the icon breathes, and rings spread from it; an outcome sends out the rings once.
+*/
+@keyframes trace-turn {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes trace-arc {
+  0% {
+    stroke-dasharray: 1 200;
+    stroke-dashoffset: 0;
+  }
+
+  50% {
+    stroke-dasharray: 62 200;
+    stroke-dashoffset: -24;
+  }
+
+  100% {
+    stroke-dasharray: 62 200;
+    stroke-dashoffset: -99;
+  }
+}
+
+@keyframes trace-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes trace-ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
   }
 }
 

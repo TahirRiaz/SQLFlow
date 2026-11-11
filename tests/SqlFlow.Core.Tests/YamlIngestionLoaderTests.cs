@@ -633,6 +633,19 @@ public sealed class YamlIngestionLoaderTests
     }
 
     [Fact]
+    public void DocumentLoader_UnknownFlowType_NamesEveryBuiltInKind()
+    {
+        var ex = Assert.Throws<FlowValidationException>(() => Documents().Parse("flowType: bogus\nname: x"));
+
+        foreach (var kind in YamlDocumentLoader.BuiltInFlowTypes.Where(k => k != "file"))
+        {
+            Assert.Contains($"'{kind}' ", ex.Message, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("omit flowType for a file flow", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task InMemoryStores_ResolveAndOmit()
     {
         var store = InMemoryDataSourceStore.FromReferences([new KeyValuePair<string, string>("a", "${env:X}")]);

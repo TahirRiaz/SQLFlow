@@ -140,7 +140,7 @@ this section.
 
 ### The run trace
 
-Two of SQLFlow's areas take a limit, and both clean the same runs: a run whose status is succeeded, cancelled or
+Two of SQLFlow's run history areas take a limit, and both clean the same runs: a run whose status is succeeded, cancelled or
 skipped, written before the cut-off, that is not its pipeline's most recent run. Each pipeline therefore keeps the
 statements and events of its latest run and of every failed run, and every run queued or running keeps its own.
 
@@ -150,6 +150,21 @@ statements and events of its latest run and of every failed run, and every run q
   from Insights' step timings. The run's totals stay on its run row.
 
 A limit set for the SQL statements before this page existed carries over to the area `sqlflow.run-statements`.
+
+### The assistant's conversations and query results
+
+Two more areas take a limit, so an estate keeps what was asked of a model, what it answered and the rows a query
+returned only as long as it decides. Both are **optional** and, like every area, nothing goes until an admin sets a
+limit.
+
+- **Chat conversations** (`sqlflow.chats`: `catalog.ChatConversation`, `catalog.ChatMessage`): a conversation nobody has
+  written in since the cut-off goes with every message in it, images and answers included (`ChatRetention`). A
+  conversation anyone wrote in within the limit keeps every message, its oldest included. Each person still deletes
+  their own on the Chat page, and a user's go with the user.
+- **Compute tasks** (`sqlflow.compute-tasks`: `catalog.ComputeTask`): a finished task (succeeded, failed or cancelled)
+  enqueued before the cut-off goes with its result, the rows a query returned among them. A task still queued or running
+  stays whatever its age. A chat answer that showed a removed result says it was removed and that running the query
+  again shows it.
 
 ## SQLFlow's areas
 
@@ -169,13 +184,13 @@ A limit set for the SQL statements before this page existed carries over to the 
 | Sync and discovery traces | `ActivityEvent` | Safe to remove | The last five attempts per subject; a discovery's lines after 2 days; a trigger request's one trace stays with the request |
 | Nodes | `Node` | Safe to remove | After `Dispatch:NodeRetentionHours` offline (24) |
 | Dispatch and worker pools | `DispatchLease`, `WorkerPool` | Keep | Updated in place |
-| Compute tasks | `ComputeTask` | Keep, grows | Never removed |
+| Compute tasks | `ComputeTask` | Optional | The limit an admin sets (above) |
 | Prepared queries | `QueryPlan` | Safe to remove | 24 hours after it was prepared |
 | Notification events | `NotificationEvent` | Safe to remove | `Notifications:EventRetentionDays` (30) |
 | Sent notifications | `NotificationDelivery` | Safe to remove | `Notifications:DeliveryRetentionDays` (90) |
 | Digests | `NotificationDigest` | Safe to remove | `Notifications:DigestRetentionDays` (365) |
 | Subscriptions | `NotificationSubscription`, `NotificationWatermark` | Keep | Each person manages their own |
-| Chat conversations | `ChatConversation`, `ChatMessage` | Keep, grows | Each person deletes their own |
+| Chat conversations | `ChatConversation`, `ChatMessage` | Optional | Each person deletes their own; the limit an admin sets (above) |
 | AI contexts and saved answers | `AiContext`, `ColumnPolicy`, `SemanticObject`, `SemanticRelationship`, `SemanticMeasure`, `SemanticLayerSettings`, `SemanticReportSpec`, `SemanticExample` | Keep | Removed by an admin, or with the repository |
 | Users and access tokens | `User`, `Role`, `AccessToken` | Keep | Managed on the Users page |
 | External triggers | `ExternalTrigger` | Keep | Managed on the External triggers page; a configured one is written at every start |

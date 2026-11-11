@@ -45,14 +45,18 @@ test.describe("navigation", () => {
   });
 
   test("going to another page from a menu closes the bottom panel, choosing the page shown keeps it", async ({ adminPage }) => {
-    const panel = adminPage.getByTestId("bottom-panel");
-    // A discovery raises its trace in the bottom panel before the scan answers, so a location that does not exist
-    // opens it as well as one that does.
+    // The panel's own section: the resizable frame around it carries the same test id.
+    const panel = adminPage.locator("section[data-testid='bottom-panel']");
+    // A discovery follows its trace behind the title bar's trace indicator before the scan answers, so a location that
+    // does not exist holds one as well as one that does; the panel opens on the indicator's click, never by itself.
     const openTrace = async () => {
       await adminPage.getByTestId("nav-discover").click();
       await expect(adminPage.getByTestId("discover-page")).toBeVisible();
       await adminPage.getByTestId("discover-location").fill("e2e-bottom-panel/missing.csv");
       await adminPage.getByTestId("discover-submit").click();
+      await expect(adminPage.getByTestId("trace-indicator")).toBeVisible();
+      await expect(panel).toHaveCount(0);
+      await adminPage.getByTestId("trace-indicator").click();
       await expect(panel).toBeVisible();
     };
 

@@ -27,6 +27,7 @@ related:
   - concept-control-plane
   - flow-schedule
   - concept-maintenance
+  - concept-repository-auto-sync
 sourceRefs:
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.Catalog/ExternalTriggerStore.cs
@@ -48,6 +49,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs
   - src/SqlFlow.ControlPlane/Hosting/ControlPlaneModuleServices.cs
   - gui/src/features/external-triggers/ExternalTriggersPage.tsx
+  - gui/src/features/external-triggers/RepositoriesTab.tsx
   - gui/src/features/external-triggers/workflow.ts
   - integrations/github/action.yml
   - integrations/github/lib.mjs
@@ -63,7 +65,10 @@ moves each request along in the background; the caller follows it, streams its t
 summary where it reports. A GitHub job does all of that through SQLFlow's action ([the guide](../guides/github-actions.md)).
 
 An administrator manages triggers on the **External triggers** page (Admin), or the configuration names them
-([below](#configured-triggers)). The same page lists every request with its live trace.
+([below](#configured-triggers)). The same page lists every request with its live trace, and, on its **Repositories**
+tab, whether each repository syncs on its own every interval or only when a trigger or a person asks
+([automatic sync](repository-auto-sync.md)). With several environments syncing one repository, turning auto sync off
+is what makes a trigger the only way a merge reaches an environment.
 
 ## How a trigger proves who it is
 
@@ -174,6 +179,12 @@ replicas never fire one schedule; a replica that stops leaves its requests to th
      it (the history clone, fetched now, with the repository's own credential). It does when the branch moved on past
      the merge, and the request goes on. It does not when the commit is on another branch or was force-pushed away,
      and the request fails, naming the branch the repository syncs. A commit the repository does not hold fails it too.
+   - A repository whose **auto sync is off** ([syncing only on request](repository-auto-sync.md)) moves to exactly the
+     commit asked for, not the branch's tip, so a merge approved for one environment brings in that merge and nothing
+     merged after; with no commit asked for, it moves to the tip. When the commit it holds already contains the commit
+     asked for (a later merge's request reached it first), no sync runs (`current`) and it does not move back. When
+     another request's earlier commit answered the sync, the request asks again for its own. A commit off the branch,
+     or on a separate line of its history from the held one, fails the sync, and the request with it.
 2. **Firing.** Each requested schedule, in order, through the one fire path the scheduler and run-now use
    ([schedule](../flow/schedule.md)), its runs recording `trigger:<name>` (or the person) as who asked:
    - A schedule the synced commit does not define does not fire; the request lists the repository's schedules.

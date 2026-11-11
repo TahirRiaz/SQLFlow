@@ -57,12 +57,14 @@ public sealed class ScheduleFireTests
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            // The Boatbooking shape: copy (wave 1) -> pre load (wave 2) -> ods merge (wave 3).
+            // The Boatbooking shape: copy -> pre load -> ods merge, each reading what the one before it wrote.
             await SeedPipelineAsync(db, repoId, copy, wave: 0, batch: "BB");
             await SeedPipelineAsync(db, repoId, pre, wave: 1, batch: "BB");
             await SeedPipelineAsync(db, repoId, ods, wave: 2, batch: "BB");
             // Carries the same batch tag but never joined, so the fire must not touch it.
             await SeedPipelineAsync(db, repoId, other, wave: 0, batch: "BB");
+            await SeedDependencyAsync(db, repoId, copy, pre);
+            await SeedDependencyAsync(db, repoId, pre, ods);
 
             var schedule = await SeedScheduleAsync(db, repoId, $"daily_{suffix}", [copy, pre, ods]);
             var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default);
@@ -164,6 +166,8 @@ public sealed class ScheduleFireTests
             await SeedPipelineAsync(db, repoId, copy, wave: 0, batch: "BB", kind: "cpy");
             await SeedPipelineAsync(db, repoId, file, wave: 1, batch: "BB", kind: "file");
             await SeedPipelineAsync(db, repoId, silver, wave: 2, batch: "BB", kind: "ing");
+            await SeedDependencyAsync(db, repoId, copy, file);
+            await SeedDependencyAsync(db, repoId, file, silver);
 
             var schedule = await SeedScheduleAsync(db, repoId, $"daily_{suffix}", [copy, file, silver]);
             var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -227,6 +231,8 @@ public sealed class ScheduleFireTests
             await SeedPipelineAsync(db, repoId, copy, wave: 0, batch: "BB", kind: "cpy");
             await SeedPipelineAsync(db, repoId, file, wave: 1, batch: "BB", kind: "file", yaml: nameDated);
             await SeedPipelineAsync(db, repoId, silver, wave: 2, batch: "BB", kind: "ing");
+            await SeedDependencyAsync(db, repoId, copy, file);
+            await SeedDependencyAsync(db, repoId, file, silver);
 
             var schedule = await SeedScheduleAsync(db, repoId, $"daily_{suffix}", [copy, file, silver]);
             var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -382,6 +388,22 @@ public sealed class ScheduleFireTests
             ExecutionMode = mode ?? PipelineExecutionModes.Auto,
             FirstSeenUtc = DateTime.UtcNow,
             LastSeenUtc = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Seeds the lineage edge a sync records between two flows, <paramref name="from"/> before <paramref name="to"/>:
+    /// what orders a fire's members.</summary>
+    private static async Task SeedDependencyAsync(CatalogDbContext db, Guid repoId, string from, string to)
+    {
+        db.FlowDependencies.Add(new CatalogFlowDependency
+        {
+            RepoId = repoId,
+            FromFlow = from,
+            ToFlow = to,
+            FromPipelineId = CatalogIdentity.Pipeline(repoId, from),
+            ToPipelineId = CatalogIdentity.Pipeline(repoId, to),
+            ViaObjects = string.Empty,
         });
         await db.SaveChangesAsync();
     }

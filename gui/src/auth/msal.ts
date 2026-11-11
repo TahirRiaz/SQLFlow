@@ -1,13 +1,22 @@
 import { AuthError, PublicClientApplication, type AuthenticationResult } from "@azure/msal-browser";
-import { broadcastResponseToMainFrame } from "@azure/msal-browser/redirect-bridge";
 import type { EntraProviderInfo } from "../api/types";
-import { entraSignInFailureMessage } from "./entraSignIn";
+import {
+  decodeEntraSignInState,
+  encodeEntraSignInState,
+  entraSignInFailureMessage,
+  isAbandonedSignIn,
+  type EntraSignInState,
+} from "./entraSignIn";
 
 // MSAL is created lazily from the providers discovery response (GET /auth/providers), so the SPA needs no
 // build-time Entra configuration: the control plane is the single source of the tenant/client ids.
 
 let instance: PublicClientApplication | null = null;
 let instanceKey = "";
+
+/** The openid/profile/email scopes are all the exchange needs: the control plane reads oid, preferred_username, name,
+ * and email from the ID token. */
+const SIGN_IN_SCOPES = ["openid", "profile", "email"];
 
 async function getInstance(entra: EntraProviderInfo): Promise<PublicClientApplication> {
   if (!entra.enabled || !entra.clientId || !entra.authority) {
@@ -20,12 +29,13 @@ async function getInstance(entra: EntraProviderInfo): Promise<PublicClientApplic
       auth: {
         clientId: entra.clientId,
         authority: entra.authority,
-        // The GUI origin is the redirect URI every app registration names. Entra's answer lands there in the sign-in
-        // popup, where the page relays it back to this window (relayEntraSignInResponse) instead of starting the GUI.
+        // The GUI origin is the redirect URI every app registration names. Entra's answer loads it in this tab, where
+        // the bootstrap holds the answer for the login page (finishEntraSignIn) instead of starting the workbench there.
         redirectUri: window.location.origin,
       },
       cache: {
-        // Session-scoped, matching how the SQLFlow token itself is held.
+        // Session-scoped, matching how the SQLFlow token itself is held. The tab that leaves for Microsoft's sign-in
+        // is the one Entra's answer returns to, so the request MSAL keeps for it is still there.
         cacheLocation: "sessionStorage",
       },
     });
@@ -49,44 +59,72 @@ function describeSignInFailure(error: unknown): unknown {
 }
 
 /**
- * Runs the interactive Entra sign-in (popup; auth code + PKCE under the hood) and returns the ID token to
- * exchange at POST /auth/exchange. The openid/profile/email scopes are all the exchange needs: the control plane
- * reads oid, preferred_username, name, and email from the ID token.
+ * Settles a sign-in an earlier page load left marked in progress, since MSAL refuses another while one is. A redirect
+ * that never came back (Back on a page the browser loaded again) is settled by handling this load, which carries no
+ * answer. One whose request is gone from the tab (isAbandonedSignIn) is reported as a failure MSAL has already cleared,
+ * and is let go so the sign-in asked for now can start.
  */
-export async function signInWithEntra(entra: EntraProviderInfo): Promise<string> {
-  let result: AuthenticationResult;
+async function settleEarlierSignIn(msal: PublicClientApplication): Promise<void> {
+  try {
+    await msal.handleRedirectPromise({ navigateToLoginRequestUrl: false });
+  } catch (error) {
+    if (!(error instanceof AuthError && isAbandonedSignIn(error.errorCode))) {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Starts the interactive Entra sign-in (auth code + PKCE under the hood) in this tab: the page leaves for Microsoft's
+ * sign-in, and Entra answers by loading the GUI's origin again, carrying `state` back with it. Naming the account
+ * (`loginHint`) lets Entra sign it in without asking which account to use when the browser already holds it, as Edge
+ * does for the account Windows is signed in with. The returned promise only ever rejects: when the page could not
+ * leave, or when the person comes back from Microsoft's page with the browser's Back button.
+ */
+export async function startEntraSignIn(
+  entra: EntraProviderInfo,
+  loginHint: string | undefined,
+  state: EntraSignInState,
+): Promise<never> {
   try {
     const msal = await getInstance(entra);
-    result = await msal.loginPopup({
-      scopes: ["openid", "profile", "email"],
-      prompt: "select_account",
-    });
+    await settleEarlierSignIn(msal);
+    await msal.loginRedirect({ scopes: SIGN_IN_SCOPES, loginHint, state: encodeEntraSignInState(state) });
   } catch (error) {
     throw describeSignInFailure(error);
+  }
+
+  // MSAL settles a redirect only when the navigation was stopped, so the page is still here and nothing signed in.
+  throw new Error("The browser stayed on this page instead of opening Microsoft's sign-in. Sign in again.");
+}
+
+/** A finished Entra sign-in: the ID token to exchange at POST /auth/exchange, and the state the sign-in started with. */
+export interface EntraSignIn {
+  idToken: string;
+  state: EntraSignInState;
+}
+
+/**
+ * Finishes the sign-in Entra answered (the answer the bootstrap held, see holdEntraSignInAnswer): MSAL matches it to the
+ * request this tab sent and redeems its code for the ID token.
+ */
+export async function finishEntraSignIn(entra: EntraProviderInfo, answer: string): Promise<EntraSignIn> {
+  let result: AuthenticationResult | null;
+  try {
+    const msal = await getInstance(entra);
+    result = await msal.handleRedirectPromise({ hash: answer, navigateToLoginRequestUrl: false });
+  } catch (error) {
+    throw describeSignInFailure(error);
+  }
+
+  if (result === null) {
+    // MSAL keeps no request this answer belongs to: the sign-in was started in another tab, or already finished.
+    throw new Error("Microsoft answered a sign-in this tab is not waiting for. Sign in again.");
   }
 
   if (!result.idToken) {
     throw new Error("Entra sign-in completed without an ID token; cannot exchange it for a SQLFlow session.");
   }
 
-  return result.idToken;
-}
-
-/**
- * Completes a sign-in in the popup Entra answered (the page load isEntraSignInResponse recognises): MSAL's redirect
- * bridge hands the answer to the window waiting on it and closes the popup. Should the popup stay open, it says how
- * the sign-in went rather than showing an empty page; when the answer never reaches the window that asked, that
- * window's sign-in fails on its own timeout.
- */
-export function relayEntraSignInResponse(container: HTMLElement): void {
-  broadcastResponseToMainFrame().then(
-    () => {
-      container.textContent = "Signed in. This window can be closed.";
-    },
-    (error: unknown) => {
-      const failure = describeSignInFailure(error);
-      const reason = failure instanceof Error ? failure.message : String(failure);
-      container.textContent = `Sign-in could not be completed (${reason}). Close this window and sign in again.`;
-    },
-  );
+  return { idToken: result.idToken, state: decodeEntraSignInState(result.state) };
 }

@@ -30,7 +30,7 @@ import { RunDuration } from "../../components/RunDuration";
 import { RunStatusBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
 import { pollingInterval } from "../../hooks/usePolling";
-import { usePanel } from "../../layout/workbench/PanelContext";
+import { useTraceTray } from "../../layout/workbench/TraceTray";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
 import { embeddedHealthCheckName } from "../../lib/definition";
 import { formatBytes, parseUtc } from "../../lib/time";
@@ -159,7 +159,7 @@ export default function RunDetailPage() {
 function RunDetailContent({ runId }: { runId: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const panel = usePanel();
+  const { traces, follow, open } = useTraceTray();
   const [tab, setTab] = useState("source");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [statement, setStatement] = useState<RunStatement | null>(null);
@@ -209,26 +209,29 @@ function RunDetailContent({ runId }: { runId: string }) {
     }
   }, [live, refreshRun]);
 
-  // The trace lives in the workbench bottom panel (the "trace window"), not an embedded tab: opening a run raises
-  // it there and it streams live while the run executes, exactly like the repository sync trace. Opened once per
-  // run, when the flow name is known so the panel is titled; the header's Trace button reopens it if closed.
+  // The trace lives in the workbench's trace tray, not an embedded tab, and opens in the bottom panel when asked: the
+  // header's Trace button, or the title bar's trace indicator. A run still queued or running when its page opens is
+  // followed there, so it streams live, exactly like the repository sync trace, and its end is signalled however far
+  // the reader has moved on. Once per run, when the flow name is known so the trace is titled.
   const flowName = query.data?.flowName;
-  const openTrace = useCallback(() => {
-    panel.open({
-      id: `run-trace:${runId}`,
-      title: `Trace · ${flowName ?? runId}`,
-      node: <RunTracePanel runId={runId} />,
-    });
-  }, [panel, runId, flowName]);
-  const openedFor = useRef<string | null>(null);
+  const traceId = `run:${runId}`;
+  const traceSpec = useCallback(
+    () => ({ id: traceId, title: `Trace · ${flowName ?? runId}`, node: <RunTracePanel runId={runId} /> }),
+    [traceId, runId, flowName],
+  );
+  const openTrace = useCallback(() => open(traceSpec()), [open, traceSpec]);
+  const held = traces.some((trace) => trace.id === traceId);
+  const followedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (openedFor.current === runId || flowName === undefined) {
+    if (followedFor.current === runId || flowName === undefined) {
       return;
     }
 
-    openedFor.current = runId;
-    openTrace();
-  }, [runId, flowName, openTrace]);
+    followedFor.current = runId;
+    if (live && !held) {
+      follow(traceSpec());
+    }
+  }, [runId, flowName, live, held, follow, traceSpec]);
 
   // Re-run opens the trigger sheet prefilled with this run's flow and the operator parameters it carried (full
   // load, backfill window, file pattern), so the run can be repeated as-is or adjusted before launching. The sheet

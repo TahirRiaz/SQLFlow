@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SqlFlow.Core;
 using SqlFlow.Core.Abstractions;
 using SqlFlow.Core.Catalog;
 using SqlFlow.Core.Connections;
@@ -127,7 +128,8 @@ public static class SqlFlowEngineServices
         services.AddSingleton<YamlTranslateFlowLoader>();
         services.AddSingleton<YamlSchemaRegistrationFlowLoader>();
         // The document loader parses the built-in kinds plus every flow kind (IFlowDocumentKind) and companion document
-        // type (ICompanionDocumentKind) a host registered, so each consumer of the loader sees the same set of kinds.
+        // type (ICompanionDocumentKind) a host registered, so each consumer of the loader sees the same set of kinds, and
+        // resolves a schedule that leaves maxConcurrency out with the host's ScheduleFireDefaults (SQLFlow's when none).
         services.AddSingleton(sp => new YamlDocumentLoader(
             sp.GetRequiredService<YamlFlowLoader>(),
             sp.GetRequiredService<YamlIngestionFlowLoader>(),
@@ -144,7 +146,8 @@ public static class SqlFlowEngineServices
             sp.GetRequiredService<YamlTranslateFlowLoader>(),
             sp.GetRequiredService<YamlSchemaRegistrationFlowLoader>(),
             sp.GetServices<IFlowDocumentKind>(),
-            sp.GetServices<ICompanionDocumentKind>()));
+            sp.GetServices<ICompanionDocumentKind>(),
+            sp.GetService<ScheduleFireDefaults>()));
         services.AddSingleton<InferSpecLoader>();
         services.AddSingleton<FlowRunner>();
 

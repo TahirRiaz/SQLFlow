@@ -359,6 +359,7 @@ public sealed class RunGroupQueueTests
             // C carries the same batch tag as A but never joined the schedule. Under membership a label match is not
             // a join, which is exactly what the old batch scope got wrong.
             await SeedPipelineAsync(db, repoId, C, wave: 0, batch: "small");
+            await SeedDependencyAsync(db, repoId, A, B);
 
             var scheduleId = await SeedScheduleAsync(db, repoId, $"nightly_{suffix}", [A, B]);
 
@@ -366,6 +367,84 @@ public sealed class RunGroupQueueTests
             Assert.Equal($"nightly_{suffix}", expansion.Anchor);
             Assert.Equal(new[] { A, B }, expansion.Members.Select(m => m.FlowName).ToArray());
             Assert.Equal(new[] { 0, 1 }, expansion.Members.Select(m => m.Wave).ToArray());
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task ExpandSchedule_WavesFollowTheMembersOwnDependencies_NotTheRepositoryWave()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            // Two refreshes, each after a delivery of another schedule: lineage puts them in waves 1 and 3 of the
+            // repository. The deliveries do not run in this schedule's fire, so neither refresh waits for anything in
+            // it and both run in its first wave. The check reads the first refresh, so it waits for it alone.
+            string load = $"load_{suffix}", deliver = $"deliver_{suffix}", refresh = $"cachea_{suffix}";
+            string laterDeliver = $"deliverb_{suffix}", laterRefresh = $"cacheb_{suffix}", check = $"verify_{suffix}";
+            await SeedPipelineAsync(db, repoId, load, wave: 0, batch: "small");
+            await SeedPipelineAsync(db, repoId, deliver, wave: 1, batch: "small");
+            await SeedPipelineAsync(db, repoId, refresh, wave: 2, batch: "large");
+            await SeedPipelineAsync(db, repoId, laterDeliver, wave: 3, batch: "small");
+            await SeedPipelineAsync(db, repoId, laterRefresh, wave: 4, batch: "small");
+            await SeedPipelineAsync(db, repoId, check, wave: 3, batch: "small");
+            await SeedDependencyAsync(db, repoId, load, deliver);
+            await SeedDependencyAsync(db, repoId, deliver, refresh);
+            await SeedDependencyAsync(db, repoId, refresh, laterDeliver);
+            await SeedDependencyAsync(db, repoId, laterDeliver, laterRefresh);
+            await SeedDependencyAsync(db, repoId, refresh, check);
+
+            var scheduleId = await SeedScheduleAsync(db, repoId, $"caches_{suffix}", [refresh, laterRefresh, check]);
+
+            var expansion = await RunScopeExpander.ExpandScheduleAsync(db, repoId, scheduleId, $"caches_{suffix}");
+            Assert.Equal(
+                new[] { (refresh, 0), (laterRefresh, 0), (check, 1) },
+                expansion.Members.Select(m => (m.FlowName, m.Wave)).ToArray());
+
+            // A batch filter that leaves the refresh out leaves the check nothing to wait for.
+            var filtered = await RunScopeExpander.ExpandScheduleAsync(db, repoId, scheduleId, $"caches_{suffix}", ["small"]);
+            Assert.Equal(
+                new[] { (laterRefresh, 0), (check, 0) },
+                filtered.Members.Select(m => (m.FlowName, m.Wave)).ToArray());
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task Expand_Node_WavesFollowTheDescendantsOwnDependencies()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            // B and C both follow the anchor A. C also follows X, which is not A's descendant and sits late in the
+            // repository's waves, so C's repository wave is 3; in A's run X does not run, and C runs beside B.
+            string A = $"a_{suffix}", B = $"b_{suffix}", C = $"c_{suffix}", X = $"x_{suffix}", Y = $"y_{suffix}";
+            await SeedPipelineAsync(db, repoId, A, wave: 0, batch: $"bt_{suffix}");
+            await SeedPipelineAsync(db, repoId, B, wave: 1, batch: $"bt_{suffix}");
+            await SeedPipelineAsync(db, repoId, Y, wave: 1, batch: $"bt_{suffix}");
+            await SeedPipelineAsync(db, repoId, X, wave: 2, batch: $"bt_{suffix}");
+            await SeedPipelineAsync(db, repoId, C, wave: 3, batch: $"bt_{suffix}");
+            await SeedDependencyAsync(db, repoId, A, B);
+            await SeedDependencyAsync(db, repoId, A, C);
+            await SeedDependencyAsync(db, repoId, Y, X);
+            await SeedDependencyAsync(db, repoId, X, C);
+
+            var node = await RunScopeExpander.ExpandAsync(db, repoId, A, RunScope.Node);
+            Assert.Equal(new[] { (A, 0), (B, 1), (C, 1) }, node.Members.Select(m => (m.FlowName, m.Wave)).ToArray());
         }
         finally
         {

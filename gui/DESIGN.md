@@ -102,6 +102,15 @@ to show.
 | `tab-active` | `#ffffff` | `#111a28` |
 | `panel` | `#ffffff` | `#0f1826` |
 | `status-bar` | `#2264c2` (`--brand-blue`, both modes) | `#2264c2` |
+| `title-bar` | `activity-bar` | `activity-bar` |
+| `title-bar-foreground` | `#ffffff` | `#ffffff` |
+| `title-bar-subtle` | `title-bar-foreground` at 45% | the same |
+| `chrome-border` | `transparent` | `transparent` |
+
+Whatever sits on the title bar, SQLFlow's controls and a module's, draws in `title-bar-foreground` and its opacities
+(`text-title-bar-foreground/80`, `bg-title-bar-foreground/10` for a fill), with `title-bar-subtle` for the attribution,
+and never in white: a design (3.7) may make the bar light. `chrome-border` is the hairline such a design draws under the
+title bar and beside the activity bar, where they meet the workbench; SQLFlow's bars are dark, so it is transparent.
 
 ### 3.4 Chart palette (validated)
 
@@ -153,6 +162,40 @@ on `.react-flow`: the canvas is `background`, a node is a `card` outlined in `in
 and zoom controls are cards. A rule on one of the library's classes is the wrong tool: its stylesheet loads
 with the graph's chunk, after ours, and wins.
 
+The graph's nodes are cards of its own (`features/lineage/LineageNodeCard.tsx`), told apart by shape and glyph, never
+by a fill: a flow is a square-cornered card led by its kind's glyph in the kind's tone (3.5), data is a pill with a
+dashed edge and a neutral glyph, and a folder or a stack, each standing for several nodes, has a second edge behind
+it. An edge is neutral until a node is selected; then what is upstream of the node takes `chart-7` and what is
+downstream `chart-2`, on edges and as a ring on nodes, and everything else fades. A node carries a status mark only
+when a status needs a look (3.2).
+
+### 3.7 Designs
+
+The tokens above are SQLFlow's design. A GUI module may add designs of its own (`GuiModule.designs`,
+`src/theme/designs.ts`), each with a light and a dark mode, and a person picks the design and the mode they wear:
+
+- **Where they are kept.** `<html>` carries `data-sf-design="<id>"` beside the `dark` class, and a module's stylesheet
+  sets the same tokens under `:root[data-sf-design="<id>"]` (light) and `:root[data-sf-design="<id>"].dark,
+  :root[data-sf-design="<id>"] .dark` (dark, on the page and on a dark panel such as the sign-in page's). The light
+  rule outweighs `.dark`, so every token it sets that differs by mode is set again in the dark rule. A design sets every
+  token of 3.1 to 3.3 or leaves SQLFlow's showing through; it keeps the chart palette (3.4) unless it validates its own.
+- **What a design adds besides tokens.** Stylesheets it needs from outside the build, by https URL, put in the page the
+  first time it is worn and never for a person who does not wear it (a typeface a font service serves), and the title
+  bar's mark per mode, an image or a part of one (`DesignMark.crop`), in place of the branding's logo.
+- **The picker.** With SQLFlow's design alone, the title bar's button flips light and dark, as it always has. When a
+  module adds designs, it opens a menu (`AppearanceControl`): the designs, then Light and Dark, staying open while a
+  person tries them so each pick shows at once. The sign-in page carries the same menu in its top right corner, there
+  only when there is a design to pick; the page itself stays on its brand field in either mode (11), so its menu names
+  the mode the workbench's.
+- **What is remembered.** The design and the mode a person wore last, in their browser (`sqlflow.design`,
+  `sqlflow.theme`), put on again at their next visit; `index.html` puts them on before the first paint, so no other
+  appearance shows first. Until a person picks, they wear the design and mode a module starts people in
+  (`DesignContribution.firstMode`, one design at most), or SQLFlow's design in the operating system's mode, which is then
+  followed live and not kept, as SQLFlow has always done. A design no longer offered falls back to that start, keeping
+  the mode.
+- **Code that reads tokens into literal colours** (charts, the code editor, a graph) rebuilds them on the palette key
+  `useThemeMode().palette`, which changes with the design as well as the mode; `mode` alone misses a change of design.
+
 ## 4. Typography
 
 - Sans: `Inter Variable` (UI text, labels, prose). Mono: `JetBrains Mono Variable` (data).
@@ -189,7 +232,7 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 
 ```
 +------------------------------------------------------------------+
-| Title bar (36px): brand |            palette, theme, account      |
+| Title bar (36px): brand |    traces, palette, theme, account      |
 +---+--------------------------------------------------------------+
 | A | Side bar (resizable | Tab strip (35px)                       |
 | c | 200-320px):         +----------------------------------------+
@@ -202,14 +245,33 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 +------------------------------------------------------------------+
 ```
 
-- **Title bar** (`h-9`, `bg-activity-bar`): logo + product name left, everything else right: the command
-  palette button (testid `command-palette-button`, a `Ctrl K` chip), the theme toggle (testid
-  `theme-toggle`) and the account menu (testids `account-menu-button`, `account-subject`,
-  `account-tokens`, `account-notifications`, `account-logout`). Nothing floats in the middle: the bar
+- **Title bar** (`h-9`, `bg-title-bar`, drawn in `title-bar-foreground`, 3.3): the design's mark (testid
+  `app-bar-mark`, 3.7) + product name left, everything else right: the trace indicator while the trace tray holds a
+  trace (testid `trace-indicator`, below), the controls modules add, the command palette button (testid
+  `command-palette-button`, a `Ctrl K` chip), the theme toggle (testid `theme-toggle`), or the design and mode menu when
+  a module adds designs (testids `appearance-menu-button`, `appearance-menu`, `appearance-design-<id>`,
+  `appearance-mode-light`, `appearance-mode-dark`), and the account menu (testids `account-menu-button`,
+  `account-subject`, `account-tokens`, `account-notifications`, `account-logout`). Nothing floats in the middle: the bar
   carries chrome only, never a content control. On mobile a hamburger opens the nav sheet.
+- **Trace indicator**: the operation traces the trace tray holds (`useTraceTray()`). It comes first on the right, so
+  its coming and going moves no other control. While a trace runs, an arc in the one blue turns around a terminal
+  icon, lengthening and shortening as it goes, the icon breathes and two rings spread from it; a trace that ends while
+  not shown leaves a badge on the icon's corner (a check, an exclamation mark or a cross, in the status hue) and sends
+  the rings out twice, without end for a failure, until it is opened (`data-running`, `data-attention`). Every mark
+  reads the dark tokens (`dark` scope), since the bar is dark chrome in both modes. A click opens the one trace in
+  the bottom panel or closes it; with several held it lists them newest first (testids `trace-tray`,
+  `trace-tray-item`, `trace-tray-dismiss`), an unread one with a blue dot. A trace that has been read and closed
+  leaves the tray, and the indicator goes with the last one.
 - **Activity bar** (`w-12`): one icon per nav group, Settings gear pinned at the bottom. Active group
   shows a 2px left indicator + full-intensity icon. Click: reveal the group in the side bar; click on
-  the active group toggles the side bar. Tooltips on the right.
+  the active group toggles the side bar. Tooltips on the right. A module laying out the menu may name
+  shortcuts instead (`GuiModule.menu.shortcuts`, the paths of entries it lists): the bar is then a menu
+  button (testid `activity-menu`, `aria-expanded` while the side bar is shown) that shows the side bar
+  with the page shown's entry unfolded into view, or hides it, a hairline, and one icon per shortcut, the
+  entry's own icon and label (testid `activity-` plus the entry's testid, so `activity-nav-runs`). A
+  shortcut opens its page in one click; with the side bar shown, its entry's group and section unfold and
+  the row scrolls into view as the selected one. The shortcut whose page is shown wears the indicator
+  and `aria-current="page"`; a shortcut is shown to whoever its entry's group is shown to.
 - **Side bar** (resizable 12-35%, persisted): the global search first (`SearchInput`, testid
   `global-search`, Enter navigates to `/search?q=`), pinned above the scroll area on its own hairline so a
   long nav never scrolls it away; then the menu, one tree on the workbench's tree primitives (section
@@ -242,8 +304,11 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   Detail pages set real titles via `useTabTitle(...)` once data loads.
 - **Editor**: the routed page inside a scroll container with the measure cap. Pages never add their own
   outer padding.
-- **Bottom panel** (resizable 15-70%, closable): live surfaces opened by features through `usePanel()`
-  (e.g. a run's streaming trace). Header: a 36px `card` bar under a 2px `primary` top edge (the accent the
+- **Bottom panel** (resizable from 15% to the editor's whole height, closable): live surfaces opened by features
+  through `usePanel()`. An operation's trace never opens it by itself: the operation follows its trace in the trace
+  tray (`follow`), which keeps it streaming out of view behind the title bar's indicator, and the panel shows it when
+  someone asks (the indicator, a failed sync's badge, a run's Trace button: `open`). A trace that leaves the panel
+  keeps streaming in the tray until it has ended and been read. Header: a 36px `card` bar under a 2px `primary` top edge (the accent the
   active tab wears), uppercase 11px title in `foreground` + close; while it is open, the page above fades into a
   shade along its bottom edge, so the panel reads as a surface of its own rather than one more grid header of the
   page. A detail shown there leads with a sticky header carrying its actions, then bordered cards. One content at
@@ -452,12 +517,20 @@ The old GUI's central failure was silence. These rules bind every feature:
    with the correlation id. No blank rectangles, ever.
 4. **Route transitions** show the slim top progress bar (lazy chunks), never a blank screen.
 5. **Toasts** (bottom-right, max 3): success auto-dismiss 5s; errors stay until dismissed; never toast
-   what the user is already looking at live (no "loaded 50 rows" noise).
+   what the user is already looking at live (no "loaded 50 rows" noise). A toast is a popover card (`ui/sonner.tsx`, the
+   one place it is drawn): the outcome's 16px glyph in its status color on a 28px tile of that color's 12% tint, as an
+   outcome pill pairs them (3.2, 7.3); the title at 13px medium saying what happened, and a description under it at 12px
+   muted saying why or what next; an action as a 28px outline button at the end; and the close button inside the top
+   right corner, muted until hovered or focused. The title is a sentence that stands alone ("Trigger wl-dev saved."), so
+   a toast never needs its description to be understood.
 
 ## 9. Motion
 
 120ms ease-out for hovers and reveals, 150-200ms for sheets/panels sliding, no bounce, no scale-up
-entrances. `tw-animate-css` utilities only. Anything animating layout must be interruptible.
+entrances. `tw-animate-css` utilities only. Anything animating layout must be interruptible. The one exception is the
+title bar's trace indicator (section 6), whose arc, breathing and rings are keyframes of `index.css` (`trace-turn`,
+`trace-arc`, `trace-breathe`, `trace-ripple`), drawn under `motion-safe:` only: without motion the arc holds still as
+a quarter ring, and the badge carries the outcome.
 
 ## 10. Accessibility
 
@@ -481,7 +554,9 @@ rules take their place, and only on this page:
   narrow screens only the lockup stays above the form.
 - **Colors.** The identity's navy, cream (the rings, as in the logo mark) and the one blue, which carries the motion (the
   records' points and the light they travel into) and, lightened to read on the navy, the pitch's accent line. Nothing
-  else.
+  else. A design (3.7) sets these identity tokens to its own.
+- **The design menu.** When a module adds designs, the design and mode menu (3.7) sits in the page's top right corner,
+  opening on the page's dark tokens; the page has nothing else in its corners.
 - **Sizes.** Every size is in rem. The pitch is set large (2.5rem, 3.25rem from `xl`); the form's controls are 40px
   (`h-10`, button `size="lg"`) at 14px type, because the form is the page's one task.
 - **Motion.** The picture moves slowly and without end (records travel a lane in 17 to 24 seconds, a pulse runs down the

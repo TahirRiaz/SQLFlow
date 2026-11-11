@@ -132,7 +132,8 @@ public static class QuestionExampleEndpoints
 
         // Both are open to an assistant run, as prepare and run are, since the MCP server's rules call them on every
         // surface: confirming stores the verdict a person gave on an answer and runs nothing, and an auto-run replays
-        // SQL a person already confirmed, re-checked here against the read-only and column guards.
+        // SQL a person already confirmed, re-checked here against the read-only and column guards. The fence admits a
+        // confirmation from a run; the endpoint itself refuses one made with a run's delegated token (ConfirmAsync).
         group.MapPost("/powerai/questions/confirm", ConfirmAsync)
             .WithTags("PowerAI").WithName("ConfirmQuestionExample").AllowAssistantWrite();
         group.MapPost("/powerai/questions/{exampleId:long}/auto-run", AutoRunAsync)
@@ -145,6 +146,12 @@ public static class QuestionExampleEndpoints
     /// Records what a person decided about a question/query pair, storing the pair as a confirmed example when
     /// they accepted or corrected it. Confirming the same pair again refreshes the existing row rather than
     /// adding a duplicate, so reaffirming an answer does not give it extra weight in every later search.
+    /// <para>
+    /// A GUI chat run's delegated token is refused: it carries the person's own id, so a confirmation the model made
+    /// with it would be stored as the person's, though the person has the buttons under the answer to give their own
+    /// verdict. So <c>user-confirmed</c>, and the id beside it, mean the person said so. A surface without such buttons
+    /// (the Slack bot) confirms with its own credential, and the row names that credential's owner.
+    /// </para>
     /// </summary>
     private static async Task<Results<Ok<ConfirmedQuestionDto>, ProblemHttpResult>> ConfirmAsync(
         ConfirmQuestionRequest request, CatalogDbContext db, IOptions<ControlPlaneOptions> options,
@@ -154,6 +161,14 @@ public static class QuestionExampleEndpoints
         if (request is null)
         {
             return Problem("A confirmation requires a request body.", StatusCodes.Status400BadRequest);
+        }
+
+        if (AssistantDelegation.IsDelegated(user))
+        {
+            return Problem(
+                "A verdict on an answer is the person's to give: they confirm it with the buttons under the answer in "
+                + "the chat. An assistant run cannot record one in their name, so nothing was stored.",
+                StatusCodes.Status403Forbidden, ConfirmationIsThePersonsTitle);
         }
 
         // The same gate the search side answers 501 on. Saved answers exist to be searched, so a deployment that has
@@ -600,6 +615,10 @@ public static class QuestionExampleEndpoints
                 $"No active pipeline in the catalog declares the datasource reference '{sourceRef}'.",
                 StatusCodes.Status404NotFound);
     }
+
+    /// <summary>The problem title a confirmation from an assistant run's delegated token answers with, so the run and the
+    /// tests can tell it from the fence's own refusal.</summary>
+    public const string ConfirmationIsThePersonsTitle = "A verdict is the person's";
 
     private static ProblemHttpResult Problem(string detail, int statusCode, string title = "Invalid request")
         => TypedResults.Problem(detail: detail, statusCode: statusCode, title: title);

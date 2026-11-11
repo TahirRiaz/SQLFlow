@@ -223,9 +223,7 @@ public static class TemporalTablePlanner
     private static DdlStatement EnsureHistorySchemaStatement(string schema)
         => new()
         {
-            // The identifier is escaped for the bracket quoting and then literal-escaped again, because it
-            // sits inside the EXEC string: CREATE SCHEMA must begin its own batch and cannot be run inline.
-            Text = $"IF SCHEMA_ID(N'{Literal(schema)}') IS NULL EXEC(N'CREATE SCHEMA [{Literal(Escape(schema))}]');",
+            Text = SchemaStatements.Ensure(schema),
             Cost = DdlCost.MetadataOnly,
         };
 

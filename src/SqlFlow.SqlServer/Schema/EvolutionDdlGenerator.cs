@@ -111,10 +111,7 @@ public static class EvolutionDdlGenerator
         return $"[{Escape(column.Name)}] {column.DataType.Render()}{identity} {nullability}";
     }
 
-    /// <summary>An idempotent CREATE SCHEMA guarded by SCHEMA_ID. CREATE SCHEMA must begin its own batch, so
-    /// it is wrapped in EXEC to run inside the applier's metadata-only transaction alongside the create.</summary>
-    private static string EnsureSchemaStatement(string schema)
-        => $"IF SCHEMA_ID(N'{Literal(schema)}') IS NULL EXEC(N'CREATE SCHEMA [{Escape(schema)}]');";
+    private static string EnsureSchemaStatement(string schema) => SchemaStatements.Ensure(schema);
 
     private static string Qualify(RelationalObject target) => $"[{Escape(target.Schema)}].[{Escape(target.Name)}]";
 

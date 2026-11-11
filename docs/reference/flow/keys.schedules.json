@@ -82,7 +82,7 @@
       "type": "int",
       "required": false,
       "default": "4",
-      "description": "How many of the schedule's members execute at the same time when a fire has more than one (the width of the running wave). 1 is strictly serial; 0 is unbounded. A negative value falls back to the default with a warning.",
+      "description": "How many of the schedule's members execute at the same time when a fire has more than one (the width of the running wave). 1 is strictly serial; 0 is unbounded. Omitted takes the product's default: SQLFlow's is 4, and a host may register its own (ScheduleFireDefaults). A negative value falls back to the default with a warning.",
       "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (NormalizeMaxConcurrency)"
     },
     {

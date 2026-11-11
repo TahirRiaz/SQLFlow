@@ -3,8 +3,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  MAX_EXPLAIN_LENGTH, MAX_OUTLINE_ENTRIES, changeSubject, codeSubject, explainChangeQuestion, explainCodeQuestion,
-  explainPageQuestion, languageName, tidyOutline, type ExplainPage,
+  MAX_EXPLAIN_LENGTH, MAX_OUTLINE_ENTRIES, changeSubject, codeExplanation, codeSubject, explainChangeQuestion,
+  explainCodeQuestion, explainPageQuestion, languageName, tidyOutline, type ExplainPage,
 } from "../src/features/chat/explain.ts";
 
 const PIPELINE: ExplainPage = {
@@ -78,6 +78,17 @@ describe("explainCodeQuestion", () => {
   });
 });
 
+describe("codeExplanation", () => {
+  it("is the subject and the question the drawer asks, so a page holding the conversation itself asks the same", () => {
+    const code = { code: "source:\n  table: wells", language: "yaml", lines: { start: 7, end: 8 }, totalLines: 40 };
+    assert.deepEqual(codeExplanation(code, PIPELINE, "SQLFlow"), {
+      subject: codeSubject(code),
+      question: explainCodeQuestion(code, PIPELINE, "SQLFlow"),
+    });
+    assert.equal(codeExplanation(code, PIPELINE, "SQLFlow").subject, "YAML, lines 7 to 8 of 40");
+  });
+});
+
 describe("explainChangeQuestion", () => {
   it("carries both versions, earlier first, each fenced in its language", () => {
     const change = { original: "a: 1", modified: "a: 2", language: "yaml" };
@@ -85,6 +96,16 @@ describe("explainChangeQuestion", () => {
     const question = explainChangeQuestion(change, PIPELINE, "SQLFlow");
     assert.match(question, /What changed between these two versions of a YAML document, compared on the "welldb_wells" page/);
     assert.ok(question.includes("The earlier version:\n\n```yaml\na: 1\n```\n\nThe later version:\n\n```yaml\na: 2\n```"), question);
+  });
+
+  it("introduces each version by the name its side carries, and asks what differs", () => {
+    const change = { original: "a: 1", modified: "a: 2", language: "yaml", sides: { original: "Rendered now", modified: "Stored version 7" } };
+    const question = explainChangeQuestion(change, PIPELINE, "SQLFlow");
+    assert.match(question, /What differs between these two versions of a YAML document, compared on the "welldb_wells" page/);
+    assert.ok(question.includes(
+      "The version shown as \"Rendered now\":\n\n```yaml\na: 1\n```\n\nThe version shown as \"Stored version 7\":\n\n```yaml\na: 2\n```",
+    ), question);
+    assert.ok(!question.includes("earlier"), question);
   });
 
   it("fits two long versions into one question", () => {

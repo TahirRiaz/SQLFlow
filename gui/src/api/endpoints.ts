@@ -156,6 +156,8 @@ export interface PipelineListQuery extends PageQuery {
   project?: string;
   /** Batch (source-system grouping) label; "default" also matches flows that declare no batch. */
   batch?: string;
+  /** A schedule's id; narrows the list to the flows that joined it, the members one fire runs. */
+  scheduleId?: string;
 }
 
 export const pipelineApi = {
@@ -479,6 +481,8 @@ export const repoSourceApi = {
   list: (query: PageQuery = {}) => get<PagedResult<RepoSource>>("/api/v1/repos/sources", query as QueryParams),
   register: (request: RegisterRepoSourceRequest) => post<RepoSourceRegistered>("/api/v1/repos/sources", request),
   syncNow: (id: string) => post<RepoSource>(`/api/v1/repos/sources/${id}/sync`),
+  // An administrator's: whether the source syncs on its own, or only when a trigger request or a sync-now asks.
+  setAutoSync: (id: string, autoSync: boolean) => put<RepoSource>(`/api/v1/repos/sources/${id}/auto-sync`, { autoSync }),
   // Preview-first scan: list a repo's flows without importing (nothing reaches the catalog until a sync).
   discover: (request: DiscoverRepoRequest) => post<DiscoveredFlow[]>("/api/v1/repos/discover", request),
   // Remove a source-only registration (one registered but not yet synced, so no repo exists to delete through).

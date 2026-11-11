@@ -123,9 +123,9 @@ public sealed partial class RepoSyncService : BackgroundService
         }
     }
 
-    private async Task SyncOneAsync(CatalogRepoSource source, CancellationToken ct)
+    private async Task SyncOneAsync(CatalogRepoSource due, CancellationToken ct)
     {
-        if (source.NextSyncUtc is not { } observed)
+        if (due.NextSyncUtc is not { } observed)
         {
             return;
         }
@@ -134,10 +134,19 @@ public sealed partial class RepoSyncService : BackgroundService
         var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
 
         var now = _clock.GetUtcNow().UtcDateTime;
-        var next = now.AddSeconds(source.SyncIntervalSeconds);
+        var next = now.AddSeconds(due.SyncIntervalSeconds);
 
         // Claim the sync by advancing the next-sync from the value we observed; only the winner pulls + syncs.
-        if (!await RepoSourceStore.TryClaimSyncAsync(catalog, source.Id, observed, next, now, ct).ConfigureAwait(false))
+        if (!await RepoSourceStore.TryClaimSyncAsync(catalog, due.Id, observed, next, now, ct).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        // What the attempt reads is decided from the row as the claim left it, not as the scan saw it: whether the source
+        // syncs on its own, and the move a request asked for up to the claim, are both read after the claim stamped the
+        // attempt's start, so a request or an administrator's change made between the scan and the claim counts.
+        var source = await catalog.RepoSources.AsNoTracking().FirstOrDefaultAsync(s => s.Id == due.Id, ct).ConfigureAwait(false);
+        if (source is null)
         {
             return;
         }
@@ -161,6 +170,11 @@ public sealed partial class RepoSyncService : BackgroundService
             using var supplied = SuppliedReferences.Supply(references);
 
             var resolver = scope.ServiceProvider.GetRequiredService<ISecretResolver>();
+            if (source.LocalPath is { Length: > 0 } && !source.AutoSync)
+            {
+                await trace.InfoAsync("target", "Syncs only on request; a directory holds no commit to stay on, so it is read as it is now.", ct).ConfigureAwait(false);
+            }
+
             var (workingDir, sha) = source.LocalPath is { Length: > 0 } localPath
                 ? await ReadLocalPathAsync(catalog, trace, source.Name, localPath, ct).ConfigureAwait(false)
                 : await CloneAsync(trace, resolver, source, ct).ConfigureAwait(false);
@@ -252,10 +266,12 @@ public sealed partial class RepoSyncService : BackgroundService
         }
     }
 
-    /// <summary>Materializes a git source's branch tip into its commit folder in the node cache (reused when the tip
-    /// has not moved; see <see cref="GitMaterializer.MaterializeBranch"/>), which the catalog sync then records as
-    /// the repo's root. The credential is resolved from the source's stored ${...} reference, or when it has none from
-    /// the host (its GitHub App, then its SQLFLOW_GIT_TOKEN); the secret is never stored.</summary>
+    /// <summary>Materializes the commit the attempt reads (<see cref="RepoSyncTarget.Plan"/>) into its commit folder in the
+    /// node cache, which the catalog sync then records as the repo's root: the branch tip (reused when the tip has not
+    /// moved; see <see cref="GitMaterializer.MaterializeBranch"/>), the commit a source syncing only on request holds, or
+    /// the commit a move asked for, once the history clone shows it is on the branch and no step back. The credential is
+    /// resolved from the source's stored ${...} reference, or when it has none from the host (its GitHub App, then its
+    /// SQLFLOW_GIT_TOKEN); the secret is never stored.</summary>
     private async Task<(string WorkingDir, string Sha)> CloneAsync(
         ActivityTrace trace, ISecretResolver resolver, CatalogRepoSource source, CancellationToken ct)
     {
@@ -268,12 +284,82 @@ public sealed partial class RepoSyncService : BackgroundService
 
         // The trace says which credential the sync read with (never the secret), so a refused clone is diagnosed from it.
         await trace.InfoAsync("credentials", $"Reading with {credential.Summary}.", ct).ConfigureAwait(false);
-        await trace.InfoAsync("clone", $"Reading the tip of {remoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
-        var checkout = _materializer.MaterializeBranch(remoteUrl, source.Branch, credential.Credentials, ct);
-        await trace.InfoAsync("clone", checkout.Reused
-            ? $"{checkout.CommitSha} is already checked out at {checkout.WorkingDirectory}; nothing to clone."
-            : $"Checked out {checkout.CommitSha} at {checkout.WorkingDirectory}.", ct).ConfigureAwait(false);
-        return (checkout.WorkingDirectory, checkout.CommitSha);
+        var plan = RepoSyncTarget.Plan(source);
+        await trace.InfoAsync("target", plan.Reason, ct).ConfigureAwait(false);
+        switch (plan.Read)
+        {
+            case RepoSyncRead.HeldCommit:
+            {
+                var held = plan.Commit!;
+                await TraceBranchTipAsync(trace, remoteUrl, source.Branch, held, credential.Credentials, ct).ConfigureAwait(false);
+                return await CheckOutAsync(trace, remoteUrl, held, credential.Credentials, ct).ConfigureAwait(false);
+            }
+
+            case RepoSyncRead.AskedCommit:
+            {
+                // The history clone, fetched now, so a commit merged a moment ago is in it; the same clone the history
+                // pages and a trigger request's commit check read.
+                await trace.InfoAsync("clone", $"Reading the history of {remoteUrl} to place {RepoSyncTarget.ShortId(plan.Commit!)} on branch {source.Branch}.", ct).ConfigureAwait(false);
+                var historyDir = _materializer.EnsureHistoryClone(remoteUrl, source.Branch, credential.Credentials, TimeSpan.Zero, ct);
+                RepoSyncMoveDecision decision;
+                using (var history = new LibGit2Sharp.Repository(historyDir))
+                {
+                    decision = RepoSyncTarget.Resolve(history, remoteUrl, source.Branch, source.LastSyncedSha, plan.Commit!);
+                }
+
+                if (decision.Refused)
+                {
+                    throw new SqlFlowNodeException(decision.Message);
+                }
+
+                await trace.InfoAsync("target", decision.Message, ct).ConfigureAwait(false);
+                return await CheckOutAsync(trace, remoteUrl, decision.Commit!, credential.Credentials, ct).ConfigureAwait(false);
+            }
+
+            default:
+            {
+                await trace.InfoAsync("clone", $"Reading the tip of {remoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
+                var checkout = _materializer.MaterializeBranch(remoteUrl, source.Branch, credential.Credentials, ct);
+                await trace.InfoAsync("clone", checkout.Reused
+                    ? $"{checkout.CommitSha} is already checked out at {checkout.WorkingDirectory}; nothing to clone."
+                    : $"Checked out {checkout.CommitSha} at {checkout.WorkingDirectory}.", ct).ConfigureAwait(false);
+                return (checkout.WorkingDirectory, checkout.CommitSha);
+            }
+        }
+    }
+
+    /// <summary>Materializes <paramref name="commit"/> into its commit folder (reused when it is already there).</summary>
+    private async Task<(string WorkingDir, string Sha)> CheckOutAsync(
+        ActivityTrace trace, string remoteUrl, string commit, GitMaterializerCredentials? credentials, CancellationToken ct)
+    {
+        await trace.InfoAsync("clone", $"Checking out {commit} from {remoteUrl}.", ct).ConfigureAwait(false);
+        var workingDir = _materializer.Materialize(remoteUrl, commit, credentials, ct);
+        await trace.InfoAsync("clone", $"{commit} is checked out at {workingDir}.", ct).ConfigureAwait(false);
+        return (workingDir, commit);
+    }
+
+    /// <summary>
+    /// Says, beside a sync of the commit a source holds, where its branch's tip is, so an operator reading the trace sees what
+    /// a request would bring in. Reading the tip is a <c>git ls-remote</c>; when it fails the trace says so and the sync of
+    /// the held commit, which does not need the tip, goes on.
+    /// </summary>
+    private static async Task TraceBranchTipAsync(
+        ActivityTrace trace, string remoteUrl, string branch, string held, GitMaterializerCredentials? credentials, CancellationToken ct)
+    {
+        string tip;
+        try
+        {
+            tip = GitMaterializer.ReadBranchTip(remoteUrl, branch, credentials);
+        }
+        catch (SqlFlowNodeException ex)
+        {
+            await trace.WarnAsync("target", $"The tip of {branch} could not be read ({SecretHygiene.RedactedMessage(ex)}); the commit it holds is synced without it.", ct).ConfigureAwait(false);
+            return;
+        }
+
+        await trace.InfoAsync("target", string.Equals(tip, held, StringComparison.OrdinalIgnoreCase)
+            ? $"{RepoSyncTarget.ShortId(held)} is the tip of {branch}."
+            : $"The tip of {branch} is {RepoSyncTarget.ShortId(tip)}; it reaches the catalog when a trigger request or a sync-now asks.", ct).ConfigureAwait(false);
     }
 
     /// <summary>

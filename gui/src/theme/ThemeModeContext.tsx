@@ -1,31 +1,40 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { applyBrandMode } from "./branding";
+import { applyAppearance, readStoredAppearance, rememberAppearance, systemPrefersDark } from "./appearance";
+import { designById, offeredDesigns, resolveAppearance, type Appearance, type Design, type StoredAppearance, type ThemeMode } from "./designs";
 
-type ThemeMode = "light" | "dark";
+export type { ThemeMode } from "./designs";
 
 interface ThemeModeValue {
+  /** The mode worn. */
   mode: ThemeMode;
+  /** The design worn. */
+  design: Design;
+  /** The designs a person may pick from: SQLFlow's alone unless a module adds others. */
+  designs: readonly Design[];
+  /**
+   * Changes whenever the stylesheet's colour tokens do, with the design or the mode: the key a component that reads tokens
+   * into literal colours (a chart, the code editor, a graph) rebuilds them on.
+   */
+  palette: string;
+  /** Wears the other mode, in the design worn. */
   toggle: () => void;
+  /** Wears a design, a mode, or both; what the choice leaves out stays as it is. */
+  choose: (choice: Partial<Appearance>) => void;
 }
 
 const ThemeModeContext = createContext<ThemeModeValue | null>(null);
 
-const STORAGE_KEY = "sqlflow.theme";
-
 /**
- * Light/dark theming: the OS preference is the default, the user's explicit choice (persisted) wins.
- * The design tokens live in index.css keyed on the `dark` class (DESIGN.md section 3); applyBrandMode
- * stamps both that class and the legacy data attribute on <html>, so every surface (Tailwind utilities,
- * Monaco, charts reading tokens at runtime) follows one switch.
+ * The workbench's appearance: a design (designs.ts) in a light or dark mode. A person wears what they wore last in this
+ * browser; until they pick, the design and mode a module starts people in, or SQLFlow's design in the operating system's
+ * preferred mode, followed live. The tokens live in the stylesheets keyed on what applyAppearance sets on <html>
+ * (DESIGN.md section 3), so every surface (Tailwind utilities, Monaco, charts reading tokens at runtime) follows one switch.
  */
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
-  const [prefersDark, setPrefersDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
-  const [stored, setStored] = useState<ThemeMode | null>(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw === "light" || raw === "dark" ? raw : null;
-  });
+  const [prefersDark, setPrefersDark] = useState(systemPrefersDark);
+  const [stored, setStored] = useState<StoredAppearance>(readStoredAppearance);
 
-  // Track the OS preference live, so a system theme change flips the app unless the user chose explicitly.
+  // Track the OS preference live, so a system theme change flips the app while a person follows it.
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = (event: MediaQueryListEvent) => setPrefersDark(event.matches);
@@ -33,25 +42,31 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener("change", onChange);
   }, []);
 
-  const mode: ThemeMode = stored ?? (prefersDark ? "dark" : "light");
+  const { appearance, followsSystem } = resolveAppearance(stored, prefersDark);
+  const { design, mode } = appearance;
 
+  // What a person wears is kept for their next visit, unless it is the operating system's preference, which they follow.
   useEffect(() => {
-    if (stored) {
-      window.localStorage.setItem(STORAGE_KEY, stored);
+    if (!followsSystem) {
+      rememberAppearance({ design, mode });
     }
-  }, [stored]);
+  }, [design, mode, followsSystem]);
 
-  // The class must be on <html> before children read tokens for the active mode.
-  applyBrandMode(mode);
+  // The appearance must be on <html> before children read tokens for it.
+  applyAppearance({ design, mode });
 
   useEffect(() => {
-    applyBrandMode(mode);
-  }, [mode]);
+    applyAppearance({ design, mode });
+  }, [design, mode]);
 
   const value = useMemo<ThemeModeValue>(() => ({
     mode,
-    toggle: () => setStored(mode === "dark" ? "light" : "dark"),
-  }), [mode]);
+    design: designById(design),
+    designs: offeredDesigns(),
+    palette: `${design}:${mode}`,
+    toggle: () => setStored({ design, mode: mode === "dark" ? "light" : "dark" }),
+    choose: (choice) => setStored({ design: choice.design ?? design, mode: choice.mode ?? mode }),
+  }), [design, mode]);
 
   return <ThemeModeContext.Provider value={value}>{children}</ThemeModeContext.Provider>;
 }

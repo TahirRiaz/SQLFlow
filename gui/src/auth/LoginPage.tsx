@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, CircleAlert, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "../api/endpoints";
 import { isApiError } from "../api/client";
 import { CorrelationError } from "../components/CorrelationError";
+import { AppearanceControl } from "../layout/workbench/AppearanceControl";
 import { useAuth } from "./AuthContext";
+import { entraLoginHint, sameAppPath, takeEntraSignInAnswer } from "./entraSignIn";
 import { branding } from "../modules/branding";
 import { readLoginPrefs } from "./loginPrefs";
 import { LoginStreams } from "./LoginStreams";
@@ -19,6 +21,9 @@ import { BRAND_FIELD, LOGIN_ACCENT } from "./loginStreamLanes";
 
 /** Which sign-in path is in flight, so only the button that started the work shows the spinner. */
 type BusyAction = "local" | "entra" | "bootstrap" | null;
+
+/** Which sign-in methods the control plane offers, read by the form and by finishing an Entra sign-in alike. */
+const providersQuery = queryOptions({ queryKey: ["auth", "providers"], queryFn: authApi.providers, staleTime: 60_000 });
 
 /** The Microsoft four-square mark, per their sign-in branding guidelines. */
 function MicrosoftMark() {
@@ -99,16 +104,17 @@ function BrandPanel() {
  * sign-in form on the editor background beside it (under a navy band carrying the lockup on narrow screens).
  * Username/password for the product's regular users, "Sign in with Microsoft" when the control plane has Entra enabled,
  * and the break-glass bootstrap secret tucked behind an expander when one is configured. Which options render is driven
- * by GET /auth/providers, so this page never guesses the server's configuration.
+ * by GET /auth/providers, so this page never guesses the server's configuration. "Sign in with Microsoft" leaves for
+ * Microsoft's sign-in in this tab, and Entra's answer brings the page back here to finish it.
  */
 export default function LoginPage() {
   const brand = branding();
-  const { session, sessionEndedReason, loginLocal, loginEntra, loginBootstrap } = useAuth();
-  const navigate = useNavigate();
+  const { session, sessionEndedReason, loginLocal, loginEntra, completeLoginEntra, loginBootstrap } = useAuth();
   const [params] = useSearchParams();
   const returnTo = decodeReturnTo(params.get("returnTo"));
+  const queryClient = useQueryClient();
 
-  const providers = useQuery({ queryKey: ["auth", "providers"], queryFn: authApi.providers, staleTime: 60_000 });
+  const providers = useQuery(providersQuery);
 
   // Read once per mount, not on every render: the stored values seed the form, and from then on the form is the
   // truth. `prefs` is kept so focus can land on the field that is actually still empty.
@@ -119,25 +125,49 @@ export default function LoginPage() {
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState<BusyAction>(null);
   const [error, setError] = useState<unknown>(null);
+  // Where a sign-in that ended in a session goes on to: set in the same render that ends its busy state.
+  const [arrived, setArrived] = useState<string | null>(null);
 
-  if (session) {
-    return <Navigate to={returnTo} replace />;
-  }
-
-  const anyBusy = busy !== null;
-
-  const run = async (action: Exclude<BusyAction, null>, work: () => Promise<void>) => {
+  // A sign-in that ends in a session goes on to the page it was asked for from: returnTo, or, for an Entra sign-in,
+  // the address its answer brought back. Leaving for Microsoft's sign-in ends in no session here; it only ever fails.
+  const run = useCallback(async (action: Exclude<BusyAction, null>, work: () => Promise<string | void>) => {
     setBusy(action);
     setError(null);
     try {
-      await work();
-      navigate(returnTo, { replace: true });
+      const destination = await work();
+      setArrived(typeof destination === "string" ? destination : returnTo);
     } catch (caught) {
       setError(caught);
     } finally {
       setBusy(null);
     }
-  };
+  }, [returnTo]);
+
+  // Entra's answer to a sign-in this page started, which the bootstrap held when Entra loaded the GUI with it: finished
+  // once, as the page opens, with the Microsoft button busy until the session begins or the failure shows.
+  useEffect(() => {
+    const answer = takeEntraSignInAnswer();
+    if (answer === null) {
+      return;
+    }
+
+    void run("entra", async () => {
+      const { entra } = await queryClient.fetchQuery(providersQuery);
+      return completeLoginEntra(entra, answer);
+    });
+  }, [run, queryClient, completeLoginEntra]);
+
+  if (arrived !== null) {
+    return <Navigate to={arrived} replace />;
+  }
+
+  // A visit with a session already open goes straight on. A sign-in in flight begins its session before it settles,
+  // and goes on to where it ends instead: an Entra sign-in's address is not this page's returnTo.
+  if (session && busy === null) {
+    return <Navigate to={returnTo} replace />;
+  }
+
+  const anyBusy = busy !== null;
 
   // Every sign-in path records its own prefill from the server's answer, inside beginSession; nothing to do here.
   const submitLocal = (event: FormEvent) => {
@@ -159,6 +189,11 @@ export default function LoginPage() {
       style={{ background: BRAND_FIELD }}
     >
       <BrandPanel />
+
+      {/* The design and mode, picked before signing in when a module offers designs beside SQLFlow's (DESIGN.md 3.7). */}
+      <div className="absolute top-4 right-4 z-10 sm:top-6 sm:right-6">
+        <AppearanceControl place="sign-in" />
+      </div>
 
       {/* The lockup on narrow screens, where the brand panel is hidden. */}
       <header className="px-6 pt-8 sm:px-10 lg:hidden">
@@ -267,7 +302,10 @@ export default function LoginPage() {
                     size="lg"
                     className="w-full text-sm"
                     disabled={anyBusy}
-                    onClick={() => void run("entra", () => loginEntra(providers.data.entra, remember))}
+                    // The username names the Microsoft account when it is one, so Entra signs it in without asking.
+                    onClick={() => void run("entra", () => (
+                      loginEntra(providers.data.entra, entraLoginHint(username), { remember, returnTo })
+                    ))}
                     data-testid="login-entra"
                   >
                     {busy === "entra" ? <Loader2 className="animate-spin" /> : <MicrosoftMark />}
@@ -335,7 +373,6 @@ function decodeReturnTo(raw: string | null): string {
     return "/";
   }
 
-  const decoded = decodeURIComponent(raw);
   // Only same-app absolute paths: a foreign origin in returnTo must never become a redirect target.
-  return decoded.startsWith("/") && !decoded.startsWith("//") ? decoded : "/";
+  return sameAppPath(decodeURIComponent(raw));
 }

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { downloadText } from "@/lib/download";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { prettyPrintSql } from "@/lib/sql";
+import { useTraceStatusReport } from "../layout/workbench/TraceTray";
 import { parseUtc } from "../lib/time";
 
 /** One line of a trace, in the terminal-log shape both the run trace and the activity (sync/lineage/...) trace
@@ -288,6 +289,9 @@ function TraceRow({ line, separated }: { line: TraceLine; separated: boolean }) 
  * `currentGroup` names the group the header reports on. When it is set, the problems count, the problems band and
  * the problems filter take only that group's lines, so a scrollback of earlier groups (an operation's previous
  * attempts) stays on screen without its problems being read as the current one's. Unset, every visible line counts.
+ *
+ * Held in the workbench's trace tray, the log reports whether it has ended, how, and its current group's problems
+ * (Clear notwithstanding), which the title bar's trace indicator shows while the log is out of view.
  */
 export function TraceLog({
   lines,
@@ -343,6 +347,25 @@ export function TraceLog({
   );
   const shown = problemsOnly && problems.length > 0 ? problems : visible;
 
+  // What the trace tray is told: every line of the current group counts, whatever Clear has hidden from view.
+  const reportStatus = useTraceStatusReport();
+  const tally = useMemo(() => {
+    let found = 0;
+    let errors = 0;
+    for (const line of lines) {
+      const isError = line.level === "error" || Boolean(line.error);
+      if ((isError || line.level === "warning") && (currentGroup === undefined || line.groupKey === currentGroup)) {
+        found += 1;
+        errors += isError ? 1 : 0;
+      }
+    }
+
+    return { problems: found, errors };
+  }, [lines, currentGroup]);
+  useEffect(() => {
+    reportStatus?.({ ended, failed, problems: tally.problems, errors: tally.errors });
+  }, [reportStatus, ended, failed, tally]);
+
   // Follow the tail as lines arrive (and on connect), the way a terminal does.
   useEffect(() => {
     const el = scrollRef.current;
@@ -350,6 +373,27 @@ export function TraceLog({
       el.scrollTop = el.scrollHeight;
     }
   }, [shown.length, ended]);
+
+  // A held log streams out of the document while the panel shows something else, where it cannot scroll: back in view,
+  // it opens at the tail it would have followed to.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el === null) {
+      return undefined;
+    }
+
+    let hidden = el.clientHeight === 0;
+    const observer = new ResizeObserver(() => {
+      const nowHidden = el.clientHeight === 0;
+      if (hidden && !nowHidden) {
+        el.scrollTop = el.scrollHeight;
+      }
+
+      hidden = nowHidden;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const doCopy = async () => {
     setBusy("copy");

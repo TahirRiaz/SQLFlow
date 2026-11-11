@@ -3,6 +3,7 @@ import {
   AssistantRuntimeProvider,
   CompositeAttachmentAdapter,
   SimpleImageAttachmentAdapter,
+  useAuiState,
   useLocalRuntime,
   WebSpeechDictationAdapter,
   type DictationAdapter,
@@ -11,11 +12,28 @@ import {
 import { Thread } from "@/components/assistant-ui/thread";
 import type { ChatCapabilities, ChatStreamConversation } from "../../api/types";
 import { AnswerConfirmation } from "./AnswerConfirmation";
+import { answerMarkText, answerModelOf, markedAnswerMarkdown } from "./answerProvenance";
 import { canRecordAudio, createChatModelAdapter, createTranscribeDictationAdapter } from "./chatAdapters";
+
+/** The mark under each answer: that a model wrote it, and which one when the answer records it. */
+function AnswerMark() {
+  const custom = useAuiState((s) => s.message.metadata.custom);
+  return (
+    <span className="text-muted-foreground shrink-0 text-[11px]" data-testid="chat-answer-mark">
+      {answerMarkText(answerModelOf(custom))}
+    </span>
+  );
+}
+
+/** An exported answer, marked as generated in its header and its first line. */
+function markExport(content: string, custom: Readonly<Record<string, unknown>>): string {
+  return markedAnswerMarkdown(content, answerModelOf(custom), new Date());
+}
 
 /**
  * One conversation with the assistant: the thread, its composer, and the runtime that streams each answer. The Assistant
- * page mounts it beside its conversation rail; "Explain" mounts it alone, asking its question as the first message.
+ * page mounts it beside its conversation rail; "Explain" mounts it alone, asking its question as the first message. Both
+ * say under the composer that a language model writes the answers, and mark each answer with the model that wrote it.
  */
 export function ChatThread({
   conversationId,
@@ -80,9 +98,12 @@ export function ChatThread({
   // capability flag, so the thread is not handed a new component type on each render.
   const components = useMemo(() => ({
     AnswerFooter: () => <AnswerConfirmation enabled={capabilities.questionConfirmation} />,
+    AnswerMark,
+    disclosure: capabilities.disclosure,
+    markExport,
     runQuery: capabilities.runQuery,
     composerPlaceholder,
-  }), [capabilities.questionConfirmation, capabilities.runQuery, composerPlaceholder]);
+  }), [capabilities.questionConfirmation, capabilities.disclosure, capabilities.runQuery, composerPlaceholder]);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>

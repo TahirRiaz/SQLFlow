@@ -12,6 +12,30 @@
     <meta name="darkreader-lock" />
     <meta name="theme-color" content="#283e56" />
     <title>SQLFlow</title>
+    <!-- Puts on the design and mode this browser wore last before the page first paints, so no other appearance shows
+         first: the ones kept under the keys src/theme/designs.ts names, or the operating system's mode when none is
+         kept. The workbench settles it once it knows the designs its modules add (src/theme/appearance.ts). -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var design = null;
+        var mode = null;
+        try {
+          design = window.localStorage.getItem("sqlflow.design");
+          mode = window.localStorage.getItem("sqlflow.theme");
+        } catch (refused) {
+          // Storage the browser refuses keeps nothing, as on a first visit.
+        }
+        if (mode !== "light" && mode !== "dark") {
+          mode = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        root.setAttribute("data-sf-theme", mode);
+        root.classList.toggle("dark", mode === "dark");
+        if (design !== null && /^[a-z][a-z0-9-]*$/.test(design)) {
+          root.setAttribute("data-sf-design", design);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

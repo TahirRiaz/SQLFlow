@@ -31,7 +31,7 @@ export function StatusBar() {
     <footer className="flex h-[22px] shrink-0 select-none items-stretch gap-0.5 bg-status-bar px-1 text-[11px] text-status-bar-foreground">
       <button
         onClick={() => navigate("/runs?status=running")}
-        className="flex items-center gap-1 px-2 hover:bg-white/15"
+        className="flex items-center gap-1 px-2 hover:bg-status-bar-foreground/15"
         aria-label="Show running runs"
       >
         {running !== undefined && running > 0
@@ -51,7 +51,7 @@ export function StatusBar() {
       {queued !== undefined && queued > 0 && (
         <button
           onClick={() => navigate("/runs?status=queued")}
-          className="flex items-center gap-1 px-2 hover:bg-white/15"
+          className="flex items-center gap-1 px-2 hover:bg-status-bar-foreground/15"
           aria-label="Show queued runs"
         >
           <Clock3 className="size-3.5" />

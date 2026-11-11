@@ -18,7 +18,11 @@ namespace SqlFlow.ControlPlane.Api;
 /// whether voice recordings can be transcribed, and whether an answer can be confirmed into the
 /// PowerAI example store.</summary>
 /// <param name="Enabled">Whether the assistant is configured at all; everything else is moot when false.</param>
-/// <param name="Provider">Which model provider answers, for display only.</param>
+/// <param name="Provider">Which model provider answers (an <c>AssistantProvider</c> name).</param>
+/// <param name="Model">The model that answers, which every answer records as its author; empty when the assistant is off.</param>
+/// <param name="Disclosure">The sentence the chat shows where a conversation starts: an AI language model writes the
+/// answers, which one, and that they can be wrong (<see cref="AssistantDisclosure.Sentence"/>); empty when the assistant
+/// is off.</param>
 /// <param name="Images">Whether a question may carry image attachments.</param>
 /// <param name="Transcription">Whether a voice recording can be transcribed server-side.</param>
 /// <param name="MaxImages">The most images one question may carry.</param>
@@ -32,8 +36,12 @@ namespace SqlFlow.ControlPlane.Api;
 /// when AI context is off, in which case the GUI hides the Run affordance rather than offering a
 /// button that can only answer 403.</param>
 public sealed record ChatCapabilitiesDto(
-    bool Enabled, string Provider, bool Images, bool Transcription, int MaxImages, long MaxImageBytes,
-    bool QuestionConfirmation, bool RunQuery);
+    bool Enabled, string Provider, string Model, string Disclosure, bool Images, bool Transcription, int MaxImages,
+    long MaxImageBytes, bool QuestionConfirmation, bool RunQuery);
+
+/// <summary>The model that wrote an answer: its provider (an <c>AssistantProvider</c> name), its name, and both as a person
+/// reads them (<c>gpt-5.1 on Azure AI Foundry</c>).</summary>
+public sealed record ChatModelDto(string Provider, string Model, string Label);
 
 /// <summary>One chat conversation in the owner's list (newest activity first).</summary>
 public sealed record ChatConversationDto(Guid Id, string Title, DateTime CreatedUtc, DateTime UpdatedUtc);
@@ -41,10 +49,12 @@ public sealed record ChatConversationDto(Guid Id, string Title, DateTime Created
 /// <summary>One tool call an answer made (in call order), for the transcript's tool-activity display.</summary>
 public sealed record ChatToolCallDto(string Name, string Status);
 
-/// <summary>One message of a conversation transcript: the DTO twin of <see cref="CatalogChatMessage"/>.</summary>
+/// <summary>One message of a conversation transcript: the DTO twin of <see cref="CatalogChatMessage"/>. An answer carries
+/// the <paramref name="Model"/> that wrote it; a person's message, and an answer stored before answers recorded it, carry
+/// none.</summary>
 public sealed record ChatMessageDto(
     long Id, int Ordinal, string Role, string Text, IReadOnlyList<string> Images,
-    IReadOnlyList<ChatToolCallDto> ToolCalls, DateTime CreatedUtc);
+    IReadOnlyList<ChatToolCallDto> ToolCalls, DateTime CreatedUtc, ChatModelDto? Model);
 
 /// <summary>What a purge removed: every conversation of the caller and every message in them.</summary>
 public sealed record ChatConversationsPurgedDto(int Conversations, int Messages);
@@ -63,8 +73,9 @@ public sealed record ChatStreamConversationDto(Guid Id, string Title, long UserM
 /// <summary>One streamed fragment of the answer text (a delta, not the accumulated text).</summary>
 public sealed record ChatStreamDeltaDto(string Text);
 
-/// <summary>The stream's terminal event: the persisted assistant message.</summary>
-public sealed record ChatStreamDoneDto(long MessageId, int Ordinal, string Text, IReadOnlyList<ChatToolCallDto> ToolCalls);
+/// <summary>The stream's terminal event: the persisted assistant message and the model that wrote it.</summary>
+public sealed record ChatStreamDoneDto(
+    long MessageId, int Ordinal, string Text, IReadOnlyList<ChatToolCallDto> ToolCalls, ChatModelDto Model);
 
 /// <summary>A mid-stream failure, delivered as an event because the response status is already
 /// committed once streaming begins.</summary>
@@ -117,9 +128,12 @@ public static class ChatEndpoints
     {
         var assistant = options.Value.Assistant;
         var transcription = http.RequestServices.GetService<TranscriptionGateway>()?.Enabled == true;
+        var model = assistant.Enabled ? assistant.Model : "";
         return TypedResults.Ok(new ChatCapabilitiesDto(
             assistant.Enabled,
             assistant.Provider.ToString(),
+            model,
+            model.Length > 0 ? AssistantDisclosure.Sentence(assistant.Provider, model) : "",
             assistant.Enabled && assistant.MaxImages > 0,
             assistant.Enabled && transcription,
             assistant.MaxImages,
@@ -419,10 +433,11 @@ public static class ChatEndpoints
             }
 
             var saved = await PersistAssistantMessageAsync(
-                db, clock, conversation, userMessage.Ordinal, completedText, toolCalls, answerMode, ct)
+                db, clock, conversation, userMessage.Ordinal, completedText, toolCalls, answerMode, options, ct)
                 .ConfigureAwait(false);
             await WriteSseAsync(response, "done", JsonSerializer.Serialize(
-                new ChatStreamDoneDto(saved.Id, saved.Ordinal, completedText, toolCalls), serializer), ct)
+                new ChatStreamDoneDto(saved.Id, saved.Ordinal, completedText, toolCalls, AuthorOf(saved, options)),
+                serializer), ct)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -433,7 +448,7 @@ public static class ChatEndpoints
             if (streamedText.Length > 0)
             {
                 await PersistAssistantMessageAsync(
-                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls, answerMode,
+                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls, answerMode, options,
                     CancellationToken.None).ConfigureAwait(false);
             }
         }
@@ -448,7 +463,7 @@ public static class ChatEndpoints
             if (streamedText.Length > 0)
             {
                 await PersistAssistantMessageAsync(
-                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls, answerMode,
+                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls, answerMode, options,
                     CancellationToken.None).ConfigureAwait(false);
             }
 
@@ -541,11 +556,15 @@ public static class ChatEndpoints
         return unmatched;
     }
 
+    /// <summary>Stores an answer with the model that wrote it, a partial one (stopped or failed) included, so every
+    /// answer the transcript shows says it was generated and by what.</summary>
     private static async Task<CatalogChatMessage> PersistAssistantMessageAsync(
         CatalogDbContext db, TimeProvider clock, CatalogChatConversation conversation, int userOrdinal,
-        string text, IReadOnlyList<ChatToolCallDto> toolCalls, AssistantMode mode, CancellationToken ct)
+        string text, IReadOnlyList<ChatToolCallDto> toolCalls, AssistantMode mode, AssistantChatOptions options,
+        CancellationToken ct)
     {
         var nowUtc = clock.GetUtcNow().UtcDateTime;
+        var model = options.Model;
         var message = new CatalogChatMessage
         {
             ConversationId = conversation.Id,
@@ -554,6 +573,8 @@ public static class ChatEndpoints
             Text = text,
             ToolCallsJson = toolCalls.Count > 0 ? JsonSerializer.Serialize(toolCalls) : null,
             AssistantMode = FormatAssistantMode(mode),
+            ModelProvider = options.Provider.ToString(),
+            Model = model.Length <= CatalogChatMessage.MaxModelLength ? model : model[..CatalogChatMessage.MaxModelLength],
             CreatedUtc = nowUtc,
         };
         db.ChatMessages.Add(message);
@@ -634,8 +655,31 @@ public static class ChatEndpoints
             ? JsonSerializer.Deserialize<List<ChatToolCallDto>>(toolsJson) ?? []
             : [];
         return new ChatMessageDto(
-            message.Id, message.Ordinal, message.Role, message.Text, images, toolCalls, message.CreatedUtc);
+            message.Id, message.Ordinal, message.Role, message.Text, images, toolCalls, message.CreatedUtc,
+            ModelOf(message));
     }
+
+    /// <summary>The model a stored answer records, as the API serves it; null for a person's message and for an answer
+    /// stored before answers recorded their model. A provider this build does not know is labelled by the model alone.</summary>
+    internal static ChatModelDto? ModelOf(CatalogChatMessage message)
+    {
+        if (message.Role != ChatMessageRoles.Assistant || string.IsNullOrWhiteSpace(message.Model)
+            || string.IsNullOrWhiteSpace(message.ModelProvider))
+        {
+            return null;
+        }
+
+        var label = Enum.TryParse<AssistantProvider>(message.ModelProvider, ignoreCase: false, out var provider)
+            && Enum.IsDefined(provider)
+                ? AssistantDisclosure.ModelLabel(provider, message.Model)
+                : message.Model;
+        return new ChatModelDto(message.ModelProvider, message.Model, label);
+    }
+
+    /// <summary>The model the answer just stored records: the deployment's own, since it was stored by this run.</summary>
+    private static ChatModelDto AuthorOf(CatalogChatMessage saved, AssistantChatOptions options)
+        => ModelOf(saved) ?? throw new InvalidOperationException(
+            $"The answer was stored without its model; ControlPlane:Assistant names no model for provider {options.Provider}.");
 
     /// <summary>Reads the request body into <paramref name="destination"/>, stopping once
     /// <paramref name="limit"/> bytes have been copied (the caller then rejects the oversized body

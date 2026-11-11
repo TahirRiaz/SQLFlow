@@ -484,20 +484,29 @@ export default function SchedulesPage() {
       render: (row) => (
         <Tooltip>
           <TooltipTrigger asChild>
-            <RouterLink
-              to={`/runs?scheduleId=${row.id}`}
-              className="font-mono text-[12px] font-medium text-primary hover:underline"
-              data-testid="schedule-name-link"
+            {/* The name opens the run board, the same one Run now opens: what one fire runs, wave by wave, with Start
+              * under it, so reaching for a schedule by its name is reaching for running it. */}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setRunTarget(row);
+              }}
+              className="text-left font-mono text-[12px] font-medium text-primary hover:underline"
+              data-testid="schedule-name-run"
             >
               {row.name}
-            </RouterLink>
+            </button>
           </TooltipTrigger>
           {/* Where the schedule comes from used to be its own column, identical on nearly every row. It only
             * matters when a reader asks why a cadence cannot be edited here, which is a hover, not a column. */}
-          <TooltipContent>
-            {row.source === "yaml"
-              ? "Declared in git. Change the cadence in the YAML; this list shows what the repo says."
-              : `Created through the ${row.source} surface, not git. Open its runs.`}
+          <TooltipContent className="max-w-xs">
+            Run this schedule: see what one fire runs, wave by wave, then start it.
+            <span className="mt-1 block">
+              {row.source === "yaml"
+                ? "Declared in git. Change the cadence in the YAML; this list shows what the repo says."
+                : `Created through the ${row.source} surface, not git.`}
+            </span>
           </TooltipContent>
         </Tooltip>
       ),
@@ -505,41 +514,46 @@ export default function SchedulesPage() {
     {
       id: "members",
       header: "Flows",
-      render: (row) => (row.memberPipelineIds.length === 1 ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {/* A single-member schedule links straight to its flow's pipeline detail. */}
-            <RouterLink
-              to={`/pipelines/${row.memberPipelineIds[0]}`}
-              onClick={(event) => event.stopPropagation()}
-              className="text-[13px] text-primary hover:underline"
-              data-testid="schedule-flow-link"
-            >
-              1 flow
-            </RouterLink>
-          </TooltipTrigger>
-          <TooltipContent>One flow joined this schedule; open its pipeline detail.</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <Badge
-                variant="outline"
-                className={row.memberPipelineIds.length === 0 ? "text-warning" : "text-primary"}
-                data-testid="schedule-members-chip"
+      render: (row) => {
+        const count = row.memberPipelineIds.length;
+        if (count === 0) {
+          // Nothing joined it, so there is no list to open: the count says so and the hover says how to fix it.
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Badge variant="outline" className="text-warning" data-testid="schedule-members-chip">0 flows</Badge>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {"No flow joins this schedule, so a fire runs nothing. Join one with 'schedule: <name>'."}
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+
+        // The count opens the Pipelines page on this schedule's flows, in the schedule's repo, as a tab of its own
+        // beside this list: a schedule of one flow and one of forty open the same way.
+        const target = `/pipelines?${new URLSearchParams({ repo: row.repoId, schedule: row.id }).toString()}`;
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <RouterLink
+                to={target}
+                onClick={(event) => event.stopPropagation()}
+                className="text-[13px] text-primary hover:underline"
+                data-testid="schedule-flows-link"
               >
-                {row.memberPipelineIds.length} flows
-              </Badge>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            {row.memberPipelineIds.length === 0
-              ? "No flow joins this schedule, so a fire runs nothing. Join one with 'schedule: <name>'."
-              : "The flows that joined this schedule. One fire enqueues them all as a single wave-ordered group."}
-          </TooltipContent>
-        </Tooltip>
-      )),
+                {count} {count === 1 ? "flow" : "flows"}
+              </RouterLink>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              Open the {count === 1 ? "flow" : "flows"} that joined this schedule on the Pipelines page. One fire
+              enqueues them all as a single wave-ordered group.
+            </TooltipContent>
+          </Tooltip>
+        );
+      },
     },
     {
       id: "runsWith",
