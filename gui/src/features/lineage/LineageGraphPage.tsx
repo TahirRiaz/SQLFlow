@@ -130,26 +130,34 @@ export default function LineageGraphPage() {
   const navigate = useNavigate();
   const { mode } = useThemeMode();
   const [searchParams, setSearchParams] = useSearchParams();
-  const params = useMemo(() => readGraphParams(searchParams), [searchParams]);
+  // The address is a render behind anything asked of it, and a control drawn from it is a render behind too: a choice
+  // clicked twice in quick succession would be read as "the one already chosen" and be dropped, and two controls
+  // clicked one after the other would each start from the address as last drawn. So the page draws from the last
+  // drawing ASKED for, kept here, and the address follows it. The address is taken as the truth again when it has
+  // caught up, or when it names a drawing nobody asked for here (a link, the back button).
+  const addressed = useMemo(() => readGraphParams(searchParams), [searchParams]);
+  const [ahead, setAhead] = useState<GraphParams | null>(null);
+  const drawingKeyOfAddress = writeGraphParams(ahead ?? addressed).toString();
+  // One object per drawing, whichever of the two it came from, so nothing downstream is laid out twice.
+  const params = useMemo(() => readGraphParams(new URLSearchParams(drawingKeyOfAddress)), [drawingKeyOfAddress]);
   const scope = scopeOf(params);
   const level = levelOf(params);
 
-  // The address is a render behind anything asked of it: two controls clicked in quick succession would each start
-  // from the address as last drawn, and the second would drop the first's change. So every change is applied to the
-  // last drawing ASKED for, kept here, and the address follows. The address is taken as the truth again only when it
-  // names a drawing nobody asked for here (a link, the back button), never when it is merely catching up.
-  const asked = useRef(params);
+  const asked = useRef(addressed);
   const awaited = useRef<string[]>([]);
   useEffect(() => {
-    const drawn = writeGraphParams(params).toString();
-    const at = awaited.current.indexOf(drawn);
+    const at = awaited.current.indexOf(writeGraphParams(addressed).toString());
     if (at >= 0) {
       awaited.current = awaited.current.slice(at + 1);
+      if (awaited.current.length === 0) {
+        setAhead(null);
+      }
     } else {
       awaited.current = [];
-      asked.current = params;
+      asked.current = addressed;
+      setAhead(null);
     }
-  }, [params]);
+  }, [addressed]);
 
   const patch = useCallback((change: Partial<GraphParams> | ((current: GraphParams) => Partial<GraphParams>)) => {
     const current = asked.current;
@@ -157,6 +165,7 @@ export default function LineageGraphPage() {
     const search = writeGraphParams(next);
     asked.current = next;
     awaited.current.push(search.toString());
+    setAhead(next);
     setSearchParams(search, { replace: true });
   }, [setSearchParams]);
 

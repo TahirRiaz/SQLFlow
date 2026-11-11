@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown, ArrowDownToLine, ArrowLeftToLine, ArrowRight, ArrowRightToLine, ArrowUpToLine, Eye, EyeOff, FoldHorizontal, Layers,
   MoveHorizontal, MoveVertical, SlidersHorizontal, X,
@@ -153,6 +153,14 @@ export function WaveRange({ stops, range, onPreview, onCommit }: {
   onCommit: (range: readonly [number, number]) => void;
 }) {
   const [draft, setDraft] = useState<readonly [number, number] | null>(null);
+  // A range is previewed only while a thumb is dragged. By the keyboard each step is applied at once, and there the
+  // slider reports the step as applied before it reports the change, so a draft kept from the change would outlive it.
+  const dragging = useRef(false);
+  const endDrag = () => {
+    dragging.current = false;
+    setDraft(null);
+    onPreview(null);
+  };
   const shown = draft ?? range;
   const most = Math.max(...stops.map((stop) => stop.count), 1);
   const flows = stops.slice(shown[0], shown[1] + 1).reduce((sum, stop) => sum + stop.count, 0);
@@ -183,16 +191,19 @@ export function WaveRange({ stops, range, onPreview, onCommit }: {
           minStepsBetweenThumbs={0}
           value={[shown[0], shown[1]]}
           thumbLabels={["First wave drawn", "Last wave drawn"]}
+          onPointerDown={() => {
+            dragging.current = true;
+          }}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
           onValueChange={(next) => {
-            const value: [number, number] = [Math.min(next[0], next[1]), Math.max(next[0], next[1])];
-            setDraft(value);
-            onPreview(value);
+            if (dragging.current) {
+              const value: [number, number] = [Math.min(next[0], next[1]), Math.max(next[0], next[1])];
+              setDraft(value);
+              onPreview(value);
+            }
           }}
-          onValueCommit={(next) => {
-            setDraft(null);
-            onPreview(null);
-            onCommit([Math.min(next[0], next[1]), Math.max(next[0], next[1])]);
-          }}
+          onValueCommit={(next) => onCommit([Math.min(next[0], next[1]), Math.max(next[0], next[1])])}
         />
       </div>
       <Tooltip>
