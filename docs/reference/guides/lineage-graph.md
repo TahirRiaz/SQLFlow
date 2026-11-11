@@ -42,7 +42,8 @@ writes. A reader has one question at a time, so the graph at **Explore > Lineage
 opens on the smallest drawing that still tells the order of things, and each control of its bar widens or narrows that
 drawing in one predictable way. The line under the bar says in words what is drawn and why.
 
-Data runs left to right: what a node is made from is on its left, what depends on it on its right.
+Data runs top to bottom: what a node is made from is above it, what depends on it below. A level too wide for one
+line is laid in several staggered lines. **Layout** turns the drawing left to right for those who prefer it.
 
 ## What opens
 
@@ -54,7 +55,7 @@ Data runs left to right: what a node is made from is on its left, what depends o
 | A link or a search hit naming an object with no repository | The object's own neighbourhood, across every repository: its producers, what they read, and its consumers downstream | Everything, with the object selected. |
 
 A walk downstream stops after three hops outside the scope's own flows, and a scope holds at most 500 flows. A node the
-walk stopped at carries **more** on its right edge; clicking it loads what is beyond. A scope that was cut short says so
+walk stopped at carries **more** under it; clicking it loads what is beyond. A scope that was cut short says so
 in the line under the bar.
 
 ## The bar, left to right
@@ -69,6 +70,7 @@ The bar is in the order a drawing is made in: what to look at, how much of it, t
 | **Draw as one** | **Folders** collapses each folder's flows into one node; **Stacks** collapses look-alike nodes. |
 | **Waves** | Trims the drawing to a range of execution waves. |
 | **Kinds** | The legend, and the filter: hides kinds of node. |
+| **Layout** | Which way data runs: top to bottom, or left to right. |
 | **Trace** | Shown while a node is traced: how many hops around it, and which side. |
 
 ### Show: the level
@@ -117,7 +119,7 @@ joins what they joined, so hiding `ing` flows leaves the landed table pointing a
 - **1, 2, 3, All**: how many hops from the node are drawn.
 - **Upstream only**, **Both sides**, **Downstream only**: what the node is made from, or what a change to it reaches.
 
-A producer or consumer the trace left out beside a drawn node is counted on that node's edge (`+3`); clicking the count
+A producer or consumer the trace left out beside a drawn node is counted above or below that node (`+3`); clicking the count
 draws exactly those. With folders on, the folders of the traced node and of the flows next to it are open, and folders
 further away stay collapsed: the trace is exact where you are looking and coarse beyond.
 
@@ -155,6 +157,7 @@ The whole drawing is in the address, so it can be shared and survives a reload.
 | `waves` | `2-4`: the first and last wave drawn. `u` is the unwaved stop. |
 | `hide` | A hidden kind (`flow:ing`, `object:table`); repeated. |
 | `trace`, `hops`, `dir` | The traced node, how many hops (left out: all), and `up` or `down` for one side. |
+| `layout` | `right` draws left to right. Left out, the graph runs top to bottom. |
 | `expand` | A node the walk was continued past; repeated. |
 
 Links written for the earlier page still open: `view=objects` is `show=objects`, and `wave=3` is `waves=3-3`.

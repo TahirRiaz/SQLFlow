@@ -1,3 +1,4 @@
+import type { Orientation } from "./graphLayout.ts";
 import type { GraphLevel, TraceDirection } from "./graphModel.ts";
 
 /**
@@ -30,6 +31,8 @@ export interface GraphParams {
   hops: number | null;
   direction: TraceDirection;
   stacked: boolean;
+  /** Which way data runs on the canvas: top to bottom unless the reader chose left to right. */
+  orientation: Orientation;
 }
 
 /** A scope with more flows than this opens with its folders collapsed. */
@@ -90,6 +93,7 @@ export function readGraphParams(search: URLSearchParams): GraphParams {
     hops: hops !== null && /^[1-9]\d?$/.test(hops) ? Number(hops) : null,
     direction: direction === "up" ? "upstream" : direction === "down" ? "downstream" : "both",
     stacked: search.get("stacks") !== "off",
+    orientation: search.get("layout") === "right" ? "right" : "down",
   };
 }
 
@@ -128,6 +132,9 @@ export function writeGraphParams(params: GraphParams): URLSearchParams {
   }
   if (!params.stacked) {
     search.set("stacks", "off");
+  }
+  if (params.orientation === "right") {
+    search.set("layout", "right");
   }
   return search;
 }

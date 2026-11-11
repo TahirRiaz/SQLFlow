@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ProjectGraph, ProjectGraphPipeline } from "../src/api/types.ts";
-import { layeredLayout } from "../src/features/lineage/graphLayout.ts";
+import { layeredLayout, MAX_ROW_NODES, NODE_HEIGHT, NODE_SPACING } from "../src/features/lineage/graphLayout.ts";
 import {
   buildGraphSource,
   closure,
@@ -332,31 +332,58 @@ describe("what the controls say", () => {
 });
 
 describe("the layout", () => {
-  it("puts a producer in a column before its consumers, and the nodes of a column on rows of their own", () => {
+  it("lays a level too wide for one line in staggered lines, all above what they feed", () => {
+    const inputs = Array.from({ length: 19 }, (_, i) => `in-${String(i).padStart(2, "0")}`);
+    const at = layeredLayout([...inputs, "sink"], inputs.map((source) => ({ source, target: "sink" })));
+    const lines = new Set(inputs.map((id) => at.get(id)!.y));
+    assert.equal(lines.size, 3);
+    assert.ok([...lines].every((y) => y + NODE_HEIGHT < at.get("sink")!.y));
+    // No line holds more cards than a row has room for, no two cards share a place, and a line is shifted against
+    // the one above it, so an edge from above passes between its cards.
+    for (const y of lines) {
+      assert.ok(inputs.filter((id) => at.get(id)!.y === y).length <= MAX_ROW_NODES);
+    }
+    assert.equal(new Set(inputs.map((id) => `${at.get(id)!.x}/${at.get(id)!.y}`)).size, 19);
+    assert.notEqual(at.get("in-00")!.x, at.get("in-01")!.x);
+    const xs = inputs.map((id) => at.get(id)!.x);
+    assert.ok(Math.max(...xs) - Math.min(...xs) < MAX_ROW_NODES * NODE_SPACING);
+  });
+
+  it("puts a producer in a row above its consumers, and the nodes of a row side by side", () => {
     const view = draw({});
     const at = layeredLayout(view.nodes.map((node) => node.id), view.edges);
+    assert.ok(at.get("pre")!.y < at.get("ing")!.y);
+    assert.ok(at.get("ing")!.y < at.get("publish")!.y);
+    assert.ok(at.get("publish")!.y < at.get("check-1")!.y);
+    assert.equal(new Set(["check-1", "check-2", "check-3"].map((id) => at.get(id)!.x)).size, 3);
+    assert.equal(new Set(["check-1", "check-2", "check-3"].map((id) => at.get(id)!.y)).size, 1);
+    // A lone input slides down to the row above its only consumer instead of stranding in the top row.
+    assert.equal(at.get("lookup")!.y, at.get("ing")!.y);
+  });
+
+  it("draws the same levels left to right when asked, one column a level", () => {
+    const view = draw({});
+    const at = layeredLayout(view.nodes.map((node) => node.id), view.edges, "right");
     assert.ok(at.get("pre")!.x < at.get("ing")!.x);
     assert.ok(at.get("ing")!.x < at.get("publish")!.x);
-    assert.ok(at.get("publish")!.x < at.get("check-1")!.x);
+    assert.equal(new Set(["check-1", "check-2", "check-3"].map((id) => at.get(id)!.x)).size, 1);
     assert.equal(new Set(["check-1", "check-2", "check-3"].map((id) => at.get(id)!.y)).size, 3);
-    // A lone input slides next to its only consumer instead of stranding in the first column.
-    assert.equal(at.get("lookup")!.x, at.get("ing")!.x);
   });
 
   it("places every node of a cycle", () => {
     const at = layeredLayout(["a", "b", "c"], [{ source: "a", target: "b" }, { source: "b", target: "c" }, { source: "c", target: "a" }]);
     assert.equal(at.size, 3);
-    assert.equal(new Set([...at.values()].map((position) => position.x)).size, 3);
+    assert.equal(new Set([...at.values()].map((position) => position.y)).size, 3);
   });
 });
 
 describe("the query string", () => {
   it("round-trips a drawing, leaving defaults out", () => {
-    const search = new URLSearchParams("repoId=r1&show=handovers&waves=2-u&hide=flow%3Aing&group=off&open=g1&trace=x&hops=2&dir=up&stacks=off&expand=k");
+    const search = new URLSearchParams("repoId=r1&show=handovers&waves=2-u&hide=flow%3Aing&group=off&open=g1&trace=x&hops=2&dir=up&stacks=off&layout=right&expand=k");
     const params = readGraphParams(search);
     assert.deepEqual(params.waves, { from: 2, to: -1 });
-    assert.deepEqual([params.level, params.grouped, params.hops, params.direction, params.stacked], ["handovers", false, 2, "upstream", false]);
-    assert.equal(writeGraphParams(params).toString(), "repoId=r1&expand=k&show=handovers&waves=2-u&hide=flow%3Aing&group=off&open=g1&trace=x&hops=2&dir=up&stacks=off");
+    assert.deepEqual([params.level, params.grouped, params.hops, params.direction, params.stacked, params.orientation], ["handovers", false, 2, "upstream", false, "right"]);
+    assert.equal(writeGraphParams(params).toString(), "repoId=r1&expand=k&show=handovers&waves=2-u&hide=flow%3Aing&group=off&open=g1&trace=x&hops=2&dir=up&stacks=off&layout=right");
     assert.equal(writeGraphParams(readGraphParams(new URLSearchParams("repoId=r1"))).toString(), "repoId=r1");
   });
 
@@ -367,8 +394,8 @@ describe("the query string", () => {
   });
 
   it("falls back to the default on a value it does not know", () => {
-    const params = readGraphParams(new URLSearchParams("show=nope&waves=x-y&hops=0&dir=sideways&group=maybe"));
-    assert.deepEqual([params.level, params.waves, params.hops, params.direction, params.grouped], [null, null, null, "both", null]);
+    const params = readGraphParams(new URLSearchParams("show=nope&waves=x-y&hops=0&dir=sideways&group=maybe&layout=up"));
+    assert.deepEqual([params.level, params.waves, params.hops, params.direction, params.grouped, params.orientation], [null, null, null, "both", null, "down"]);
   });
 
   it("scopes on a repository, a project, or a node with no repository", () => {

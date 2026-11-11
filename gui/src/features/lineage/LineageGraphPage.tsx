@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Panel, ReactFlowProvider } from "@xyflow/react";
@@ -36,7 +36,7 @@ import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 import { GraphCanvas, type CenterRequest } from "./GraphCanvas";
-import { CompactControl, Field, KindFilter, LevelControl, TraceControl, WaveRange } from "./GraphControls";
+import { CompactControl, Field, KindFilter, LevelControl, OrientationControl, TraceControl, WaveRange } from "./GraphControls";
 import { GraphDetails } from "./GraphDetails";
 import { counted, kindLook } from "./graphKinds";
 import { layeredLayout, type Position } from "./graphLayout";
@@ -117,6 +117,7 @@ const NO_POSITIONS: ReadonlyMap<string, Position> = new Map();
  *   - Folders and stacks: a folder's flows, and nodes that look alike, draw as one node until opened.
  *   - Waves and kinds: trim the drawing to a range of waves, or hide kinds of node (their chains stay joined).
  *   - Trace: only what is upstream and downstream of one node, within a number of hops.
+ *   - Layout: data runs top to bottom, or left to right when the reader prefers it.
  *
  * A click selects a node (its producers and consumers light up and its details open); a double click opens what
  * it stands for. The whole drawing is in the query string, so it is a link.
@@ -129,11 +130,30 @@ export default function LineageGraphPage() {
   const scope = scopeOf(params);
   const level = levelOf(params);
 
+  // The address is a render behind anything asked of it: two controls clicked in quick succession would each start
+  // from the address as last drawn, and the second would drop the first's change. So every change is applied to the
+  // last drawing ASKED for, kept here, and the address follows. The address is taken as the truth again only when it
+  // names a drawing nobody asked for here (a link, the back button), never when it is merely catching up.
+  const asked = useRef(params);
+  const awaited = useRef<string[]>([]);
+  useEffect(() => {
+    const drawn = writeGraphParams(params).toString();
+    const at = awaited.current.indexOf(drawn);
+    if (at >= 0) {
+      awaited.current = awaited.current.slice(at + 1);
+    } else {
+      awaited.current = [];
+      asked.current = params;
+    }
+  }, [params]);
+
   const patch = useCallback((change: Partial<GraphParams> | ((current: GraphParams) => Partial<GraphParams>)) => {
-    setSearchParams((previous) => {
-      const current = readGraphParams(previous);
-      return writeGraphParams({ ...current, ...(typeof change === "function" ? change(current) : change) });
-    }, { replace: true });
+    const current = asked.current;
+    const next = { ...current, ...(typeof change === "function" ? change(current) : change) };
+    const search = writeGraphParams(next);
+    asked.current = next;
+    awaited.current.push(search.toString());
+    setSearchParams(search, { replace: true });
   }, [setSearchParams]);
 
   // Right-click menu on a node, and the node whose script is open in the sheet. A flow node has two scripts: its
@@ -255,8 +275,10 @@ export default function LineageGraphPage() {
 
   const view = useMemo(() => (source === null ? null : deriveView(source, options)), [source, options]);
   const positions = useMemo(
-    () => (view === null ? NO_POSITIONS : layeredLayout(view.nodes.map((node) => node.id), view.edges)),
-    [view],
+    () => (view === null
+      ? NO_POSITIONS
+      : layeredLayout(view.nodes.map((node) => node.id), view.edges, params.orientation)),
+    [view, params.orientation],
   );
   const selectedNode = view === null || selectedId === null
     ? null
@@ -617,7 +639,7 @@ export default function LineageGraphPage() {
       const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
       return value !== "" ? value : fallback;
     };
-    const svg = buildLineageSvg(view, positions, (node) => ({ title: cardTitle(node), caption: cardCaption(node) }), {
+    const svg = buildLineageSvg(view, positions, params.orientation, (node) => ({ title: cardTitle(node), caption: cardCaption(node) }), {
       text: color("--foreground", "#1d2733"),
       textMuted: color("--muted-foreground", "#5b6b7f"),
       paper: color("--card", "#ffffff"),
@@ -629,7 +651,7 @@ export default function LineageGraphPage() {
     }
     const safeName = (repoName || "graph").replace(/[^\w.-]+/g, "_");
     downloadText(`lineage-${safeName}-${level}.svg`, svg, "image/svg+xml");
-  }, [view, positions, repoName, level]);
+  }, [view, positions, params.orientation, repoName, level]);
 
   // The node the right-click menu is open on, and what it may do. Only a flow of the scope's own repository can be
   // run from here; a flow reached in another repository, and data, get the navigation actions only.
@@ -714,12 +736,16 @@ export default function LineageGraphPage() {
                 onShowAll={() => patch({ hide: [] })}
               />
             </Field>
+            <Field label="Layout">
+              <OrientationControl value={params.orientation} onChange={(orientation) => patch({ orientation })} />
+            </Field>
             {traceId !== "" && !view.traceMissing && (
               <Field label="Trace" testId="graph-trace-control">
                 <TraceControl
                   name={traceName}
                   hops={params.hops}
                   direction={params.direction}
+                  orientation={params.orientation}
                   onHops={(hops) => patch({ trace: traceId, hops })}
                   onDirection={(direction) => patch({ trace: traceId, direction })}
                   onClear={stopTracing}
@@ -912,6 +938,7 @@ export default function LineageGraphPage() {
             <GraphCanvas
               view={view}
               positions={positions}
+              orientation={params.orientation}
               selection={selection}
               statuses={statuses}
               previewWaves={previewWaves}

@@ -1,4 +1,4 @@
-import { NODE_HEIGHT, NODE_WIDTH, type Position } from "./graphLayout.ts";
+import { NODE_HEIGHT, NODE_WIDTH, type Orientation, type Position } from "./graphLayout.ts";
 import type { View, ViewNode } from "./graphModel.ts";
 import { clipMiddle } from "./graphText.ts";
 
@@ -24,6 +24,7 @@ export interface SvgPalette {
 export function buildLineageSvg(
   view: View,
   positions: ReadonlyMap<string, Position>,
+  orientation: Orientation,
   text: (node: ViewNode) => { title: string; caption: string },
   palette: SvgPalette,
 ): string {
@@ -46,12 +47,20 @@ export function buildLineageSvg(
     if (!from || !to) {
       return "";
     }
-    const sx = from.x + ox + NODE_WIDTH;
-    const sy = from.y + oy + NODE_HEIGHT / 2;
-    const tx = to.x + ox;
-    const ty = to.y + oy + NODE_HEIGHT / 2;
-    const bend = Math.max(40, Math.abs(tx - sx) / 2);
-    return `<path d="M${sx},${sy} C${sx + bend},${sy} ${tx - bend},${ty} ${tx},${ty}" fill="none" stroke="${palette.edge}" stroke-width="1.25" marker-end="url(#arrow)"/>`;
+    if (orientation === "right") {
+      const startX = from.x + ox + NODE_WIDTH;
+      const startY = from.y + oy + NODE_HEIGHT / 2;
+      const endX = to.x + ox;
+      const endY = to.y + oy + NODE_HEIGHT / 2;
+      const curve = Math.max(40, Math.abs(endX - startX) / 2);
+      return `<path d="M${startX},${startY} C${startX + curve},${startY} ${endX - curve},${endY} ${endX},${endY}" fill="none" stroke="${palette.edge}" stroke-width="1.25" marker-end="url(#arrow)"/>`;
+    }
+    const sx = from.x + ox + NODE_WIDTH / 2;
+    const sy = from.y + oy + NODE_HEIGHT;
+    const tx = to.x + ox + NODE_WIDTH / 2;
+    const ty = to.y + oy;
+    const bend = Math.max(30, Math.abs(ty - sy) / 2);
+    return `<path d="M${sx},${sy} C${sx},${sy + bend} ${tx},${ty - bend} ${tx},${ty}" fill="none" stroke="${palette.edge}" stroke-width="1.25" marker-end="url(#arrow)"/>`;
   }).join("");
 
   const nodes = placed.map(({ node, at: position }) => {

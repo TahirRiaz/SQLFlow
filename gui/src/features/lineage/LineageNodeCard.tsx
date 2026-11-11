@@ -1,12 +1,12 @@
 import { createContext, memo, useContext } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { ChevronsRight, Layers, TriangleAlert } from "lucide-react";
+import { ChevronsDown, ChevronsRight, Layers, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StreamStatus } from "../../api/types";
 import { statusIcons, statusInk } from "../datastreams/StreamStatusBadge";
 import { statusLabels } from "../datastreams/streamPresentation";
 import { counted, kindLook } from "./graphKinds";
-import { NODE_HEIGHT, NODE_WIDTH } from "./graphLayout";
+import { NODE_HEIGHT, NODE_WIDTH, type Orientation } from "./graphLayout";
 import type { ViewNode } from "./graphModel";
 
 /** Where a node stands against the selection: the selected node, on its trace, or beside it. */
@@ -14,6 +14,8 @@ export type CardRole = "selected" | "upstream" | "downstream" | "unrelated" | nu
 
 export interface CardData extends Record<string, unknown> {
   node: ViewNode;
+  /** Which way data runs: where the card's edges attach, and on which side it counts what was left out. */
+  orientation: Orientation;
   role: CardRole;
   /** Dimmed while a control is being dragged towards hiding it, so its effect is seen before it is applied. */
   leaving: boolean;
@@ -110,11 +112,16 @@ const ROLE_RING: Readonly<Record<Exclude<CardRole, null>, string>> = {
 /**
  * One node of the graph. A flow is a square-cornered card led by its kind's glyph; data is a pill with a dashed
  * edge, so the two read apart without colour; a folder and a stack are cards with a second edge behind them, since
- * each stands for several nodes. What a reduction left out beside a node is said on the node, as a count on the side
- * it was cut from, and clicking the count brings exactly that back.
+ * each stands for several nodes. What a reduction left out beside a node is said on the node, as a count above or
+ * below it, and clicking the count brings exactly that back.
  */
 function LineageNodeCardInner({ data }: NodeProps<CardNode>) {
-  const { node, role, leaving, status } = data;
+  const { node, orientation, role, leaving, status } = data;
+  const down = orientation === "down";
+  // What was left out is counted where it would have been drawn: above and below the card, or before and after it.
+  const before = down ? "-top-1 right-3 -translate-y-full" : "top-1/2 -left-2 -translate-x-full -translate-y-1/2";
+  const after = down ? "-bottom-1 right-3 translate-y-full" : "top-1/2 -right-2 translate-x-full -translate-y-1/2";
+  const More = down ? ChevronsDown : ChevronsRight;
   const actions = useContext(CardActionsContext);
   const look = kindLook(node.type === "group" ? "group" : node.memberType, node.kind);
   const Icon = node.type === "stack" ? Layers : look.icon;
@@ -142,7 +149,7 @@ function LineageNodeCardInner({ data }: NodeProps<CardNode>) {
         leaving && "opacity-20",
       )}
     >
-      <Handle type="target" position={Position.Left} isConnectable={false} className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0" />
+      <Handle type="target" position={down ? Position.Top : Position.Left} isConnectable={false} className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0" />
       <Icon aria-hidden className={cn("size-4 shrink-0", selected ? "text-primary-foreground" : look.iconClass)} />
       <div className="min-w-0 flex-1 overflow-hidden">
         {node.type === "group" ? (
@@ -174,7 +181,7 @@ function LineageNodeCardInner({ data }: NodeProps<CardNode>) {
         <button
           type="button"
           data-testid="graph-node-more-up"
-          className="nodrag nopan absolute top-1/2 -left-2 h-5 min-w-5 -translate-x-full -translate-y-1/2 cursor-pointer rounded-full border border-border bg-background px-1.5 text-[10px] font-medium text-muted-foreground hover:border-primary hover:text-foreground"
+          className={cn("nodrag nopan absolute h-5 min-w-5 cursor-pointer rounded-full border border-border bg-background px-1.5 text-[10px] font-medium text-muted-foreground hover:border-primary hover:text-foreground", before)}
           title={`${counted(node.hiddenUp, "producer")} not drawn. Click to draw ${node.hiddenUp === 1 ? "it" : "them"}.`}
           aria-label={`Draw ${counted(node.hiddenUp, "hidden producer")}`}
           onClick={(event) => {
@@ -189,7 +196,7 @@ function LineageNodeCardInner({ data }: NodeProps<CardNode>) {
         <button
           type="button"
           data-testid="graph-node-more-down"
-          className="nodrag nopan absolute top-1/2 -right-2 h-5 min-w-5 translate-x-full -translate-y-1/2 cursor-pointer rounded-full border border-border bg-background px-1.5 text-[10px] font-medium text-muted-foreground hover:border-primary hover:text-foreground"
+          className={cn("nodrag nopan absolute h-5 min-w-5 cursor-pointer rounded-full border border-border bg-background px-1.5 text-[10px] font-medium text-muted-foreground hover:border-primary hover:text-foreground", after)}
           title={`${counted(node.hiddenDown, "consumer")} not drawn. Click to draw ${node.hiddenDown === 1 ? "it" : "them"}.`}
           aria-label={`Draw ${counted(node.hiddenDown, "hidden consumer")}`}
           onClick={(event) => {
@@ -204,7 +211,7 @@ function LineageNodeCardInner({ data }: NodeProps<CardNode>) {
         <button
           type="button"
           data-testid="graph-node-expand"
-          className="nodrag nopan absolute top-1/2 -right-2 inline-flex h-5 translate-x-full -translate-y-1/2 cursor-pointer items-center gap-0.5 rounded-full border border-chart-7 bg-background px-1.5 text-[10px] font-medium text-foreground hover:bg-accent"
+          className={cn("nodrag nopan absolute inline-flex h-5 cursor-pointer items-center gap-0.5 rounded-full border border-chart-7 bg-background px-1.5 text-[10px] font-medium text-foreground hover:bg-accent", after)}
           title="More is downstream of this node than the graph loaded. Click to load it."
           aria-label="Load what is further downstream"
           onClick={(event) => {
@@ -213,10 +220,10 @@ function LineageNodeCardInner({ data }: NodeProps<CardNode>) {
           }}
         >
           more
-          <ChevronsRight aria-hidden className="size-3" />
+          <More aria-hidden className="size-3" />
         </button>
       )}
-      <Handle type="source" position={Position.Right} isConnectable={false} className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0" />
+      <Handle type="source" position={down ? Position.Bottom : Position.Right} isConnectable={false} className="!size-1 !min-h-0 !min-w-0 !border-0 !opacity-0" />
     </div>
   );
 }

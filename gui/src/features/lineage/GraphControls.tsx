@@ -1,5 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { ArrowLeftToLine, ArrowRightToLine, Eye, EyeOff, FoldHorizontal, Layers, MoveHorizontal, SlidersHorizontal, X } from "lucide-react";
+import {
+  ArrowDown, ArrowDownToLine, ArrowLeftToLine, ArrowRight, ArrowRightToLine, ArrowUpToLine, Eye, EyeOff, FoldHorizontal, Layers,
+  MoveHorizontal, MoveVertical, SlidersHorizontal, X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
@@ -9,8 +12,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { counted, kindLook } from "./graphKinds";
 
-/** A pressed choice is told by its edge and fill, not by a shade the eye has to compare. */
-const PRESSED = "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-foreground";
+/**
+ * A pressed choice is told by its edge and fill, not by a shade the eye has to compare. Keyed on the ARIA state, not
+ * on `data-state`: each choice is also a tooltip's trigger, and the tooltip writes its own `data-state` over the toggle's.
+ */
+const PRESSED = "aria-checked:border-primary aria-checked:bg-primary/10 aria-checked:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-foreground";
+import type { Orientation } from "./graphLayout";
 import type { GraphLevel, KindCount, TraceDirection } from "./graphModel";
 
 /**
@@ -268,6 +275,42 @@ export function KindFilter({ kinds, hidden, onToggle, onShowAll }: {
   );
 }
 
+/** Which way data runs on the canvas. Top to bottom is how the page opens; left to right suits a long, narrow chain. */
+export function OrientationControl({ value, onChange }: { value: Orientation; onChange: (value: Orientation) => void }) {
+  return (
+    <ToggleGroup
+      type="single"
+      variant="outline"
+      size="sm"
+      value={value}
+      onValueChange={(next) => {
+        if (next !== "") {
+          onChange(next as Orientation);
+        }
+      }}
+      aria-label="Which way data runs"
+      data-testid="graph-orientation"
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <ToggleGroupItem value="down" aria-label="Top to bottom" data-testid="graph-orientation-down" className={cn("h-8 px-2", PRESSED)}>
+            <ArrowDown aria-hidden />
+          </ToggleGroupItem>
+        </TooltipTrigger>
+        <TooltipContent>Top to bottom: what a node is made from is above it.</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <ToggleGroupItem value="right" aria-label="Left to right" data-testid="graph-orientation-right" className={cn("h-8 px-2", PRESSED)}>
+            <ArrowRight aria-hidden />
+          </ToggleGroupItem>
+        </TooltipTrigger>
+        <TooltipContent>Left to right: what a node is made from is on its left.</TooltipContent>
+      </Tooltip>
+    </ToggleGroup>
+  );
+}
+
 const HOPS: readonly { value: string; label: string }[] = [
   { value: "1", label: "1" },
   { value: "2", label: "2" },
@@ -276,8 +319,10 @@ const HOPS: readonly { value: string; label: string }[] = [
 ];
 
 /** What a trace draws around its node: how far, and to which side. Shown only while a node is traced. */
-export function TraceControl({ name, hops, direction, onHops, onDirection, onClear }: {
+export function TraceControl({ name, hops, direction, orientation, onHops, onDirection, onClear }: {
   name: string;
+  /** Which way data runs, so each side's glyph points where that side is drawn. */
+  orientation: Orientation;
   hops: number | null;
   direction: TraceDirection;
   onHops: (hops: number | null) => void;
@@ -329,7 +374,7 @@ export function TraceControl({ name, hops, direction, onHops, onDirection, onCle
         <Tooltip>
           <TooltipTrigger asChild>
             <ToggleGroupItem value="upstream" aria-label="Upstream only" data-testid="graph-trace-upstream" className={cn("h-8 px-2", PRESSED)}>
-              <ArrowLeftToLine aria-hidden />
+              {orientation === "down" ? <ArrowUpToLine aria-hidden /> : <ArrowLeftToLine aria-hidden />}
             </ToggleGroupItem>
           </TooltipTrigger>
           <TooltipContent>Upstream only: what it is made from.</TooltipContent>
@@ -337,7 +382,7 @@ export function TraceControl({ name, hops, direction, onHops, onDirection, onCle
         <Tooltip>
           <TooltipTrigger asChild>
             <ToggleGroupItem value="both" aria-label="Both sides" data-testid="graph-trace-both" className={cn("h-8 px-2", PRESSED)}>
-              <MoveHorizontal aria-hidden />
+              {orientation === "down" ? <MoveVertical aria-hidden /> : <MoveHorizontal aria-hidden />}
             </ToggleGroupItem>
           </TooltipTrigger>
           <TooltipContent>Both sides.</TooltipContent>
@@ -345,7 +390,7 @@ export function TraceControl({ name, hops, direction, onHops, onDirection, onCle
         <Tooltip>
           <TooltipTrigger asChild>
             <ToggleGroupItem value="downstream" aria-label="Downstream only" data-testid="graph-trace-downstream" className={cn("h-8 px-2", PRESSED)}>
-              <ArrowRightToLine aria-hidden />
+              {orientation === "down" ? <ArrowDownToLine aria-hidden /> : <ArrowRightToLine aria-hidden />}
             </ToggleGroupItem>
           </TooltipTrigger>
           <TooltipContent>Downstream only: what a change to it reaches.</TooltipContent>

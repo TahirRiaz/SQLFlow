@@ -1,21 +1,34 @@
 /**
- * A left-to-right layered (Sugiyama) layout, which is what makes data flow readable: sources on the left, consumers
- * to the right, one column per level. A column of cards is far denser than a row of them (a card is four times as
- * wide as it is tall), so a level holding thirty nodes stays on one screen instead of running seven screens wide.
+ * A layered (Sugiyama) layout, which is what makes data flow readable. By default it runs top to bottom: sources at
+ * the top, consumers below, one row per level. A card is four times as wide as it is tall, so a level of thirty
+ * nodes on one line would run seven screens wide; such a level is laid in several staggered lines instead. The same
+ * levels can be drawn left to right, one column per level, where a long level simply runs down the page.
  *
  * Levels come from a longest-path layering over the edges, with cycles broken first (a depth-first walk drops the
  * edges that close a cycle from the level calculation, so a flow that reads a view derived from its own output
- * still gets a real level instead of collapsing onto the first column). Within each column, several barycenter
+ * still gets a real level instead of collapsing onto the top row). Within each row, several barycenter
  * passes order nodes by the average position of their neighbours to cut edge crossings. Independent of any layout
  * library, so the level alignment is exact.
  */
 
 export const NODE_WIDTH = 240;
 export const NODE_HEIGHT = 54;
-/** Horizontal distance between columns: a card plus the room an edge needs to bend. */
+/** Vertical distance between rows: a card plus the room an edge and its label need. */
+export const LAYER_SPACING = NODE_HEIGHT + 96;
+/** Horizontal distance between the cards of a row. */
+export const NODE_SPACING = NODE_WIDTH + 28;
+/** The most cards one line of a row holds; a level with more is laid in several lines. */
+export const MAX_ROW_NODES = 8;
+/** Vertical distance between the lines of one row. */
+export const LINE_SPACING = NODE_HEIGHT + 26;
+
+/** Left-to-right: the distance between columns, a card plus the room an edge needs to bend. */
 export const COLUMN_SPACING = NODE_WIDTH + 110;
-/** Vertical distance between the cards of a column. */
-export const ROW_SPACING = NODE_HEIGHT + 20;
+/** Left-to-right: the distance between the cards of a column. */
+export const COLUMN_NODE_SPACING = NODE_HEIGHT + 20;
+
+/** Which way data runs on the canvas. */
+export type Orientation = "down" | "right";
 
 export interface LayoutEdge {
   source: string;
@@ -27,7 +40,11 @@ export interface Position {
   y: number;
 }
 
-export function layeredLayout(ids: readonly string[], edges: readonly LayoutEdge[]): Map<string, Position> {
+export function layeredLayout(
+  ids: readonly string[],
+  edges: readonly LayoutEdge[],
+  orientation: Orientation = "down",
+): Map<string, Position> {
   const position = new Map<string, Position>();
   if (ids.length === 0) {
     return position;
@@ -54,9 +71,9 @@ export function layeredLayout(ids: readonly string[], edges: readonly LayoutEdge
   }
 
   // ---- Level assignment: longest path, with cycles broken first. ----------------------------------------------
-  // A cyclic subgraph would leave Kahn's queue undrained and pin every node of the cycle to the first column. A
+  // A cyclic subgraph would leave Kahn's queue undrained and pin every node of the cycle to the top row. A
   // depth-first walk therefore marks each edge that closes back onto its own stack; those edges are left out of
-  // the level calculation (they still draw, running backwards), so the rest is acyclic and every node gets a real
+  // the level calculation (they still draw, running upwards), so the rest is acyclic and every node gets a real
   // level. Nodes with the fewest inbound edges are visited first so cycles break in the natural flow direction.
   const backTargets = new Map<string, Set<string>>();
   const state = new Map<string, number>(); // 1 = on the walk's stack, 2 = finished
@@ -88,7 +105,7 @@ export function layeredLayout(ids: readonly string[], edges: readonly LayoutEdge
     }
   }
 
-  // Longest-path layering over the acyclic remainder: a node sits one column after its deepest producer.
+  // Longest-path layering over the acyclic remainder: a node sits one row below its deepest producer.
   const level = new Map<string, number>();
   const queue: string[] = [];
   for (const id of known) {
@@ -113,10 +130,10 @@ export function layeredLayout(ids: readonly string[], edges: readonly LayoutEdge
     }
   }
 
-  // As-late-as-possible relaxation: slide every node to one column before its EARLIEST consumer. Longest-path
+  // As-late-as-possible relaxation: slide every node to one row above its EARLIEST consumer. Longest-path
   // places each node as early as it can, which strands a slack chain (a hand-kept input, its loader, its table) at
-  // the far left even when its only consumers sit columns away. Walking the topological order in reverse and only
-  // ever moving a node later keeps every producer before its consumers; a sink or a lone node never moves.
+  // the top even when its only consumers sit rows below. Walking the topological order in reverse and only
+  // ever moving a node down keeps every producer above its consumers; a sink or a lone node never moves.
   for (let i = queue.length - 1; i >= 0; i--) {
     const id = queue[i];
     const back = backTargets.get(id);
@@ -131,17 +148,17 @@ export function layeredLayout(ids: readonly string[], edges: readonly LayoutEdge
     }
   }
 
-  const columns = new Map<number, string[]>();
+  const rows = new Map<number, string[]>();
   for (const id of known) {
-    const column = level.get(id) ?? 0;
-    (columns.get(column) ?? columns.set(column, []).get(column)!).push(id);
+    const row = level.get(id) ?? 0;
+    (rows.get(row) ?? rows.set(row, []).get(row)!).push(id);
   }
-  const levels = [...columns.keys()].sort((a, b) => a - b);
+  const levels = [...rows.keys()].sort((a, b) => a - b);
 
-  // ---- Crossing reduction: order each column by the barycenter of its neighbours, both directions. --------------
+  // ---- Crossing reduction: order each row by the barycenter of its neighbours, both directions. --------------
   const order = new Map<string, number>();
-  for (const column of levels) {
-    const group = columns.get(column)!;
+  for (const row of levels) {
+    const group = rows.get(row)!;
     group.sort((a, b) =>
       outgoing.get(b)!.length + incoming.get(b)!.length - (outgoing.get(a)!.length + incoming.get(a)!.length)
       || a.localeCompare(b));
@@ -158,27 +175,49 @@ export function layeredLayout(ids: readonly string[], edges: readonly LayoutEdge
 
   for (let pass = 0; pass < 6; pass++) {
     for (let i = 1; i < levels.length; i++) {
-      const group = columns.get(levels[i])!;
+      const group = rows.get(levels[i])!;
       const weight = new Map(group.map((id) => [id, barycenter(id, incoming, levels[i - 1])]));
       group.sort((a, b) => weight.get(a)! - weight.get(b)!);
       group.forEach((id, j) => order.set(id, j));
     }
     for (let i = levels.length - 2; i >= 0; i--) {
-      const group = columns.get(levels[i])!;
+      const group = rows.get(levels[i])!;
       const weight = new Map(group.map((id) => [id, barycenter(id, outgoing, levels[i + 1])]));
       group.sort((a, b) => weight.get(a)! - weight.get(b)!);
       group.forEach((id, j) => order.set(id, j));
     }
   }
 
-  // ---- Positions: x by column, y by order within the column, each column centered on the same axis. -------------
-  levels.forEach((column, index) => {
-    const group = columns.get(column)!;
-    const height = (group.length - 1) * ROW_SPACING;
-    group.forEach((id, i) => {
-      position.set(id, { x: index * COLUMN_SPACING, y: i * ROW_SPACING - height / 2 });
+  // ---- Positions: y by row, x by order within the row, each row centered on the same axis. -----------------------
+  // A level holding more nodes than a row has room for is laid in several lines, its nodes dealt to them in turn and
+  // each line shifted by a fraction of a card, like bricks: neighbours in the order stay near each other, and an edge
+  // leaving an upper line runs down through the gaps of the lines under it instead of behind their cards.
+  if (orientation === "right") {
+    levels.forEach((row, index) => {
+      const group = rows.get(row)!;
+      const height = (group.length - 1) * COLUMN_NODE_SPACING;
+      group.forEach((id, i) => {
+        position.set(id, { x: index * COLUMN_SPACING, y: i * COLUMN_NODE_SPACING - height / 2 });
+      });
     });
-  });
+    return position;
+  }
+
+  let top = 0;
+  for (const row of levels) {
+    const group = rows.get(row)!;
+    const lines = Math.ceil(group.length / MAX_ROW_NODES);
+    const slots = Math.ceil(group.length / lines);
+    const width = (slots - 1 + (lines - 1) / lines) * NODE_SPACING;
+    group.forEach((id, i) => {
+      const line = i % lines;
+      position.set(id, {
+        x: (Math.floor(i / lines) + line / lines) * NODE_SPACING - width / 2,
+        y: top + line * LINE_SPACING,
+      });
+    });
+    top += (lines - 1) * LINE_SPACING + LAYER_SPACING;
+  }
 
   return position;
 }

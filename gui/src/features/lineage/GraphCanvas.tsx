@@ -10,7 +10,7 @@ import {
   type Edge as FlowEdge,
 } from "@xyflow/react";
 import type { StreamStatus } from "../../api/types";
-import { NODE_HEIGHT, NODE_WIDTH, type Position } from "./graphLayout";
+import { NODE_HEIGHT, NODE_WIDTH, type Orientation, type Position } from "./graphLayout";
 import type { View, ViewEdge } from "./graphModel";
 import { CardActionsContext, LineageNodeCard, type CardActions, type CardNode, type CardRole } from "./LineageNodeCard";
 
@@ -47,6 +47,7 @@ export interface CenterRequest {
 interface CanvasProps {
   view: View;
   positions: ReadonlyMap<string, Position>;
+  orientation: Orientation;
   selection: CanvasSelection | null;
   /** The worst delivery verdict per drawn node, where there is one worth showing. */
   statuses: ReadonlyMap<string, StreamStatus>;
@@ -81,7 +82,7 @@ function edgeLabel(edge: ViewEdge, nameOf: (id: string) => string): string {
  * their places instead of jumping, so the reader keeps their bearings through a change of scope.
  */
 export function GraphCanvas({
-  view, positions, selection, statuses, previewWaves, nameOf, colorMode, centerRequest, actions,
+  view, positions, orientation, selection, statuses, previewWaves, nameOf, colorMode, centerRequest, actions,
   onSelect, onActivate, onNodeContextMenu, children,
 }: CanvasProps) {
   const flow = useReactFlow();
@@ -90,11 +91,11 @@ export function GraphCanvas({
       id: node.id,
       type: "card" as const,
       position: positions.get(node.id) ?? { x: 0, y: 0 },
-      data: { node, role: null, leaving: false, status: null },
+      data: { node, orientation, role: null, leaving: false, status: null },
       width: NODE_WIDTH,
       height: NODE_HEIGHT,
     })),
-    [view, positions],
+    [view, positions, orientation],
   );
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<CardNode>(seeded);
   const [moving, setMoving] = useState(false);
@@ -160,9 +161,9 @@ export function GraphCanvas({
     return {
       ...flowNode,
       zIndex: role === "selected" ? 10 : undefined,
-      data: { node, role, leaving, status: statuses.get(node.id) ?? null },
+      data: { node, orientation, role, leaving, status: statuses.get(node.id) ?? null },
     };
-  }), [flowNodes, selection, previewWaves, statuses]);
+  }), [flowNodes, orientation, selection, previewWaves, statuses]);
 
   const styledEdges = useMemo<FlowEdge[]>(() => {
     const labelAll = view.edges.length <= LABEL_EVERY_EDGE_UP_TO;
