@@ -100,7 +100,7 @@ Contract details, all verifiable in the source:
 
 `SqlFlowEngineServices.AddSqlFlowEngine` (src/SqlFlow.Execution/SqlFlowEngineServices.cs) is the single engine registration used by every host that runs flows: the CLI, the control plane (src/SqlFlow.ControlPlane/Program.cs), and worker nodes. One call registers:
 
-- **Source readers:** `CsvSourceReader`, `XlsSourceReader`, `JsonSourceReader`, `XmlSourceReader`, `ParquetSourceReader`, `DuckDbSourceReader`, plus both `IFileStore` implementations (`LocalFileStore` and `AzureBlobFileStore`, which reads abfss/wasbs/https lake paths through the shared Azure credential) and `LocalFileLifecycle`.
+- **Source readers:** `CsvSourceReader`, `XlsSourceReader`, `JsonSourceReader`, `XmlSourceReader`, `ParquetSourceReader`, `DuckDbSourceReader`, `DataverseSourceReader` (a Dataverse table through its Web API, signed in with the source's service principal or the host's Azure identity), plus both `IFileStore` implementations (`LocalFileStore` and `AzureBlobFileStore`, which reads abfss/wasbs/https lake paths through the shared Azure credential) and `LocalFileLifecycle`.
 - **SQL Server providers:** `SqlServerTypeMapper`, `SqlServerSchemaProvider`, `SqlServerDdlGenerator`, `SqlBulkLoader`, `SqlServerIndexManager`, `SqlServerDesiredIndexManager`, `SqlServerIncrementalProbe`.
 - **Lightweight state and events:** `NullStateStore`, `ConsoleFlowEventSink`.
 - **The secret chain:** `AzureCredentialFactory`, `EnvSecretProvider`, `AzureKeyVaultSecretProvider`, `SecretResolver`, and `AzureStorageCredentialProvider` (the same Azure auth intent drives Key Vault, invoke, and DuckDB cloud reads).
