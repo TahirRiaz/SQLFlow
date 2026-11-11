@@ -660,27 +660,42 @@ function applyGroups(
     return work;
   }
 
-  // An object belongs to a folder when everything it touches does; a chain of such objects settles in a few passes.
+  // Data belongs to a folder when every flow it touches does. Objects joined to each other (a table and the view over
+  // it) are taken together: the view touches only the table and a flow, the table only the view and a flow, and
+  // neither is the folder's until both are looked at as one.
   const { outgoing, incoming } = adjacencyOf(work);
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const [id, node] of work.nodes) {
-      if (node.memberType !== "object" || representative.has(id) || pinned.has(id)) {
-        continue;
+  const settled = new Set<string>();
+  for (const [start, node] of work.nodes) {
+    if (node.memberType !== "object" || settled.has(start)) {
+      continue;
+    }
+    const cluster = [start];
+    const owners = new Set<string>();
+    let free = false;
+    settled.add(start);
+    for (let head = 0; head < cluster.length; head++) {
+      const id = cluster[head];
+      free = free || pinned.has(id);
+      for (const neighbour of [...(outgoing.get(id) ?? []), ...(incoming.get(id) ?? [])]) {
+        if (work.nodes.get(neighbour)?.memberType === "object") {
+          if (!settled.has(neighbour)) {
+            settled.add(neighbour);
+            cluster.push(neighbour);
+          }
+        } else {
+          owners.add(representative.get(neighbour) ?? neighbour);
+        }
       }
-      const neighbours = [...(outgoing.get(id) ?? []), ...(incoming.get(id) ?? [])];
-      if (neighbours.length === 0) {
-        continue;
-      }
-      const target = representative.get(neighbours[0]);
-      if (target !== undefined && neighbours.every((neighbour) => representative.get(neighbour) === target)) {
-        representative.set(id, target);
-        changed = true;
+    }
+    const owner = owners.size === 1 ? [...owners][0] : undefined;
+    if (!free && owner !== undefined && isGroupId(owner)) {
+      for (const id of cluster) {
+        representative.set(id, owner);
       }
     }
   }
 
-  return quotient(work, representative, (id, members) => {
+  const folded = quotient(work, representative, (id, members) => {
     const flow = members.find((member) => member.memberType === "flow");
     return {
       type: "group",
@@ -690,6 +705,30 @@ function applyGroups(
       place: id,
     };
   });
+
+  // A folder that reads back what it wrote itself (one of its flows fills a table, the next reads it, and a flow of
+  // another folder reads it too, so the table stays drawn) would point at the table and be pointed at by it. Its own
+  // reading is inside the folder, so that arrow is dropped: the table is drawn as what the folder produces.
+  const after = adjacencyOf(folded);
+  for (const node of folded.nodes.values()) {
+    if (node.type !== "group") {
+      continue;
+    }
+    const produced = new Set<string>();
+    const queue = [node.id];
+    for (let head = 0; head < queue.length; head++) {
+      for (const next of after.outgoing.get(queue[head]) ?? []) {
+        if (!produced.has(next) && folded.nodes.get(next)?.memberType === "object") {
+          produced.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    for (const id of produced) {
+      folded.edges.delete(id + EDGE_SEPARATOR + node.id);
+    }
+  }
+  return folded;
 }
 
 function distances(start: string, adjacency: Map<string, string[]>, limit: number | null): Map<string, number> {

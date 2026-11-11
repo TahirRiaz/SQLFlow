@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ProjectGraph, ProjectGraphPipeline } from "../src/api/types.ts";
+import { bandedLayout } from "../src/features/lineage/graphBands.ts";
 import { layeredLayout, MAX_ROW_NODES, NODE_HEIGHT, NODE_SPACING } from "../src/features/lineage/graphLayout.ts";
 import {
   buildGraphSource,
@@ -415,8 +416,8 @@ describe("the query string", () => {
     assert.equal(tracedNode(readGraphParams(new URLSearchParams("focus=k"))), "");
   });
 
-  it("collapses folders by the scope's size unless the reader chose", () => {
-    assert.deepEqual([groupedBy({ grouped: null }, 30), groupedBy({ grouped: null }, 31), groupedBy({ grouped: false }, 500), groupedBy({ grouped: true }, 2)], [false, true, false, true]);
+  it("collapses folders only when the reader asks", () => {
+    assert.deepEqual([groupedBy({ grouped: null }), groupedBy({ grouped: false }), groupedBy({ grouped: true })], [false, false, true]);
   });
 
   it("turns a wave range into the waves drawn, and draws every wave for a range that names none of them", () => {
@@ -433,5 +434,106 @@ describe("clipMiddle", () => {
   it("keeps how a long name begins and how it ends", () => {
     assert.equal(clipMiddle("recall-welllog-03-v140-metadata-publish", 21), "recall-wel…ta-publish");
     assert.equal(clipMiddle("short", 21), "short");
+  });
+});
+
+describe("the wave bands", () => {
+  const banded = (view: View) => bandedLayout(
+    view.nodes.map((node) => ({ id: node.id, flow: node.memberType === "flow", waves: node.waves })),
+    view.edges,
+  );
+  const laneOf = (layout: ReturnType<typeof bandedLayout>, id: string) => {
+    const y = layout.positions.get(id)!.y;
+    return layout.lanes.find((lane) => y >= lane.start && y <= lane.end)!;
+  };
+
+  it("lays every flow in the band of its wave, the flows of one wave on one row whatever they read through", () => {
+    const layout = banded(draw({ level: "all" }));
+    assert.deepEqual(layout.lanes.map((lane) => lane.wave), [1, 2, 3, 4]);
+    for (const [flow, wave] of [["pre", 1], ["lookup", 1], ["ing", 2], ["publish", 3], ["check-1", 4]] as const) {
+      assert.equal(laneOf(layout, flow).wave, wave);
+    }
+    // Hops would put the lookup flow beside the flow it is nearest to; its wave puts it beside the other first flows.
+    assert.equal(layout.positions.get("lookup")!.y, layout.positions.get("pre")!.y);
+  });
+
+  it("draws what a flow writes under it in its band, and what nothing writes above its first reader", () => {
+    const layout = banded(draw({ level: "all" }));
+    const y = (id: string) => layout.positions.get(id)!.y;
+    assert.equal(laneOf(layout, "P").wave, 1);
+    assert.ok(y("P") > y("pre"));
+    assert.equal(laneOf(layout, "landed.csv").wave, 1);
+    assert.ok(y("landed.csv") < y("pre"));
+    // The dictionary only the publishing flow reads belongs with that flow, not at the top of the drawing.
+    assert.equal(laneOf(layout, "M").wave, 3);
+    assert.ok(y("M") < y("publish"));
+  });
+
+  it("draws a view under the table it is made from, in the band the table is written in", () => {
+    const view = draw({ level: "all" }, estate((p) => {
+      p.objects.push(object("v_P", "view"));
+      p.flowGraph = p.flowGraph.filter((item) => !(item.source === "P" && item.target === "ing"));
+      p.flowGraph.push(edge("P", "v_P"), edge("v_P", "ing"));
+    }));
+    const layout = banded(view);
+    const y = (id: string) => layout.positions.get(id)!.y;
+    assert.ok(y("pre") < y("P") && y("P") < y("v_P") && y("v_P") < y("ing"));
+    assert.equal(laneOf(layout, "v_P").wave, 1);
+    assert.equal(view.edges.filter((item) => y(item.source) >= y(item.target)).length, 0);
+  });
+
+  it("keeps a flow's inputs above it and what it writes under it when it reads its own data back", () => {
+    // The publishing flow writes a lookup the dictionary it renders with reads, and the loading flow reads the
+    // table it fills.
+    const view = draw({ level: "all" }, estate((p) => {
+      p.objects.push(object("Z", "table"));
+      p.flowGraph.push(edge("publish", "Z"), edge("Z", "M"), edge("A", "ing"));
+    }));
+    const layout = banded(view);
+    const y = (id: string) => layout.positions.get(id)!.y;
+    assert.ok(y("M") < y("publish") && y("publish") < y("Z"));
+    assert.ok(y("ing") < y("A"));
+    assert.deepEqual(layout.lanes.map((lane) => lane.wave), [1, 2, 3, 4]);
+  });
+
+  it("draws a flow after everything it reads from, and never before its own wave", () => {
+    // A flow of another plan reads what the last check wrote, and says it is in wave 1 of its own plan.
+    const view = draw({ level: "flows" }, estate((p) => {
+      p.pipelines.push(pipeline("elsewhere", "ing", 1, "other", { repoId: "r2", repoName: "mart" }));
+      p.objects.push(object("R", "table"));
+      p.flowGraph.push(edge("check-1", "R"), edge("R", "elsewhere"));
+    }));
+    const layout = banded(view);
+    assert.ok(layout.positions.get("elsewhere")!.y > layout.positions.get("check-1")!.y);
+    // The band it lands in is not its wave, so the band is not named one.
+    assert.equal(laneOf(layout, "elsewhere").wave, null);
+  });
+
+  it("names a band by a wave only when every flow in it runs in that wave", () => {
+    // The lookup flow is of wave 1, the source folder holds waves 1 to 3, and every check is of wave 4.
+    const layout = banded(draw({ grouped: true }));
+    assert.deepEqual(layout.lanes.map((lane) => lane.wave), [1, null, 4]);
+    assert.ok(layout.positions.get(SRC)!.y < layout.positions.get(CHECKS)!.y);
+  });
+});
+
+describe("a folder and its own data", () => {
+  it("takes a table and the view over it into the folder whose flows alone touch them", () => {
+    const view = draw({ level: "all", grouped: true }, estate((p) => {
+      p.objects.push(object("v_P", "view"));
+      p.flowGraph = p.flowGraph.filter((item) => !(item.source === "P" && item.target === "ing"));
+      p.flowGraph.push(edge("P", "v_P"), edge("v_P", "ing"));
+    }));
+    assert.equal(view.locate.get("P"), SRC);
+    assert.equal(view.locate.get("v_P"), SRC);
+  });
+
+  it("draws a table a folder fills and reads back, and another folder reads too, as what the folder produces", () => {
+    const view = draw({ level: "all", grouped: true }, estate((p) => {
+      p.flowGraph.push(edge("A", "check-1"));
+    }));
+    assert.equal(view.locate.get("A"), "A");
+    assert.ok(edges(view).includes(`${SRC}>A`));
+    assert.ok(!edges(view).includes(`A>${SRC}`));
   });
 });

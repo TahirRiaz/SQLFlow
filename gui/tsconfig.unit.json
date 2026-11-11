@@ -28,6 +28,7 @@
     "src/features/chat/chatHandoff.ts",
     "src/features/chat/explain.ts",
     "src/features/chat/queryResultPlan.ts",
+    "src/features/lineage/graphBands.ts",
     "src/features/lineage/graphLayout.ts",
     "src/features/lineage/graphModel.ts",
     "src/features/lineage/graphText.ts",

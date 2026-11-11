@@ -8,13 +8,20 @@ import {
   useNodesState,
   useReactFlow,
   type Edge as FlowEdge,
+  type Node as FlowNode,
+  type OnNodesChange,
 } from "@xyflow/react";
 import type { StreamStatus } from "../../api/types";
 import { NODE_HEIGHT, NODE_WIDTH, type Orientation, type Position } from "./graphLayout";
+import type { Lane } from "./graphBands";
 import type { View, ViewEdge } from "./graphModel";
+import { LANE_LABEL_ROOM, LaneBand, type LaneNode } from "./LaneBand";
 import { CardActionsContext, LineageNodeCard, type CardActions, type CardNode, type CardRole } from "./LineageNodeCard";
 
-const nodeTypes = { card: LineageNodeCard };
+const nodeTypes = { card: LineageNodeCard, lane: LaneBand };
+
+/** How far a band's backdrop reaches past its cards. */
+const LANE_MARGIN = 16;
 
 /** A drawing this small is seen whole, so a map of it would only cover part of it. */
 const MINIMAP_ABOVE = 60;
@@ -48,6 +55,9 @@ interface CanvasProps {
   view: View;
   positions: ReadonlyMap<string, Position>;
   orientation: Orientation;
+  /** The bands the drawing is laid in, one per wave, with the reach of the drawing across them. Empty when it has none. */
+  lanes: readonly Lane[];
+  laneReach: { start: number; end: number };
   selection: CanvasSelection | null;
   /** The worst delivery verdict per drawn node, where there is one worth showing. */
   statuses: ReadonlyMap<string, StreamStatus>;
@@ -82,7 +92,7 @@ function edgeLabel(edge: ViewEdge, nameOf: (id: string) => string): string {
  * their places instead of jumping, so the reader keeps their bearings through a change of scope.
  */
 export function GraphCanvas({
-  view, positions, orientation, selection, statuses, previewWaves, nameOf, colorMode, centerRequest, actions,
+  view, positions, orientation, lanes, laneReach, selection, statuses, previewWaves, nameOf, colorMode, centerRequest, actions,
   onSelect, onActivate, onNodeContextMenu, children,
 }: CanvasProps) {
   const flow = useReactFlow();
@@ -165,6 +175,30 @@ export function GraphCanvas({
     };
   }), [flowNodes, orientation, selection, previewWaves, statuses]);
 
+  // The bands sit behind the cards and take no part in anything: no click, no selection, no drag.
+  const laneNodes = useMemo<LaneNode[]>(() => lanes.map((lane, index) => {
+    const down = orientation === "down";
+    const along = lane.end - lane.start + LANE_MARGIN * 2;
+    const across = laneReach.end - laneReach.start + LANE_LABEL_ROOM + LANE_MARGIN * 2;
+    const acrossRight = laneReach.end - laneReach.start + 36 + LANE_MARGIN * 2;
+    return {
+      id: `lane:${lane.rank}`,
+      type: "lane" as const,
+      position: down
+        ? { x: laneReach.start - LANE_LABEL_ROOM - LANE_MARGIN, y: lane.start - LANE_MARGIN }
+        : { x: lane.start - LANE_MARGIN, y: laneReach.start - 36 - LANE_MARGIN },
+      width: down ? across : along,
+      height: down ? along : acrossRight,
+      zIndex: -1,
+      draggable: false,
+      selectable: false,
+      focusable: false,
+      style: { pointerEvents: "none" as const },
+      data: { label: lane.wave === null ? "" : `Wave ${lane.wave}`, shaded: index % 2 === 0, orientation },
+    };
+  }), [lanes, laneReach, orientation]);
+  const drawnNodes = useMemo<FlowNode[]>(() => [...laneNodes, ...styledNodes], [laneNodes, styledNodes]);
+
   const styledEdges = useMemo<FlowEdge[]>(() => {
     const labelAll = view.edges.length <= LABEL_EVERY_EDGE_UP_TO;
     const own = selection === null
@@ -201,10 +235,10 @@ export function GraphCanvas({
     <CardActionsContext.Provider value={actions}>
       <ReactFlow
         className={moving ? "sf-lineage-moving" : undefined}
-        nodes={styledNodes}
+        nodes={drawnNodes}
         edges={styledEdges}
         nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
+        onNodesChange={onNodesChange as OnNodesChange}
         onNodeClick={(_, node) => onSelect(node.id)}
         onNodeDoubleClick={(_, node) => onActivate(node.id)}
         onNodeContextMenu={(event, node) => {
@@ -222,7 +256,9 @@ export function GraphCanvas({
       >
         <Background />
         <Controls showInteractive={false} />
-        {view.nodes.length > MINIMAP_ABOVE && <MiniMap pannable zoomable />}
+        {view.nodes.length > MINIMAP_ABOVE && (
+          <MiniMap pannable zoomable nodeColor={(node) => (node.type === "lane" ? "transparent" : "var(--input)")} />
+        )}
         {children}
       </ReactFlow>
     </CardActionsContext.Provider>

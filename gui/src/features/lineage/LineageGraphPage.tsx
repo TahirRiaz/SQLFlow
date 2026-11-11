@@ -39,7 +39,8 @@ import { GraphCanvas, type CenterRequest } from "./GraphCanvas";
 import { CompactControl, Field, KindFilter, LevelControl, OrientationControl, TraceControl, WaveRange } from "./GraphControls";
 import { GraphDetails } from "./GraphDetails";
 import { counted, kindLook } from "./graphKinds";
-import { layeredLayout, type Position } from "./graphLayout";
+import { bandedLayout, type BandedLayout } from "./graphBands";
+import { layeredLayout } from "./graphLayout";
 import { rememberGraphSearch } from "./graphLocation";
 import {
   baseOf,
@@ -105,12 +106,12 @@ interface Unfolded {
 }
 
 const NOTHING: ReadonlySet<string> = new Set();
-const NO_POSITIONS: ReadonlyMap<string, Position> = new Map();
+const NO_LAYOUT: BandedLayout = { positions: new Map(), lanes: [], crossStart: 0, crossEnd: 0 };
 
 /**
  * The lineage graph. A repository's lineage is hundreds of nodes, and a reader has one question at a time, so the
  * page never draws everything it knows: it opens on the smallest drawing that still tells the order of things (the
- * flows, by folder), and every control narrows or widens that drawing in a way the status line states in words.
+ * flows, wave by wave), and every control narrows or widens that drawing in a way the status line states in words.
  *
  *   - Scope: a whole repository, one of its projects, or the neighbourhood of a node a link landed on.
  *   - Show: flows alone, flows with the objects they hand over, everything, or the data alone.
@@ -118,6 +119,9 @@ const NO_POSITIONS: ReadonlyMap<string, Position> = new Map();
  *   - Waves and kinds: trim the drawing to a range of waves, or hide kinds of node (their chains stay joined).
  *   - Trace: only what is upstream and downstream of one node, within a number of hops.
  *   - Layout: data runs top to bottom, or left to right when the reader prefers it.
+ *
+ * Whatever is drawn is laid in bands, one per execution wave, in running order: a flow in the band of its wave, what
+ * it writes under it, what it reads first above it. The order is the point of the graph, so no control breaks it.
  *
  * A click selects a node (its producers and consumers light up and its details open); a double click opens what
  * it stands for. The whole drawing is in the query string, so it is a link.
@@ -251,7 +255,7 @@ export default function LineageGraphPage() {
   const [selectionState, setSelectionState] = useState<{ key: string; id: string | null }>({ key: "", id: null });
   const selectedId = selectionState.key === scopeKey ? selectionState.id : params.focus || null;
 
-  const grouped = level !== "objects" && groupedBy(params, sizes?.flows ?? 0);
+  const grouped = level !== "objects" && groupedBy(params);
   const traceId = tracedNode(params);
   const waveSet = useMemo(
     () => (level === "objects" ? null : wavesInRange(params.waves, waveStops.map((stop) => stop.wave))),
@@ -274,12 +278,23 @@ export default function LineageGraphPage() {
     unfolded, selectedId, base]);
 
   const view = useMemo(() => (source === null ? null : deriveView(source, options)), [source, options]);
-  const positions = useMemo(
-    () => (view === null
-      ? NO_POSITIONS
-      : layeredLayout(view.nodes.map((node) => node.id), view.edges, params.orientation)),
-    [view, params.orientation],
-  );
+  // A drawing that holds flows is laid in bands, one per wave, so it is followed the way the data moves. The data
+  // alone has no waves to go by and is laid by how far each object is from its sources.
+  const layout = useMemo<BandedLayout>(() => {
+    if (view === null) {
+      return NO_LAYOUT;
+    }
+    if (level === "objects") {
+      return { ...NO_LAYOUT, positions: layeredLayout(view.nodes.map((node) => node.id), view.edges, params.orientation) };
+    }
+    return bandedLayout(
+      view.nodes.map((node) => ({ id: node.id, flow: node.memberType === "flow", waves: node.waves })),
+      view.edges,
+      params.orientation,
+    );
+  }, [view, level, params.orientation]);
+  const positions = layout.positions;
+  const laneReach = useMemo(() => ({ start: layout.crossStart, end: layout.crossEnd }), [layout]);
   const selectedNode = view === null || selectedId === null
     ? null
     : view.nodes.find((node) => node.id === selectedId) ?? null;
@@ -939,6 +954,8 @@ export default function LineageGraphPage() {
               view={view}
               positions={positions}
               orientation={params.orientation}
+              lanes={layout.lanes}
+              laneReach={laneReach}
               selection={selection}
               statuses={statuses}
               previewWaves={previewWaves}

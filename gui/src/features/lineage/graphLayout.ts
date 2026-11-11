@@ -40,6 +40,42 @@ export interface Position {
   y: number;
 }
 
+/**
+ * The edges that close a cycle, by their source: a depth-first walk from the roots, in the order given, marks each
+ * edge that leads back onto the walk's own stack. Left out, the rest of the graph is acyclic. The roots' order
+ * decides which edge of a cycle is the one cut, so the caller puts the nodes a cycle should start from first.
+ */
+export function backEdges(roots: readonly string[], outgoing: ReadonlyMap<string, readonly string[]>): Map<string, Set<string>> {
+  const back = new Map<string, Set<string>>();
+  const state = new Map<string, number>(); // 1 = on the walk's stack, 2 = finished
+  for (const root of roots) {
+    if (state.has(root)) {
+      continue;
+    }
+    const stack: Array<{ id: string; next: number }> = [{ id: root, next: 0 }];
+    state.set(root, 1);
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const children = outgoing.get(frame.id) ?? [];
+      if (frame.next < children.length) {
+        const child = children[frame.next];
+        frame.next += 1;
+        const childState = state.get(child);
+        if (childState === 1) {
+          (back.get(frame.id) ?? back.set(frame.id, new Set()).get(frame.id)!).add(child);
+        } else if (childState === undefined) {
+          state.set(child, 1);
+          stack.push({ id: child, next: 0 });
+        }
+      } else {
+        state.set(frame.id, 2);
+        stack.pop();
+      }
+    }
+  }
+  return back;
+}
+
 export function layeredLayout(
   ids: readonly string[],
   edges: readonly LayoutEdge[],
@@ -75,33 +111,11 @@ export function layeredLayout(
   // depth-first walk therefore marks each edge that closes back onto its own stack; those edges are left out of
   // the level calculation (they still draw, running upwards), so the rest is acyclic and every node gets a real
   // level. Nodes with the fewest inbound edges are visited first so cycles break in the natural flow direction.
-  const backTargets = new Map<string, Set<string>>();
-  const state = new Map<string, number>(); // 1 = on the walk's stack, 2 = finished
   const roots = [...known].sort((a, b) => levelInDegree.get(a)! - levelInDegree.get(b)!);
-  for (const root of roots) {
-    if (state.has(root)) {
-      continue;
-    }
-    const stack: Array<{ id: string; next: number }> = [{ id: root, next: 0 }];
-    state.set(root, 1);
-    while (stack.length > 0) {
-      const frame = stack[stack.length - 1];
-      const children = outgoing.get(frame.id)!;
-      if (frame.next < children.length) {
-        const child = children[frame.next];
-        frame.next += 1;
-        const childState = state.get(child);
-        if (childState === 1) {
-          (backTargets.get(frame.id) ?? backTargets.set(frame.id, new Set()).get(frame.id)!).add(child);
-          levelInDegree.set(child, levelInDegree.get(child)! - 1);
-        } else if (childState === undefined) {
-          state.set(child, 1);
-          stack.push({ id: child, next: 0 });
-        }
-      } else {
-        state.set(frame.id, 2);
-        stack.pop();
-      }
+  const backTargets = backEdges(roots, outgoing);
+  for (const targets of backTargets.values()) {
+    for (const target of targets) {
+      levelInDegree.set(target, levelInDegree.get(target)! - 1);
     }
   }
 

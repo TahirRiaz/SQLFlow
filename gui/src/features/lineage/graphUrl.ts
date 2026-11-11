@@ -21,7 +21,7 @@ export interface GraphParams {
   waves: { from: number; to: number } | null;
   /** Kind keys the reader hid. */
   hide: string[];
-  /** Whether folders are collapsed; null leaves it to the scope's size. */
+  /** Whether folders are collapsed; null is the default, which is not collapsed. */
   grouped: boolean | null;
   /** Folders the reader opened. */
   open: string[];
@@ -34,9 +34,6 @@ export interface GraphParams {
   /** Which way data runs on the canvas: top to bottom unless the reader chose left to right. */
   orientation: Orientation;
 }
-
-/** A scope with more flows than this opens with its folders collapsed. */
-export const AUTO_GROUP_ABOVE = 30;
 
 const LEVELS: readonly GraphLevel[] = ["flows", "handovers", "all", "objects"];
 
@@ -171,9 +168,12 @@ export function tracedNode(params: Pick<GraphParams, "trace" | "repoId" | "proje
   return scope === "repo" || scope === "project" ? params.focus : "";
 }
 
-/** Whether folders are collapsed: as the reader chose, or by the scope's size. */
-export function groupedBy(params: Pick<GraphParams, "grouped">, flowCount: number): boolean {
-  return params.grouped ?? flowCount > AUTO_GROUP_ABOVE;
+/**
+ * Whether folders are collapsed: only when the reader asks. A folder holds flows of several waves, so a drawing of
+ * folders cannot be laid by wave, and the order of the waves is what the graph is read for.
+ */
+export function groupedBy(params: Pick<GraphParams, "grouped">): boolean {
+  return params.grouped ?? false;
 }
 
 /** The waves a range draws, given the scope's waves in running order (unwaved last). Null when the range is every wave. */

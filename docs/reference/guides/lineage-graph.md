@@ -42,14 +42,28 @@ writes. A reader has one question at a time, so the graph at **Explore > Lineage
 opens on the smallest drawing that still tells the order of things, and each control of its bar widens or narrows that
 drawing in one predictable way. The line under the bar says in words what is drawn and why.
 
-Data runs top to bottom: what a node is made from is above it, what depends on it below. A level too wide for one
-line is laid in several staggered lines. **Layout** turns the drawing left to right for those who prefer it.
+## The order: one band per wave
+
+The graph is read for its order, so the order is the plan's own. Flows run in waves, a flow after everything it reads
+from ([the execution plan](../concepts/lineage-graph-and-plan.md)), and the drawing is laid in bands, one per wave,
+top to bottom, each named **Wave 1**, **Wave 2** and so on:
+
+- A flow sits in the band of its wave. Two flows of one wave are on one row, whatever each reads through.
+- What a flow writes sits under it, in its band, and a view over that one line further down.
+- What nothing in the drawing writes (a landed file, a table kept by hand) sits above the first flow that reads it, in
+  that flow's band.
+
+So every arrow runs down the page, from a band to a later one. The exceptions are real: a flow that reads back what it
+wrote itself, or two flows the plan leaves unordered, draw one arrow upwards. A band too wide for one line is laid in
+several staggered lines. A band is named by its wave only when every flow in it runs in that wave: a flow of another
+repository, or a folder holding several waves, takes the first band after everything it reads from, and that band has
+no name. **Layout** turns the drawing left to right for those who prefer it, with the bands as columns.
 
 ## What opens
 
 | You arrive by | Scope | What is drawn |
 | --- | --- | --- |
-| Picking a repository in **Scope** | The repository's active flows and what is downstream of them, in any repository | Flows only. With more than 30 flows in scope, each folder's flows draw as one node. |
+| Picking a repository in **Scope** | The repository's active flows and what is downstream of them, in any repository | Flows only, laid wave by wave. |
 | Picking a project (a root folder) in **Scope** | That folder's flows and what is downstream of them | The same, for the project. |
 | A link or a search hit naming a flow, or an object with its repository | The whole repository | The trace of that node: only what is upstream and downstream of it. |
 | A link or a search hit naming an object with no repository | The object's own neighbourhood, across every repository: its producers, what they read, and its consumers downstream | Everything, with the object selected. |
@@ -90,7 +104,8 @@ details panel, whatever the level draws, and an entry of those lists draws its n
 With **Folders** on, a folder holding two or more flows draws as one node, named by its path, with its flows and waves
 counted. An object only that folder's flows touch goes into it; an object that crosses folders stays drawn at the
 levels that draw objects. A double click opens a folder in place, and **Collapse its folder** on a flow's menu closes
-it. Folders are on by default when the scope holds more than 30 flows.
+it. Folders are off until asked for: a folder holds flows of several waves, so a drawing of folders shows which folder
+feeds which, not the order of the waves.
 
 ### Stacks
 
@@ -101,8 +116,7 @@ whose lineage was not derived, and a node the walk stopped at are never stacked.
 
 ### Waves
 
-Flows run in waves: a flow runs after everything it reads from
-([the execution plan](../concepts/lineage-graph-and-plan.md)). The range has a stop per wave, with a bar as tall as the
+The range has a stop per wave, the bands of the drawing, with a bar as tall as the
 wave's share of the flows. Dragging an end fades the flows that would leave, and releasing it applies the range. The
 range keeps every wave between its ends, so a chain running through those waves stays whole; flows outside it are
 dropped and nothing is bridged. Flows lineage gave no wave are the last stop.
@@ -151,7 +165,7 @@ The whole drawing is in the address, so it can be shared and survives a reload.
 | `repoId`, `project` | The scope. `repoId` alone is the whole repository. |
 | `focus` | The node a link landed on. In a repository or a project it is traced; alone it seeds its own neighbourhood. |
 | `show` | `flows`, `handovers`, `all` or `objects`. Left out, a repository or project opens at `flows` and a neighbourhood at `all`. |
-| `group` | `on` or `off`. Left out, folders collapse when the scope holds more than 30 flows. |
+| `group` | `on` collapses each folder's flows into one node. |
 | `open` | A folder the reader opened; repeated. |
 | `stacks` | `off` draws look-alikes one by one. |
 | `waves` | `2-4`: the first and last wave drawn. `u` is the unwaved stop. |
