@@ -67,20 +67,40 @@ public sealed class HttpExecutor
     private readonly UrlGuard _urlGuard;
     private readonly long _maxResponseBytes;
     private readonly TimeProvider _time;
+    private readonly string _oversizeAdvice;
+
+    /// <summary>What an acquisition flow does about a response over its size cap.</summary>
+    public const string AcquireOversizeAdvice = "Raise reliability.maxResponseBytes or narrow the request window.";
 
     public HttpExecutor(HttpClient client, RetryPolicy retry, RateLimiter rateLimiter, UrlGuard urlGuard, long maxResponseBytes, TimeProvider time)
+        : this(client, retry, rateLimiter, urlGuard, maxResponseBytes, time, AcquireOversizeAdvice)
+    {
+    }
+
+    /// <param name="client">The client every attempt is sent with.</param>
+    /// <param name="retry">The retry policy for transient failures.</param>
+    /// <param name="rateLimiter">The outbound rate cap, awaited before every attempt.</param>
+    /// <param name="urlGuard">The SSRF guard every request URL passes before it is sent.</param>
+    /// <param name="maxResponseBytes">The hard cap on one response body held in memory.</param>
+    /// <param name="time">The clock retries wait on.</param>
+    /// <param name="oversizeAdvice">The sentence a response over the cap ends with: what the caller's own settings
+    /// offer to get under it, named the way its documents spell them.</param>
+    public HttpExecutor(
+        HttpClient client, RetryPolicy retry, RateLimiter rateLimiter, UrlGuard urlGuard, long maxResponseBytes, TimeProvider time, string oversizeAdvice)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(retry);
         ArgumentNullException.ThrowIfNull(rateLimiter);
         ArgumentNullException.ThrowIfNull(urlGuard);
         ArgumentNullException.ThrowIfNull(time);
+        ArgumentException.ThrowIfNullOrWhiteSpace(oversizeAdvice);
         _client = client;
         _retry = retry;
         _rateLimiter = rateLimiter;
         _urlGuard = urlGuard;
         _maxResponseBytes = maxResponseBytes;
         _time = time;
+        _oversizeAdvice = oversizeAdvice;
     }
 
     /// <param name="requestFactory">Builds a fresh request per attempt.</param>
@@ -187,7 +207,7 @@ public sealed class HttpExecutor
             {
                 throw new SqlFlowException(
                     $"Response from {response.RequestMessage?.RequestUri} exceeds the {_maxResponseBytes / (1024 * 1024)} MB limit. " +
-                    "Raise reliability.maxResponseBytes or narrow the request window.");
+                    _oversizeAdvice);
             }
 
             buffer.Write(chunk, 0, read);

@@ -412,3 +412,12 @@ from the code of the external triggers (the GitHub Actions token validator, the 
 durable trigger requests and their processor, the commit containment check, and the sync-and-fire action) and from
 SQLFlow v2's Event Grid webhook, read at its tag for what it taught. What was built is documented in
 `concept-external-triggers` and `guide-github-actions`.
+
+## [2026-11-11] ingest | A Dataverse table is a source type of the file flow
+
+Added [A Dataverse table is a source type of the file flow](decisions/dataverse-is-a-source-type.md) from the
+Dataverse reader, the engine's new watermark order option, the integration test that resumes a failed first run, and
+Microsoft Learn's Dataverse Web API pages (paging, metadata, service protection, authentication). Updated
+[Landing is string-first](decisions/string-first-landing.md): its exceptions are the sources whose own schema carries
+enforced types (Parquet, a DuckDB scan, a Dataverse table), where it named Parquet alone. What was built is documented
+in `source-type-dataverse`.

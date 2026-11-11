@@ -101,7 +101,12 @@ public static class FlowDeclaredEndpoints
                 var location = !string.IsNullOrWhiteSpace(flow.Source.Location)
                     ? flow.Source.Location!
                     : Option(flow.Source.Options, "srcPath");
-                if (!string.IsNullOrWhiteSpace(location))
+                if (Core.Dataverse.DataverseSourceOptions.IsDataverse(flow.Source.Type))
+                {
+                    // The table is part of what a Dataverse source reads, so a change of table is a change of endpoint.
+                    endpoints.Add(new DeclaredEndpoint("source", $"{flow.Source.Type} {Core.Dataverse.DataverseSourceOptions.Identity(flow.Source)}"));
+                }
+                else if (!string.IsNullOrWhiteSpace(location))
                 {
                     endpoints.Add(new DeclaredEndpoint("source", $"{flow.Source.Type} {location}"));
                 }

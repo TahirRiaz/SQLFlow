@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- A file flow reads a Microsoft Dataverse table, the data behind Power Apps, with `source.type: dataverse`: typed columns
+  from the table's metadata, so a column added or lengthened in Power Apps reaches the target through schema evolution;
+  an incremental `watermarkColumn` (`versionnumber` or `modifiedon`) asked of the service as a `$filter`; paging, and
+  throttling waited out as long as the service asks. It signs in as the host's Azure identity or a service principal
+  whose secret is a reference ([Dataverse source](docs/reference/flow/source-types/dataverse.md)).
 - `SQLFLOW_NODE_CACHE` names where a node keeps its checkouts and staged flow versions. Each flow's run history sits there, and an
   incremental flow reads its watermark from it, so two environments on one machine that share the default folder share that history
   ([environment variables](docs/reference/concepts/environment-variables.md)).

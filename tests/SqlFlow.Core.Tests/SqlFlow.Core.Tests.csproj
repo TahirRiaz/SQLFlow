@@ -33,6 +33,7 @@
     <ProjectReference Include="..\..\src\SqlFlow.SourceControl\SqlFlow.SourceControl.csproj" />
     <ProjectReference Include="..\..\src\SqlFlow.Orchestration\SqlFlow.Orchestration.csproj" />
     <ProjectReference Include="..\..\src\SqlFlow.DuckDb\SqlFlow.DuckDb.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Dataverse\SqlFlow.Dataverse.csproj" />
     <ProjectReference Include="..\..\src\SqlFlow.Catalog\SqlFlow.Catalog.csproj" />
     <ProjectReference Include="..\..\src\SqlFlow.Cli\SqlFlow.Cli.csproj" />
     <!-- The assistant's MCP tool allowlist is asserted against the MCP server's shipped tool list. -->

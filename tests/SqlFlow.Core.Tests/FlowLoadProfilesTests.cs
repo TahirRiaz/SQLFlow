@@ -258,4 +258,33 @@ public sealed class FlowLoadProfilesTests
         Assert.Empty(broken.KeyColumns);
         Assert.Empty(broken.WatermarkColumns);
     }
+
+    [Fact]
+    public void A_dataverse_source_is_described_as_the_table_it_reads_not_as_files()
+    {
+        const string Flow = """
+            name: crm_account_01_dv
+            source:
+              type: dataverse
+              location: https://contoso.crm4.dynamics.com
+              options:
+                table: account
+            target:
+              connection: ${env:SQLFLOW_DW}
+              schema: pre
+              table: Crm_Account
+
+            """;
+
+        var full = FlowLoadProfiles.FromYaml(Flow);
+        Assert.Equal(FlowReadModes.Full, full.ReadMode);
+        Assert.Contains("every row of the Dataverse table 'account' in https://contoso.crm4.dynamics.com", full.Read, StringComparison.Ordinal);
+        Assert.DoesNotContain("files", full.Read, StringComparison.Ordinal);
+
+        var incremental = FlowLoadProfiles.FromYaml(Flow + "incremental:\n  watermarkColumn: versionnumber\n");
+        Assert.Equal(FlowReadModes.Incremental, incremental.ReadMode);
+        Assert.Equal(["versionnumber"], incremental.WatermarkColumns);
+        Assert.Contains("reads only the rows of the Dataverse table 'account'", incremental.Read, StringComparison.Ordinal);
+        Assert.Contains("in versionnumber order", incremental.Read, StringComparison.Ordinal);
+    }
 }

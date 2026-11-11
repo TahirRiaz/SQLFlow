@@ -3738,6 +3738,45 @@
       ]
     },
     {
+      "id": "source-type-dataverse",
+      "corpus": "reference",
+      "path": "flow/source-types/dataverse.md",
+      "title": "Dataverse source (source.type: dataverse)",
+      "type": "source-type",
+      "summary": "Read a Dataverse (Power Apps) table through its Web API into SQL Server: typed columns, schema evolution, a watermark sent as $filter, paging, throttling.",
+      "keywords": [
+        "dataverse",
+        "power apps",
+        "powerapps",
+        "dynamics 365",
+        "web api",
+        "odata",
+        "application user",
+        "versionnumber",
+        "modifiedon",
+        "service protection",
+        "retry-after"
+      ],
+      "yamlPath": "source.options (type: dataverse)",
+      "related": [
+        "flow-source",
+        "flow-incremental",
+        "flow-overview",
+        "concept-connections-and-secrets"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+        "src/SqlFlow.Dataverse/DataverseSourceReader.cs",
+        "src/SqlFlow.Dataverse/DataverseReadPlan.cs",
+        "src/SqlFlow.Dataverse/DataverseMetadataReader.cs",
+        "src/SqlFlow.Dataverse/DataverseClient.cs",
+        "src/SqlFlow.Dataverse/DataverseValues.cs",
+        "src/SqlFlow.Dataverse/DataverseTokenProvider.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs"
+      ]
+    },
+    {
       "id": "source-type-duckdb",
       "corpus": "reference",
       "path": "flow/source-types/duckdb.md",
@@ -4195,6 +4234,38 @@
         "src/SqlFlow.Lineage/LineageService.cs",
         "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
         "src/SqlFlow.Core/Lineage/LineageReport.cs"
+      ]
+    },
+    {
+      "id": "wiki-dataverse-is-a-source-type",
+      "corpus": "wiki",
+      "path": "decisions/dataverse-is-a-source-type.md",
+      "title": "A Dataverse table is a source type of the file flow, not a flow type of its own",
+      "type": "decision",
+      "summary": "Why Power Apps data is read by a source reader, not a new flowType; why it lands typed; why deletes need a full reload; why readers get the watermark order.",
+      "keywords": [
+        "dataverse",
+        "power apps",
+        "source type",
+        "flow type",
+        "single code path",
+        "typed landing",
+        "watermark order",
+        "change tracking",
+        "deleted rows"
+      ],
+      "related": [
+        "wiki-string-first-landing"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Dataverse/DataverseSourceReader.cs",
+        "src/SqlFlow.Dataverse/DataverseReadPlan.cs",
+        "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+        "src/SqlFlow.Core/Abstractions/ISourceReader.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.SqlServer/SqlBulkLoader.cs",
+        "src/SqlFlow.Acquire/Engine/HttpTransport.cs",
+        "tests/SqlFlow.Core.Tests/Integration/DataverseIngestionIntegrationTests.cs"
       ]
     },
     {
@@ -5015,7 +5086,8 @@
         "null"
       ],
       "related": [
-        "wiki-design-doc-drift"
+        "wiki-design-doc-drift",
+        "wiki-dataverse-is-a-source-type"
       ],
       "sourceRefs": [
         "src/SqlFlow.Sources/FileSourceReaderBase.cs",

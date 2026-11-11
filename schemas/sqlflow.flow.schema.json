@@ -108,7 +108,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "description": "Source kind. Selects the reader: csv, xls/xlsx, json/jsonl/ndjson, xml, parquet/prq (native readers), or duckdb/delta (DuckDB-backed scan over parquet, CSV, JSON, or a Delta table; delta always resolves to the Delta format regardless of the format option).",
+          "description": "Source kind. Selects the reader: csv, xls/xlsx, json/jsonl/ndjson, xml, parquet/prq (native readers), duckdb/delta (DuckDB-backed scan over parquet, CSV, JSON, or a Delta table; delta always resolves to the Delta format regardless of the format option), or dataverse (a Microsoft Dataverse / Power Apps table read through the Dataverse Web API).",
           "examples": [
             "csv",
             "xls",
@@ -120,12 +120,13 @@
             "parquet",
             "prq",
             "duckdb",
-            "delta"
+            "delta",
+            "dataverse"
           ]
         },
         "location": {
           "type": "string",
-          "description": "Path, folder, or URI to read. For CSV/JSON: a file or a folder (with options.srcFile)."
+          "description": "Path, folder, or URI to read. For CSV/JSON: a file or a folder (with options.srcFile). For dataverse: the environment URL alone (https://<org>.crm.dynamics.com) or a ${...} reference to it."
         },
         "options": {
           "type": "object",
@@ -618,11 +619,84 @@
             },
             "filter": {
               "type": "string",
-              "description": "DuckDB: verbatim WHERE expression pushed into the query for predicate pushdown; AND-combined with any fileDate partition predicate and the injected incremental watermark predicate."
+              "description": "DuckDB: verbatim WHERE expression pushed into the query for predicate pushdown; AND-combined with any fileDate partition predicate and the injected incremental watermark predicate. Dataverse: an OData $filter expression (statecode eq 0), AND-combined with the injected watermark bound."
             },
             "columns": {
               "type": "string",
-              "description": "DuckDB: comma-separated projection of column names to select from the relation, in the given order; matching is case-insensitive. Default is every column."
+              "description": "DuckDB: comma-separated projection of column names to select from the relation, in the given order; matching is case-insensitive. Default is every column. Dataverse: comma-separated logical names to read; the primary key and the watermark column are always read."
+            },
+            "table": {
+              "type": "string",
+              "description": "Dataverse (required): the table's logical name, such as account or cr6b2_project."
+            },
+            "excludeColumns": {
+              "type": "string",
+              "description": "Dataverse: comma-separated logical names to leave out of an otherwise full read. Cannot be combined with columns."
+            },
+            "pageSize": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Dataverse: rows per page (the odata.maxpagesize preference), 1 to 5000. Default 5000."
+            },
+            "formattedValues": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Dataverse: when true, each choice, status, state, yes/no, multi-select and lookup column gets a sibling <column>name column with its label. Default false."
+            },
+            "tenantId": {
+              "type": "string",
+              "description": "Dataverse: the Microsoft Entra tenant of an explicit service principal (a value or a ${...} reference). Leave tenantId, clientId and clientSecret out to sign in with the host's Azure identity."
+            },
+            "clientId": {
+              "type": "string",
+              "description": "Dataverse: the application (client) id of an explicit service principal, an application user in the environment."
+            },
+            "clientSecret": {
+              "type": "string",
+              "pattern": "^\\s*\\$\\{[^}]+\\}\\s*$",
+              "description": "Dataverse: the client secret of an explicit service principal, as a whole ${env:NAME} or ${keyvault:vault/secret} reference, never a literal."
+            },
+            "authorityHost": {
+              "type": "string",
+              "description": "Dataverse: the Microsoft Entra authority host of the explicit service principal, for a sovereign cloud (https://login.microsoftonline.us)."
+            },
+            "apiVersion": {
+              "type": "string",
+              "description": "Dataverse: the Web API version. Default 9.2."
+            },
+            "timeoutSeconds": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Dataverse: seconds one request may take before it is retried, 10 to 3600. Default 300."
+            },
+            "maxAttempts": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Dataverse: total attempts per request, 1 to 20; throttling and transient failures are retried, honouring Retry-After. Default 8."
+            },
+            "maxRetryDelaySeconds": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Dataverse: the longest single wait between attempts, which also bounds an honoured Retry-After, 1 to 3600. Default 300."
+            },
+            "maxPageMegabytes": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Dataverse: the largest response page held in memory, 1 to 2048 megabytes. Default 256."
             },
             "hivePartitioning": {
               "enum": [
