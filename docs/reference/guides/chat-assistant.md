@@ -51,6 +51,7 @@ sourceRefs:
   - gui/src/features/chat/ChatThread.tsx
   - gui/src/features/chat/ExplainContext.tsx
   - gui/src/features/chat/explain.ts
+  - gui/src/features/chat/ExplainPageButton.tsx
   - gui/src/components/CodeView.tsx
   - gui/src/layout/nav.ts
   - gui/src/features/chat/chatAdapters.ts
@@ -127,8 +128,8 @@ product, in a conversation followed up like any other. Explain wears one icon wh
   with both versions in the question. A comparison whose sides carry headings (a version, "as declared") introduces each
   version by its heading and asks what differs, since two named sides need not be an earlier and a later one; Copy
   names the side it copies the same way.
-- **A page**: Explain at the end of the tab strip explains what the page is for, what it shows and what a person does
-  there. The question carries the page's title and route, what its navigation entry says the page is for (every entry
+- **A page**: Explain beside the page's title (the question-mark button after its name; on the lineage graph, at the end
+  of its toolbar) explains what the page is for, what it shows and what a person does there. The question carries the page's title and route, what its navigation entry says the page is for (every entry
   of the menu, SQLFlow's and a module's, carries that description, and a page reached from an entry, a pipeline from
   Pipelines, is described by its entry's), and the page's headings, tabs and column names.
 

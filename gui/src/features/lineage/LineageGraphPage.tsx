@@ -33,6 +33,7 @@ import { statusIcons, statusInk } from "../datastreams/StreamStatusBadge";
 import { statusLabels, statusRank } from "../datastreams/streamPresentation";
 import { StreamVerdictCard } from "../datastreams/StreamVerdictCard";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
+import { ExplainPageButton } from "../chat/ExplainPageButton";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 import { GraphCanvas, type CenterRequest } from "./GraphCanvas";
@@ -803,6 +804,8 @@ export default function LineageGraphPage() {
             </TooltipTrigger>
             <TooltipContent>Open the object explorer</TooltipContent>
           </Tooltip>
+          {/* The graph's bar is its header: Explain sits at its end, as it sits beside a title elsewhere. */}
+          <ExplainPageButton size="icon-sm" />
         </div>
       </div>
 

@@ -3152,6 +3152,7 @@
         "gui/src/features/chat/ChatThread.tsx",
         "gui/src/features/chat/ExplainContext.tsx",
         "gui/src/features/chat/explain.ts",
+        "gui/src/features/chat/ExplainPageButton.tsx",
         "gui/src/components/CodeView.tsx",
         "gui/src/layout/nav.ts",
         "gui/src/features/chat/chatAdapters.ts",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ExplainPageButton } from "../features/chat/ExplainPageButton";
 
 interface PageHeaderProps {
   title: ReactNode;
@@ -9,9 +10,9 @@ interface PageHeaderProps {
 }
 
 /**
- * The one page title block (DESIGN.md 7.1): an 18px semibold title, an optional muted subtitle, and a
- * right-aligned actions slot. Every list page renders this as its first section so titles and action
- * alignment match everywhere. Vertical spacing comes from the enclosing Page, not from this component.
+ * The one page title block (DESIGN.md 7.1): an 18px semibold title with Explain beside it, an optional muted subtitle,
+ * and a right-aligned actions slot. Every list page renders this as its first section so titles and action alignment
+ * match everywhere. Vertical spacing comes from the enclosing Page, not from this component.
  *
  * The title block grows into the room the actions leave and wraps its subtitle there, so the actions stay at
  * the top right however long the subtitle is. Sized by its content, a subtitle longer than one line pushed the
@@ -21,7 +22,10 @@ export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-[1_1_18rem]">
-        <h1 className="text-lg font-semibold leading-7">{title}</h1>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <h1 className="min-w-0 text-lg font-semibold leading-7">{title}</h1>
+          <ExplainPageButton />
+        </div>
         {subtitle !== undefined && (
           <div className="mt-0.5 text-[13px] text-muted-foreground">{subtitle}</div>
         )}

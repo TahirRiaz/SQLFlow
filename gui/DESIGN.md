@@ -296,10 +296,16 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   (`GuiModule.sideBar.closedOnFirstVisit`), with the activity bar beside it to open it.
 - **Tab strip** (`h-[35px]`, `bg-tab-bar`): one tab per visited route; active tab wears `bg-tab-active`,
   a 1px top accent line, and its close button always visible; inactive tabs reveal close on hover.
-  Middle-click closes. Tabs keep their label (max `w-52`, never squeezed to an icon), so a long strip
-  scrolls horizontally and the active tab is scrolled into view on navigation. Right-click opens the tab
-  menu: Close, Close Others, Close to the Left, Close to the Right, Close All, Copy Link. The strip ends in an overflow
-  button (testid `tabs-overflow-menu`) listing every open tab plus Close Others / Close All. Closing the
+  Middle-click closes. Tabs give up width before the strip scrolls (`max-w-52` down to `min-w-40`, the title
+  truncated and whole in the tab's tooltip, never squeezed to an icon). Past that the strip scrolls: a chevron at
+  each end (testids `tabs-scroll-before`, `tabs-scroll-after`, drawn only while tabs are hidden, disabled at its
+  own end) steps a view's width along on a tab's edge, the mouse wheel scrolls it sideways, and the routed page's
+  tab is brought into view whenever it opens, is retitled or the strip changes size, so no tab is ever out of
+  reach. The strip is one Tab stop (the active tab): the arrow keys, Home and End walk it, Enter opens a tab and
+  Delete closes it. Right-click opens the tab menu: Close, Close Others, Close to the Left, Close to the Right,
+  Close All, Copy Link. The strip ends in the Open pages menu (testid `tabs-overflow-menu`) listing every open
+  tab, each row with its own close (Delete on a highlighted row), plus Close Others / Close All; closing a row
+  leaves the menu open on the rest. Explain is not chrome: it sits beside the page's title (7.1). Closing the
   last tab falls back to the dashboard, so the strip is never empty. Tabs persist per browser session.
   Detail pages set real titles via `useTabTitle(...)` once data loads.
 - **Editor**: the routed page inside a scroll container with the measure cap. Pages never add their own
@@ -331,10 +337,15 @@ never hand-edited except where this book says so). MUI, emotion, and notistack a
 
 ### 7.1 Page scaffold
 
-`Page` + `PageHeader`: testid `page-<name>` preserved; header carries title (18px semibold), optional
+`Page` + `PageHeader`: testid `page-<name>` preserved; header carries title (18px semibold) with Explain beside
+it (`ExplainPageButton`, testid `explain-page`, drawn while the assistant is configured), optional
 description (13px muted), and right-aligned toolbar actions (small buttons) that stay at the top right however
 long the description runs: the title block wraps its description beside them, and they drop below it only when the
-header is too narrow for both. Below the header, optional
+header is too narrow for both. A page drawing its own title row places `ExplainPageButton` after its title
+itself. Detail pages lead with `DetailHeaderCard`, a header and nothing more: the title with its badges,
+Explain and the actions on one line, a quiet line of what it is and its identifiers (`IdChip`) under it, and
+under a hairline the facts, each `DetailPair` caption beside its value, flowing along a line or two (the card
+gives its pairs the inline layout; elsewhere a pair stacks caption over value). Below the header, optional
 `FilterBar`. No breadcrumbs in v1 except detail pages: parent link + entity name. Filter controls are 32px
 (`h-8`): text `Input`s for free text, `Select` for a short fixed set, and `FilterCombobox` (a searchable
 popover, the empty string meaning "no filter") for a filter over many values like the Runs board's schedule
@@ -535,7 +546,8 @@ a quarter ring, and the badge carries the outcome.
 ## 10. Accessibility
 
 Focus visible everywhere (`outline-ring/50` base is set globally); all icon-only buttons carry
-`aria-label` + tooltip; keyboard: palette Ctrl+K, tab strip and side bar fully tabbable; contrast:
+`aria-label` + tooltip; keyboard: palette Ctrl+K, the tab strip one Tab stop walked with the arrow keys
+(Delete closes a tab), side bar fully tabbable; contrast:
 text >= 4.5:1, chrome text >= 3:1 (the token tables above were chosen for this); status never encoded
 by color alone (7.3); tables get real `<table>` semantics (the ui/table primitives).
 
