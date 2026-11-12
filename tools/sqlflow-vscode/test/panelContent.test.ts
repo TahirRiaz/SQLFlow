@@ -34,11 +34,13 @@ test('a link carries its place and no command of its own', () => {
         sections: [{ heading: 'Flows', columns: ['Flow'], rows: [[{ text: 'wells', command: 'sqlflow.openFlowByName', args: ['wells'] }]] }],
     }, 'n', 'c');
 
+    const place = links[0].url ?? '';
     assert.equal(links.length, 2);
+    assert.equal(place, 'https://gui.example.com/runs/1');
     assert.equal(links[1].command, 'sqlflow.openFlowByName');
     assert.ok(html.includes('data-link="1"'));
     assert.ok(!html.includes('sqlflow.openFlowByName'));
-    assert.ok(!html.includes('gui.example.com'));
+    assert.ok(!html.includes(new URL(place).host));
 });
 
 test('an empty value reads as empty, zero as zero', () => {
