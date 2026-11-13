@@ -308,10 +308,19 @@ public class CatalogRun
     /// </summary>
     public string? TriggerSource { get; set; }
 
-    /// <summary>The schedule whose fire enqueued this run, when <see cref="TriggerSource"/> is
-    /// <see cref="RunTriggerSources.Schedule"/>; null otherwise. A soft link (no FK), so a run outlives the
-    /// schedule being renamed out of the catalog by a later sync.</summary>
+    /// <summary>The schedule whose member set this run is one of: set for every fire of a schedule, whether the
+    /// schedule fired on its own (<see cref="RunTriggerSources.Schedule"/>, <see cref="RunTriggerSources.Chain"/>) or
+    /// someone asked for it (a run-now, an external trigger's request: <see cref="RunTriggerSources.Manual"/>); null
+    /// for a run asked for directly. A soft link (no FK), so a run outlives the schedule being renamed out of the
+    /// catalog by a later sync.</summary>
     public Guid? TriggerScheduleId { get; set; }
+
+    /// <summary>The run whose fire set this one off: for a run a schedule fired behind its parents
+    /// (<see cref="RunTriggerSources.Chain"/>), the first run of the parent fire it followed, so the chain can be
+    /// walked back to whoever or whatever started its first link. Null for every other run, and for a chained fire
+    /// whose newest parent fire enqueued nothing. A soft link (no FK), like <see cref="TriggerScheduleId"/>. A fan-out
+    /// member carries its root's.</summary>
+    public Guid? TriggerRunId { get; set; }
 
     /// <summary>The operation a flow of a registered kind performs this run (<c>RunParameters.Operation</c>); null for
     /// the kind's default operation and for every built-in kind.</summary>
@@ -332,8 +341,10 @@ public class CatalogRun
     public string? ReferencesJson { get; set; }
 
     /// <summary>Who asked for the run: the caller's subject for a trigger through the API or a schedule's run-now, the
-    /// schedule (<c>schedule:&lt;name&gt;</c>, see <see cref="SqlFlow.Core.Runs.RunActors"/>) for a fire of its own; null
-    /// for a run recorded from its artifact and every run enqueued before either was recorded.</summary>
+    /// external trigger (<c>trigger:&lt;name&gt;</c>) for a trigger request's fire, the schedule
+    /// (<c>schedule:&lt;name&gt;</c>, see <see cref="SqlFlow.Core.Runs.RunActors"/>) for a fire of its own, on its clock
+    /// or behind its parents; null for a run recorded from its artifact and every run enqueued before either was
+    /// recorded.</summary>
     public string? RequestedBy { get; set; }
 
     /// <summary>The run this run is a fan-out member of: a running run of the same flow that spread part of its work
@@ -411,19 +422,27 @@ public class CatalogRun
 /// </summary>
 public static class RunTriggerSources
 {
-    /// <summary>A schedule fired and enqueued it (<see cref="CatalogRun.TriggerScheduleId"/> names which).</summary>
+    /// <summary>A schedule fired on its own clock (its cron or interval) and enqueued it
+    /// (<see cref="CatalogRun.TriggerScheduleId"/> names which).</summary>
     public const string Schedule = "schedule";
 
-    /// <summary>A person or an API client asked for it: the GUI's Run button, a run trigger call, an MCP
-    /// tool. Deliberately one value and not several, because the distinction that matters to a reader is
-    /// "the estate ran this on its own" versus "somebody asked for it".</summary>
+    /// <summary>A schedule fired on its own behind its parents' fire (<c>after:</c>) and enqueued it:
+    /// <see cref="CatalogRun.TriggerScheduleId"/> names the schedule and <see cref="CatalogRun.TriggerRunId"/> the
+    /// parent fire it followed. Kept apart from <see cref="Schedule"/> because a chained fire happens when its parents
+    /// fire, whoever started them, not when a clock says.</summary>
+    public const string Chain = "chain";
+
+    /// <summary>A person or an API client asked for it: the GUI's Run button, a schedule's run-now, an external
+    /// trigger's request, a run trigger call, an MCP tool; <see cref="CatalogRun.RequestedBy"/> says who. Deliberately
+    /// one value and not several, because the distinction that matters to a reader is "the estate ran this on its own"
+    /// versus "somebody asked for it".</summary>
     public const string Manual = "manual";
 
     /// <summary>Recorded from an on-disk artifact rather than enqueued: a local <c>sqlflow run</c> synced in.</summary>
     public const string Cli = "cli";
 
     /// <summary>Every source, in display order.</summary>
-    public static readonly IReadOnlyList<string> All = [Schedule, Manual, Cli];
+    public static readonly IReadOnlyList<string> All = [Schedule, Chain, Manual, Cli];
 }
 
 /// <summary>The modes a run group can be launched in, stored as a short lowercase string (same convention as

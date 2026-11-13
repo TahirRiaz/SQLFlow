@@ -84,7 +84,7 @@ internal sealed record RunSummaryDto(
     string? TargetPool, string? CommitSha, DateTime WrittenUtc, DateTime? EnqueuedUtc, double? DurationSeconds,
     long? RowsLoaded, long? RowsInserted, long? RowsUpdated, long? RowsDeleted, int FileCount, Guid? GroupId,
     string? LastAction, DateTime? LastActionUtc, string? Error = null, string? Operation = null, string? RequestedBy = null,
-    Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null);
+    Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null, RunStartedByDto? StartedBy = null);
 
 /// <summary>One run with its full header for the detail view.</summary>
 internal sealed record RunDetailDto(
@@ -100,7 +100,15 @@ internal sealed record RunDetailDto(
     int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
     string? Operation = null, string? RequestedBy = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null,
     System.Text.Json.JsonElement? Payload = null, Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
-    string? ResultJson = null);
+    string? ResultJson = null, RunStartedByDto? StartedBy = null, IReadOnlyList<RunCauseDto>? Causes = null);
+
+/// <summary>What started a run, as the control plane words it (<c>startedBy</c> on a run, a run list row and a group).</summary>
+internal sealed record RunStartedByDto(
+    string Kind, string Summary, string? Who, Guid? ScheduleId, string? ScheduleName,
+    Guid? AfterRunId, string? AfterScheduleName, string? AfterFlowName, Guid? TriggerRequestId);
+
+/// <summary>One link of the chain of parent fires behind a chained run (<c>causes</c> on a run).</summary>
+internal sealed record RunCauseDto(Guid RunId, string FlowName, Guid? GroupId, string Status, RunStartedByDto StartedBy);
 
 /// <summary>One file a run processed (file flows).</summary>
 internal sealed record RunFileDto(
@@ -140,7 +148,8 @@ internal sealed record RunGroupCountsDto(
 /// (first member's start to last member's end; the end and duration stay null while it executes).</summary>
 internal sealed record RunGroupDto(
     Guid GroupId, Guid RepoId, string Mode, string Anchor, int MemberCount, string? CommitSha, DateTime EnqueuedUtc,
-    RunGroupCountsDto Counts, DateTime? StartedUtc = null, DateTime? EndedUtc = null, double? DurationSeconds = null);
+    RunGroupCountsDto Counts, DateTime? StartedUtc = null, DateTime? EndedUtc = null, double? DurationSeconds = null,
+    RunStartedByDto? StartedBy = null);
 
 /// <summary>Who the presented credential authenticates as (<c>GET /api/v1/me</c>).</summary>
 internal sealed record IdentityDto(string Subject, string? Role, IReadOnlyList<string> Scopes, Guid? UserId);

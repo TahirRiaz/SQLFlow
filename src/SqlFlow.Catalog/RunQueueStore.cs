@@ -21,15 +21,17 @@ namespace SqlFlow.Catalog;
 /// auditable. Bundled into one request so the optional references can never be passed in the wrong order.</summary>
 /// <para><c>TriggerSource</c> records WHAT asked for the run (see <see cref="RunTriggerSources"/>), defaulting
 /// to <see cref="RunTriggerSources.Manual"/> because every caller that does not say is a person or an API
-/// client asking; the scheduler passes <see cref="RunTriggerSources.Schedule"/> and its schedule id. It is
-/// recorded rather than inferred because nothing else on the row distinguishes the two: a schedule fire and a
-/// GUI Run button take this same path and produce otherwise identical rows.</para>
+/// client asking; the scheduler passes <see cref="RunTriggerSources.Schedule"/> or
+/// <see cref="RunTriggerSources.Chain"/>, and every fire of a schedule passes its schedule id. It is recorded rather
+/// than inferred because nothing else on the row distinguishes them: a schedule fire and a GUI Run button take this
+/// same path and produce otherwise identical rows. <c>TriggerRunId</c> is the parent fire's run a chained fire
+/// followed.</para>
 /// <para><c>RequestedBy</c> is who asked (the caller's subject, or <c>schedule:&lt;name&gt;</c> for a schedule's own
 /// fire), recorded on the run and handed to the executor so what the run does is attributed to whoever started it.</para>
 public sealed record RunEnqueueRequest(
     Guid RepoId, string FlowName, string FlowKind, string? TargetPool = null, string? CommitSha = null,
     RunParameters? Parameters = null, string TriggerSource = RunTriggerSources.Manual,
-    Guid? TriggerScheduleId = null, string? RequestedBy = null);
+    Guid? TriggerScheduleId = null, string? RequestedBy = null, Guid? TriggerRunId = null);
 
 /// <summary>What to enqueue as one multi-flow run group (a node-scoped trigger, or a schedule's fire, recorded as a
 /// <see cref="RunGroupModes.Batch"/> group): the resolved, ordered member flows (with their waves) plus the shared
@@ -49,7 +51,7 @@ public sealed record RunGroupEnqueueRequest(
     string? TargetPool = null, string? CommitSha = null,
     IReadOnlyDictionary<string, RunParameters>? MemberParameters = null,
     int? MaxConcurrency = null, string TriggerSource = RunTriggerSources.Manual,
-    Guid? TriggerScheduleId = null, string? RequestedBy = null);
+    Guid? TriggerScheduleId = null, string? RequestedBy = null, Guid? TriggerRunId = null);
 
 /// <summary>The outcome of enqueuing a single run: its new id and its placement row, which the caller hands to the
 /// dispatcher so memory learns of the run the ledger already holds.</summary>
@@ -183,6 +185,7 @@ public static class RunQueueStore
                 RequestedBy = TrimToNull(request.RequestedBy),
                 TriggerSource = request.TriggerSource,
                 TriggerScheduleId = request.TriggerScheduleId,
+                TriggerRunId = request.TriggerRunId,
                 Status = RunStatuses.Queued,
                 EnqueuedUtc = nowUtc,
                 // Until the run finishes there is no artifact; seed WrittenUtc with the enqueue time so the run
@@ -309,6 +312,7 @@ public static class RunQueueStore
                     RequestedBy = TrimToNull(request.RequestedBy),
                     TriggerSource = request.TriggerSource,
                     TriggerScheduleId = request.TriggerScheduleId,
+                    TriggerRunId = request.TriggerRunId,
                     Status = RunStatuses.Queued,
                     EnqueuedUtc = nowUtc,
                     WrittenUtc = nowUtc,
@@ -959,8 +963,8 @@ public static class RunQueueStore
                 .Select(r => new
                 {
                     r.PipelineId, r.RepoId, r.FlowName, r.FlowKind, r.TargetPool, r.CommitSha, r.FlowVersionHash,
-                    r.TriggerSource, r.TriggerScheduleId, r.RequestedBy, r.Status, r.ClaimedByNode, r.Attempt, r.FanOutRoot,
-                    r.ReferencesJson,
+                    r.TriggerSource, r.TriggerScheduleId, r.TriggerRunId, r.RequestedBy, r.Status, r.ClaimedByNode, r.Attempt,
+                    r.FanOutRoot, r.ReferencesJson,
                 })
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
             if (root is null || root.Status != RunStatuses.Running || root.ClaimedByNode != node || root.Attempt != attempt)
@@ -1056,6 +1060,7 @@ public static class RunQueueStore
                     RequestedBy = root.RequestedBy,
                     TriggerSource = root.TriggerSource,
                     TriggerScheduleId = root.TriggerScheduleId,
+                    TriggerRunId = root.TriggerRunId,
                     FanOutRoot = rootRunId,
                     FanOutSlot = i + 1,
                     FanOutCount = members.Count,

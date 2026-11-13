@@ -27,7 +27,7 @@ public sealed class CliArguments
         "--db", "--repo", "--repo-url", "--module",
         // The control-plane verbs (health/login/logout/trigger/runs/groups and the estate family).
         "--url", "--token", "--username", "--token-name", "--expires-days", "--scopes",
-        "--scope", "--batch", "--pool", "--poll-seconds", "--commit", "--flow", "--status", "--kind", "--group",
+        "--scope", "--batch", "--pool", "--poll-seconds", "--commit", "--flow", "--status", "--kind", "--group", "--started-by",
         "--page", "--page-size", "--from", "--to", "--file-pattern", "--source-filter",
         "--cron", "--interval", "--timezone", "--max-concurrency",
         "--remote-url", "--local-path", "--credential-ref", "--credential-user",

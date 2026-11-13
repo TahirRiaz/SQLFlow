@@ -73,6 +73,8 @@ export interface Run extends WithLinks {
     operation?: string | null;
     requestedBy?: string | null;
     triggerSource?: string | null;
+    /** What started the run, as the control plane words it; absent from a control plane that predates it. */
+    startedBy?: { kind: string; summary: string; who?: string | null } | null;
     startUtc?: string | null;
     endUtc?: string | null;
     writtenUtc?: string;

@@ -161,7 +161,7 @@ export async function showRun(estate: Estate, panels: Panels, runId: string, mod
         facts: [
             ['Status', run.status],
             ['Operation', run.operation],
-            ['Requested by', run.requestedBy ?? run.triggerSource],
+            ['Started by', run.startedBy?.summary ?? run.requestedBy ?? run.triggerSource],
             ['Started', run.startUtc],
             ['Ended', run.endUtc],
             ['Duration', run.durationSeconds === null || run.durationSeconds === undefined ? null : `${run.durationSeconds.toFixed(1)} s`],

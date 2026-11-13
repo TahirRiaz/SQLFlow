@@ -154,6 +154,31 @@ public static class ScheduleStore
     }
 
     /// <summary>
+    /// The run a chained fire records it followed (<see cref="CatalogRun.TriggerRunId"/>): the first run of the parent
+    /// fire at <paramref name="parentFireUtc"/>, the newest of the schedule's parent fires as
+    /// <see cref="GetParentFireStateAsync"/> read it. That is the parent's <see cref="CatalogSchedule.LastRunId"/> when
+    /// the run was enqueued by that fire, at or after its instant; a parent fire that enqueued nothing (an empty member
+    /// set) leaves <see cref="CatalogSchedule.LastRunId"/> on an earlier fire, so null is answered rather than a run the
+    /// chain did not follow. Null too when no parent fired at that instant.
+    /// </summary>
+    public static Task<Guid?> GetParentFireRunAsync(
+        CatalogDbContext catalog, Guid scheduleId, DateTime parentFireUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        return (
+                from p in catalog.ScheduleParents.AsNoTracking()
+                where p.ScheduleId == scheduleId
+                join parent in catalog.Schedules.AsNoTracking()
+                    on new { p.RepoId, Name = p.ParentName } equals new { parent.RepoId, parent.Name }
+                where parent.LastFireUtc == parentFireUtc
+                join run in catalog.Runs.AsNoTracking() on parent.LastRunId equals (Guid?)run.RunId
+                where run.EnqueuedUtc >= parent.LastFireUtc
+                orderby p.Ordinal
+                select (Guid?)run.RunId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>
     /// Atomically claims a chained schedule's fire by stamping the newest parent fire it is reacting to, from the
     /// value the caller observed (normally null, or the previous consumed instant). Returns true only for the winner,
     /// so when several control-plane nodes see the same completed parent set exactly one child fire is enqueued.

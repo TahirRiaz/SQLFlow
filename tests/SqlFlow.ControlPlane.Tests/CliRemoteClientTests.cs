@@ -175,9 +175,25 @@ public sealed class CliRemoteClientTests
             Assert.NotNull(detail);
             Assert.Equal(flowName, detail.FlowName);
 
+            // The run says who started it: the person the token belongs to, as 'runs show' prints it.
+            Assert.NotNull(detail.StartedBy);
+            Assert.Equal("user", detail.StartedBy.Kind);
+            Assert.Equal(username, detail.StartedBy.Who);
+            Assert.Equal($"{username} asked for this run.", detail.StartedBy.Summary);
+            Assert.Empty(detail.Causes!);
+
             var listed = await client.ListRunsAsync(
                 repoId, null, flowName, null, null, null, latest: false, page: 1, pageSize: 50, CancellationToken.None);
-            Assert.Contains(listed.Items, r => r.RunId == outcome.Run.RunId);
+            var row = Assert.Single(listed.Items, r => r.RunId == outcome.Run.RunId);
+            Assert.Equal(username, RemoteVerbs.FormatStartedBy(row.StartedBy));
+
+            // 'runs list --started-by' keeps the runs started that way, as the GUI's filter does.
+            var byPeople = await client.ListRunsAsync(
+                repoId, null, flowName, null, null, null, latest: false, page: 1, pageSize: 50, CancellationToken.None, "user");
+            Assert.Contains(byPeople.Items, r => r.RunId == outcome.Run.RunId);
+            var bySchedules = await client.ListRunsAsync(
+                repoId, null, flowName, null, null, null, latest: false, page: 1, pageSize: 50, CancellationToken.None, "schedule");
+            Assert.DoesNotContain(bySchedules.Items, r => r.RunId == outcome.Run.RunId);
 
             // The run races the host's own dispatcher, so any lifecycle-consistent answer is correct here;
             // what the client guarantees is the faithful mapping of the four contract statuses.

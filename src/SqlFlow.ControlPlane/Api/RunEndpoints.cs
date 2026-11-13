@@ -31,10 +31,14 @@ namespace SqlFlow.ControlPlane.Api;
 /// <c>incremental</c>, <see cref="IncrementalFilter"/> the bound it read with, <see cref="IncrementalWatermark"/>
 /// the resolved high-water mark). Those three are null for a run that has not reached the read, or a flow kind with
 /// no incremental surface. <see cref="Operation"/> is the operation a flow of a registered kind performed (null
-/// for the kind's default and for built-in kinds), and <see cref="RequestedBy"/> who asked for the run (null for a
-/// schedule fire). <see cref="StartUtc"/> and <see cref="EndUtc"/> are when the run started (its hand-out, unless its
-/// artifact names its own start) and ended, so a list can say how long a run has been executing before it has a
-/// <see cref="DurationSeconds"/>, and how long a set of runs took from its first start to its last end.</summary>
+/// for the kind's default and for built-in kinds), and <see cref="RequestedBy"/> who asked for the run
+/// (<c>schedule:&lt;name&gt;</c> for a schedule's own fire). <see cref="StartUtc"/> and <see cref="EndUtc"/> are when the
+/// run started (its hand-out, unless its artifact names its own start) and ended, so a list can say how long a run has
+/// been executing before it has a <see cref="DurationSeconds"/>, and how long a set of runs took from its first start to
+/// its last end. <see cref="TriggerScheduleId"/> is the schedule whose fire enqueued the run and
+/// <see cref="TriggerRunId"/> the parent fire's run a chained fire followed. <see cref="StartedBy"/> says what started
+/// the run (<see cref="RunStartedBy"/>): the runs list resolves it, and the group stream leaves it null, since every
+/// member of a group shares the one its group read carries.</summary>
 public sealed record RunSummaryDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
@@ -45,7 +49,8 @@ public sealed record RunSummaryDto(
     string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark,
     string? Operation = null, string? RequestedBy = null,
     Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
-    DateTime? StartUtc = null, DateTime? EndUtc = null);
+    DateTime? StartUtc = null, DateTime? EndUtc = null,
+    Guid? TriggerScheduleId = null, Guid? TriggerRunId = null, RunStartedByDto? StartedBy = null);
 
 /// <summary>One run with its full header for the detail view: the summary plus the lifecycle fields (status, when it
 /// was enqueued, the node that claimed it), the schema version, the start/end window, the host, the error, and the
@@ -55,7 +60,9 @@ public sealed record RunSummaryDto(
 /// <see cref="RunSummaryDto"/>. <see cref="TriggerSource"/> says what started the run and
 /// <see cref="TriggerScheduleId"/> names the schedule when a schedule fire did. <see cref="Operation"/>,
 /// <see cref="Values"/> and <see cref="Payload"/> are the kind arguments a flow of a registered kind ran with, and
-/// <see cref="RequestedBy"/> who asked for the run.</summary>
+/// <see cref="RequestedBy"/> who asked for the run. <see cref="StartedBy"/> says what started it, and for a run a
+/// chained fire started, <see cref="Causes"/> is the chain of parent fires behind it, from the fire it followed back to
+/// the first link (<see cref="RunStartedBy.ReadCausesAsync"/>); empty for every other run.</summary>
 public sealed record RunDetailDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
@@ -70,7 +77,8 @@ public sealed record RunDetailDto(
     string? TriggerSource, Guid? TriggerScheduleId,
     string? Operation = null, string? RequestedBy = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null,
     JsonElement? Payload = null, Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
-    string? ResultJson = null);
+    string? ResultJson = null, Guid? TriggerRunId = null, RunStartedByDto? StartedBy = null,
+    IReadOnlyList<RunCauseDto>? Causes = null);
 
 /// <summary>One file a run processed (file flows): a drill-down row under a run.</summary>
 public sealed record RunFileDto(
@@ -140,10 +148,12 @@ public sealed record RunGroupCountsDto(
 /// pinned to, and the live rollup of its members' states. The members themselves come from the runs list filtered
 /// by this group id. <see cref="StartedUtc"/>, <see cref="EndedUtc"/> and <see cref="DurationSeconds"/> say when the
 /// group ran and how long it took, from its first member's start to its last member's end (<see cref="RunSetTiming"/>):
-/// the wall-clock time of the whole set, not the sum of its members' durations.</summary>
+/// the wall-clock time of the whole set, not the sum of its members' durations. <see cref="StartedBy"/> says what started
+/// the group, which every member records alike; null for a group whose members have all left the catalog.</summary>
 public sealed record RunGroupDto(
     Guid GroupId, Guid RepoId, string Mode, string Anchor, int MemberCount, string? CommitSha, DateTime EnqueuedUtc,
-    RunGroupCountsDto Counts, DateTime? StartedUtc = null, DateTime? EndedUtc = null, double? DurationSeconds = null);
+    RunGroupCountsDto Counts, DateTime? StartedUtc = null, DateTime? EndedUtc = null, double? DurationSeconds = null,
+    RunStartedByDto? StartedBy = null);
 
 /// <summary>
 /// The read API over the shadow catalog's run history: the run headers and their drill-down detail (the files a run
@@ -186,14 +196,29 @@ public static class RunEndpoints
         return group;
     }
 
-    private static async Task<Ok<PagedResult<RunSummaryDto>>> ListRunsAsync(
+    private static async Task<Results<Ok<PagedResult<RunSummaryDto>>, ProblemHttpResult>> ListRunsAsync(
         CatalogDbContext db, Guid? repoId, Guid? pipelineId, string? flowKind, string? status, bool? success,
         string? flowName, string? batch, Guid? scheduleId, Guid? groupId, bool? latest, DateTime? from, DateTime? to,
-        int? page, int? pageSize, Guid? runId, CancellationToken ct)
+        int? page, int? pageSize, Guid? runId, string? startedBy, CancellationToken ct)
     {
         var (p, size) = PageRequest.Normalize(page, pageSize);
 
         var query = db.Runs.AsNoTracking().AsQueryable();
+
+        // What started the run (RunStartedByKinds): the board's "Started by" filter, by the rules each row's label is
+        // worded by, so "schedules" lists exactly the runs labelled as a schedule's own fire.
+        if (!string.IsNullOrWhiteSpace(startedBy))
+        {
+            var kind = startedBy.Trim().ToLowerInvariant();
+            if (RunStartedBy.Filter(query, kind) is not { } narrowed)
+            {
+                return TypedResults.Problem(
+                    detail: $"startedBy must be one of {string.Join(", ", RunStartedByKinds.All)}.",
+                    statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+            }
+
+            query = narrowed;
+        }
 
         // A run asked for by its id: the board's search box given an id copied from a log.
         if (runId is { } one)
@@ -319,6 +344,7 @@ public static class RunEndpoints
         // saves two per-row lookups into the event log on every row of every poll.
         var items = await ProjectSummaries(db, ordered.Skip((p - 1) * size).Take(size), groupId is not null)
             .ToListAsync(ct).ConfigureAwait(false);
+        items = await WithStartedByAsync(db, items, ct).ConfigureAwait(false);
 
         // The page is read first because it often proves the total: a first page that came back short IS the whole
         // result, so the count query (which re-runs the filters, the latest-run resolution and the pipeline join)
@@ -327,6 +353,19 @@ public static class RunEndpoints
             ? items.Count
             : await ordered.LongCountAsync(ct).ConfigureAwait(false);
         return TypedResults.Ok(new PagedResult<RunSummaryDto>(items, p, size, total));
+    }
+
+    /// <summary>The page's summaries with what started each one, read for the whole page at once
+    /// (<see cref="RunStartedBy.ReadAsync"/>).</summary>
+    private static async Task<List<RunSummaryDto>> WithStartedByAsync(
+        CatalogDbContext db, List<RunSummaryDto> items, CancellationToken ct)
+    {
+        var startedBy = await RunStartedBy.ReadAsync(
+            db,
+            items.Select(i => new RunStartedBy.Recorded(
+                i.RunId, i.TriggerSource, i.RequestedBy, i.TriggerScheduleId, i.TriggerRunId, i.FanOutRoot)).ToList(),
+            ct).ConfigureAwait(false);
+        return items.Select(i => i with { StartedBy = startedBy[i.RunId] }).ToList();
     }
 
     /// <summary>The run row paired with its pipeline's batch label and lineage wave: the intermediate shape the
@@ -380,7 +419,7 @@ public static class RunEndpoints
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
                 x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount,
-                x.Run.StartUtc, x.Run.EndUtc))
+                x.Run.StartUtc, x.Run.EndUtc, x.Run.TriggerScheduleId, x.Run.TriggerRunId))
             : source.Select(x => new RunSummaryDto(
                 x.Run.RunId, x.Run.PipelineId, x.Run.RepoId, x.Run.FlowName, x.Run.FlowKind, x.Batch, x.Wave,
                 x.Run.Status, x.Run.Success,
@@ -392,7 +431,7 @@ public static class RunEndpoints
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
                 x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount,
-                x.Run.StartUtc, x.Run.EndUtc));
+                x.Run.StartUtc, x.Run.EndUtc, x.Run.TriggerScheduleId, x.Run.TriggerRunId));
 
     /// <summary>A group's member summaries in execution order: the shape both the group view's member list and
     /// the group stream serve. This is the one list that shows the last action, so it resolves it.</summary>
@@ -426,18 +465,32 @@ public static class RunEndpoints
                     run.DataSetConvention,
                     null, null, null, run.GroupId,
                     run.TriggerSource, run.TriggerScheduleId, run.Operation, run.RequestedBy, null, null,
-                    run.FanOutRoot, run.FanOutSlot, run.FanOutCount, run.ResultJson) })
+                    run.FanOutRoot, run.FanOutSlot, run.FanOutCount, run.ResultJson, run.TriggerRunId) })
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (row is null)
         {
             return NotFound("run", runId);
         }
 
+        // What started the run, and for a chained fire the chain of parent fires behind it back to its first link, so the
+        // run's page answers "what or who started this" without opening each link in turn.
+        var detail = row.Detail;
+        var startedBy = await RunStartedBy.ReadAsync(
+            db,
+            [new RunStartedBy.Recorded(
+                detail.RunId, detail.TriggerSource, detail.RequestedBy, detail.TriggerScheduleId, detail.TriggerRunId,
+                detail.FanOutRoot)],
+            ct).ConfigureAwait(false);
+        var causes = await RunStartedBy.ReadCausesAsync(db, detail.TriggerRunId, ct).ConfigureAwait(false);
+
         // The kind arguments are stored as JSON text; they are served as objects, so a client reads them as it sent them.
-        var dto = row.Detail with
+        var dto = detail with
         {
             Values = SqlFlow.Core.Runs.RunParameters.ValuesFromJson(row.ValuesJson),
-            Payload = row.Payload is null ? null : JsonDocument.Parse(row.Payload).RootElement.Clone(),        };
+            Payload = row.Payload is null ? null : JsonDocument.Parse(row.Payload).RootElement.Clone(),
+            StartedBy = startedBy[detail.RunId],
+            Causes = causes,
+        };
 
         // On a failed run, surface the exact statement that threw alongside the header, so the detail view can show
         // the offending SQL next to the error banner instead of making the operator hunt for it in the Statements
@@ -533,9 +586,21 @@ public static class RunEndpoints
             byStatus.Max(x => x.LastEnd),
             finished: counts.Total > 0 && counts.Queued + counts.Running == 0);
 
+        // Every member of a group records what started it alike (the enqueue stamps them in one write, and a fan-out's
+        // members copy their root), so the first member in execution order speaks for the group.
+        var first = await db.Runs.AsNoTracking()
+            .Where(r => r.GroupId == groupId)
+            .OrderBy(r => r.GroupWave).ThenBy(r => r.RunId)
+            .Select(r => new RunStartedBy.Recorded(
+                r.RunId, r.TriggerSource, r.RequestedBy, r.TriggerScheduleId, r.TriggerRunId, r.FanOutRoot))
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        var startedBy = first is null
+            ? null
+            : (await RunStartedBy.ReadAsync(db, [first], ct).ConfigureAwait(false))[first.RunId];
+
         return TypedResults.Ok(new RunGroupDto(
             group.GroupId, group.RepoId, group.Mode, group.Anchor, group.MemberCount, group.CommitSha,
-            group.EnqueuedUtc, counts, timing.StartedUtc, timing.EndedUtc, timing.DurationSeconds));
+            group.EnqueuedUtc, counts, timing.StartedUtc, timing.EndedUtc, timing.DurationSeconds, startedBy));
     }
 
     private static async Task<Results<Ok<PipelineRunDurationsDto>, ProblemHttpResult>> GetPipelineRunDurationsAsync(

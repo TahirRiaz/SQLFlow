@@ -228,10 +228,11 @@ internal sealed class ControlPlaneClient : IDisposable
         return new TriggerOutcome(Deserialize<RunTriggerAccepted>(body, "/api/v1/runs"), null);
     }
 
-    /// <summary>The runs list with the same filters the GUI's run inbox uses.</summary>
+    /// <summary>The runs list with the same filters the GUI's run inbox uses, <paramref name="startedBy"/> its "Started by"
+    /// filter (a kind the control plane names, e.g. <c>user</c>).</summary>
     public Task<PagedResult<RunSummaryDto>> ListRunsAsync(
         Guid? repoId, string? status, string? flowName, string? batch, string? flowKind, Guid? groupId,
-        bool latest, int page, int pageSize, CancellationToken ct)
+        bool latest, int page, int pageSize, CancellationToken ct, string? startedBy = null)
     {
         var query = new QueryBuilder()
             .Add("repoId", repoId?.ToString())
@@ -241,6 +242,7 @@ internal sealed class ControlPlaneClient : IDisposable
             .Add("flowKind", flowKind)
             .Add("groupId", groupId?.ToString())
             .Add("latest", latest ? "true" : null)
+            .Add("startedBy", startedBy)
             .Add("page", page.ToString(CultureInfo.InvariantCulture))
             .Add("pageSize", pageSize.ToString(CultureInfo.InvariantCulture));
         return GetAsync<PagedResult<RunSummaryDto>>($"/api/v1/runs{query}", ct);

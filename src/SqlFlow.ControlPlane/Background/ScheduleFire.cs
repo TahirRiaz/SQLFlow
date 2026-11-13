@@ -16,6 +16,44 @@ namespace SqlFlow.ControlPlane.Background;
 /// </summary>
 public static class ScheduleFire
 {
+    /// <summary>
+    /// How a fire started, which every run it enqueues records (<see cref="CatalogRun.TriggerSource"/>,
+    /// <see cref="CatalogRun.RequestedBy"/>, <see cref="CatalogRun.TriggerRunId"/>), so a run says whether the estate ran
+    /// it on its own or someone asked, and who: the schedule's clock, its parents' fire, or a person or client asking.
+    /// </summary>
+    public sealed record Origin
+    {
+        private Origin(string triggerSource, string? requestedBy, Guid? afterRunId)
+        {
+            TriggerSource = triggerSource;
+            RequestedBy = requestedBy;
+            AfterRunId = afterRunId;
+        }
+
+        /// <summary>The fire's trigger source (<see cref="RunTriggerSources"/>).</summary>
+        public string TriggerSource { get; }
+
+        /// <summary>Who asked, or null when the schedule fired on its own and records itself.</summary>
+        public string? RequestedBy { get; }
+
+        /// <summary>The first run of the parent fire a chained fire followed, when that fire enqueued any.</summary>
+        public Guid? AfterRunId { get; }
+
+        /// <summary>The schedule's own clock fired it: its cron or interval came round.</summary>
+        public static Origin Clock { get; } = new(RunTriggerSources.Schedule, null, null);
+
+        /// <summary>The schedule fired behind its parents' fire, whose first run is <paramref name="parentFireRunId"/>
+        /// (null when the newest parent fire enqueued nothing).</summary>
+        public static Origin Chain(Guid? parentFireRunId) => new(RunTriggerSources.Chain, null, parentFireRunId);
+
+        /// <summary>Someone asked for the fire: a person's run-now, or an external trigger's request
+        /// (<c>trigger:&lt;name&gt;</c>). A caller whose credential carries no name is recorded as
+        /// <see cref="Api.RequestActor.Unknown"/>, never as the schedule, so a fire someone asked for is never read as
+        /// one the estate made on its own.</summary>
+        public static Origin AskedBy(string? requestedBy)
+            => new(RunTriggerSources.Manual, string.IsNullOrWhiteSpace(requestedBy) ? Api.RequestActor.Unknown : requestedBy.Trim(), null);
+    }
+
     /// <summary>Why a fire did or did not enqueue, so each caller can report it in its own idiom (the scheduler logs,
     /// the endpoint answers a status code).</summary>
     public enum Outcome
@@ -57,18 +95,20 @@ public static class ScheduleFire
     /// of a registered kind that declares the operation (or every member of a registered kind when the schedule names
     /// none), each member's kind validates them, and a refusal fails the fire with a
     /// <see cref="SqlFlow.Core.SqlFlowException"/> instead of quietly running the member as defined.
-    /// <para><paramref name="requestedBy"/> is the person who asked for a run-now fire; every run of the fire records
-    /// them as the one that asked for it. Null (every automatic fire) records the schedule itself
+    /// <para><paramref name="origin"/> is how the fire started, and every run of the fire records it: the schedule's
+    /// clock (the default), its parents' fire, or someone asking (a run-now, an external trigger's request), who is then
+    /// recorded as the one that asked. A fire of the schedule's own records the schedule itself
     /// (<see cref="RunActors.Schedule"/>), so what the runs do is attributed to it rather than to nobody.</para></remarks>
     public static async Task<FireResult> EnqueueAsync(
         CatalogDbContext catalog, IRunDispatcher dispatcher, YamlDocumentLoader documents, CatalogSchedule schedule,
         DateTime nowUtc, CancellationToken ct, IReadOnlyCollection<string>? batchFilter = null,
-        RunParameters? backfillWindow = null, string? requestedBy = null)
+        RunParameters? backfillWindow = null, Origin? origin = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(schedule);
+        origin ??= Origin.Clock;
 
         // Membership decides what runs; lineage decides the order. The expansion reads the schedule's members and
         // each one's topological wave, and returns the active, non-manual members ordered by wave.
@@ -90,7 +130,7 @@ public static class ScheduleFire
                 expansion.Members, backfillWindow,
                 await BackfillRouting.FileDatedMembersAsync(catalog, documents, schedule.RepoId, expansion.Members, ct).ConfigureAwait(false));
         memberParameters = ApplyKindArguments(documents, schedule, expansion.Members, memberParameters);
-        var actor = string.IsNullOrWhiteSpace(requestedBy) ? RunActors.Schedule(schedule.Name, schedule.Id) : requestedBy.Trim();
+        var actor = origin.RequestedBy ?? RunActors.Schedule(schedule.Name, schedule.Id);
 
         // A single member is a single run: enqueuing a one-member group would add a group's bookkeeping and its
         // claim gate for nothing.
@@ -105,7 +145,8 @@ public static class ScheduleFire
                     // Recorded on the run so monitoring can tell an automatic execution from one a person
                     // asked for. Nothing else on the row distinguishes them: a manual trigger takes this same
                     // path with the same shape.
-                    TriggerSource: RunTriggerSources.Schedule, TriggerScheduleId: schedule.Id, RequestedBy: actor),
+                    TriggerSource: origin.TriggerSource, TriggerScheduleId: schedule.Id, RequestedBy: actor,
+                    TriggerRunId: origin.AfterRunId),
                 ct).ConfigureAwait(false);
             await ScheduleStore.SetLastRunAsync(catalog, schedule.Id, runId, nowUtc, ct).ConfigureAwait(false);
             return new FireResult(Outcome.Enqueued, runId, null, 1);
@@ -120,7 +161,8 @@ public static class ScheduleFire
             new RunGroupEnqueueRequest(
                 schedule.RepoId, RunGroupModes.Batch, expansion.Anchor, expansion.Members,
                 MemberParameters: memberParameters, MaxConcurrency: schedule.MaxConcurrency,
-                TriggerSource: RunTriggerSources.Schedule, TriggerScheduleId: schedule.Id, RequestedBy: actor),
+                TriggerSource: origin.TriggerSource, TriggerScheduleId: schedule.Id, RequestedBy: actor,
+                TriggerRunId: origin.AfterRunId),
             ct).ConfigureAwait(false);
 
         var firstRunId = result.RunIds.Count > 0 ? result.RunIds[0] : Guid.Empty;

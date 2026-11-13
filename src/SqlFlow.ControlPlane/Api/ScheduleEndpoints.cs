@@ -515,8 +515,11 @@ public static class ScheduleEndpoints
         ScheduleFire.FireResult fire;
         try
         {
+            // A run-now is the caller asking, never the schedule firing on its own: its runs record the caller.
             fire = await ScheduleFire
-                .EnqueueAsync(db, dispatcher, documents, schedule, now, ct, filter, backfillWindow, RequestActor.Of(user)).ConfigureAwait(false);
+                .EnqueueAsync(
+                    db, dispatcher, documents, schedule, now, ct, filter, backfillWindow,
+                    ScheduleFire.Origin.AskedBy(RequestActor.Of(user))).ConfigureAwait(false);
         }
         catch (SqlFlow.Core.SqlFlowException ex)
         {
