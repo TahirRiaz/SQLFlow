@@ -419,7 +419,7 @@ public static class RunEndpoints
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
                 x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount,
-                x.Run.StartUtc, x.Run.EndUtc, x.Run.TriggerScheduleId, x.Run.TriggerRunId))
+                x.Run.StartUtc, x.Run.EndUtc, x.Run.TriggerScheduleId, x.Run.TriggerRunId, null))
             : source.Select(x => new RunSummaryDto(
                 x.Run.RunId, x.Run.PipelineId, x.Run.RepoId, x.Run.FlowName, x.Run.FlowKind, x.Batch, x.Wave,
                 x.Run.Status, x.Run.Success,
@@ -431,7 +431,7 @@ public static class RunEndpoints
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
                 x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount,
-                x.Run.StartUtc, x.Run.EndUtc, x.Run.TriggerScheduleId, x.Run.TriggerRunId));
+                x.Run.StartUtc, x.Run.EndUtc, x.Run.TriggerScheduleId, x.Run.TriggerRunId, null));
 
     /// <summary>A group's member summaries in execution order: the shape both the group view's member list and
     /// the group stream serve. This is the one list that shows the last action, so it resolves it.</summary>
@@ -465,7 +465,7 @@ public static class RunEndpoints
                     run.DataSetConvention,
                     null, null, null, run.GroupId,
                     run.TriggerSource, run.TriggerScheduleId, run.Operation, run.RequestedBy, null, null,
-                    run.FanOutRoot, run.FanOutSlot, run.FanOutCount, run.ResultJson, run.TriggerRunId) })
+                    run.FanOutRoot, run.FanOutSlot, run.FanOutCount, run.ResultJson, run.TriggerRunId, null, null) })
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (row is null)
         {
