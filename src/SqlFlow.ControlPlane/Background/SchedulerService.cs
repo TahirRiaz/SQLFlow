@@ -245,7 +245,7 @@ public sealed partial class SchedulerService : BackgroundService
         {
             // No computable next fire (a malformed cron/time zone, or a cron with no further occurrence): the claim
             // above advanced the schedule to null, so it is parked and not scanned again, and this occurrence is not
-            // enqueued.
+            // enqueued. The claim left the last fire as it was, so nothing chained behind this schedule follows.
             LogParked(schedule.Id, schedule.Name);
             return;
         }

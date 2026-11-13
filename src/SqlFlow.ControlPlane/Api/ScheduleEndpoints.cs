@@ -434,6 +434,8 @@ public static class ScheduleEndpoints
         // concurrent sync is writing) is a 409, never a race into the unique index.
         var name = string.IsNullOrWhiteSpace(request.Name) ? members[0] : request.Name.Trim();
         var now = clock.GetUtcNow().UtcDateTime;
+        // A cron whose date never comes has no next fire: the schedule is created parked, so it never fires on its own
+        // and a run-now still fires it. Arming it at "now" would fire it once at the next tick for no occurrence.
         var next = ScheduleClock.NextFire(request.Cron, request.IntervalSeconds, timezone, now);
         Guid id;
         try
@@ -441,7 +443,7 @@ public static class ScheduleEndpoints
             id = await ScheduleStore.CreateApiScheduleAsync(
                 db, request.RepoId, name, members, request.Cron, request.IntervalSeconds, timezone,
                 request.Enabled ?? true, request.Catchup ?? false, documents.FireDefaults.Resolve(request.MaxConcurrency, out _),
-                next ?? now, now, operation, values, ct).ConfigureAwait(false);
+                next, now, operation, values, ct).ConfigureAwait(false);
         }
         catch (ScheduleNameTakenException ex)
         {

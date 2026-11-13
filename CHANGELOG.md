@@ -172,6 +172,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   limit set for the SQL statements carries over ([Maintenance](docs/reference/concepts/maintenance.md)).
 
 ### Fixed
+- A schedule whose cron date never comes (`0 0 31 2 *`, 31 February) stays parked: a sync, or an API create, stores no
+  next fire for it, where it armed it at the sync time. The scheduler then claimed that occurrence, parked it and stamped
+  a fire that ran nothing, and every schedule chained behind it fired its whole member set, once per sync of the
+  repository. A claim that parks a schedule no longer counts as a fire, so a catalog already in that state stops
+  without a change of its own ([Schedules](docs/reference/flow/schedule.md#from-yaml-to-the-catalog-sync-semantics)).
 - A document whose `flowType` is unknown is refused with a menu that names all fourteen built-in kinds: `sftp` was missing
   from it. The flow overview counts the fourteen kinds it lists, where it said twelve, and gives an `api` flow its three
   transports (HTTP, SFTP, Azure Table), not S3; the copy page documents the S3 endpoint a `cpy` flow already has, with

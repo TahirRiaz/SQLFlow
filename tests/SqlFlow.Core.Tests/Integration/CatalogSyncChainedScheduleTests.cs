@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
+using SqlFlow.Core.Identity;
 using Xunit;
 
 namespace SqlFlow.Tests.Integration;
@@ -85,6 +86,71 @@ public sealed class CatalogSyncChainedScheduleTests : IDisposable
             await db.ScheduleMembers.Where(m => ids.Contains(m.ScheduleId)).ExecuteDeleteAsync();
             await db.Schedules.Where(s => ids.Contains(s.Id)).ExecuteDeleteAsync();
             await db.Pipelines.Where(p => p.Name == "head_flow" || p.Name == "tail_flow").ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// A cron whose date never comes (31 February) has no next fire, and a sync must leave it parked. Regression guard
+    /// for a loop seen in production: the sync armed such a schedule at the sync time, the scheduler claimed that
+    /// occurrence, parked it and stamped a fire that ran nothing, and the schedule chained behind it followed with its
+    /// whole member set. The next sync re-armed the parked schedule, so every sync of the repository fired the chain.
+    /// </summary>
+    [SkippableFact]
+    public async Task ScheduleWhoseCronNeverComes_StaysParkedThroughEverySync_AndItsChainNeverBecomesReady()
+    {
+        var cs = IntegrationDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var repo = "parked_" + Guid.NewGuid().ToString("N")[..8];
+        var repoId = FlowIdentity.FromName(repo);
+        var firstSync = new DateTime(2026, 11, 13, 9, 0, 0, DateTimeKind.Utc);
+
+        WriteFlow("parked_head_flow", "parked_head");
+        WriteFlow("parked_tail_flow", "parked_tail");
+        File.WriteAllText(Path.Combine(_dir, "schedules.yaml"), """
+            schedules:
+              parked_head:
+                cron: "0 0 31 2 *"
+                timezone: UTC
+              parked_tail:
+                after: parked_head
+            """);
+
+        try
+        {
+            // Two syncs, as an automatic sync followed by one a merge asks for: the second is where the loop re-armed.
+            foreach (var syncedAt in new[] { firstSync, firstSync.AddMinutes(5) })
+            {
+                await using (var db = CatalogDatabase.Create(cs))
+                {
+                    await new CatalogSync().SyncAsync(db, _dir, repo, null, syncedAt);
+                }
+
+                await using (var db = CatalogDatabase.Create(cs))
+                {
+                    var head = await db.Schedules.AsNoTracking()
+                        .SingleAsync(s => s.RepoId == repoId && s.Name == "parked_head");
+                    Assert.Equal("0 0 31 2 *", head.Cron);
+                    Assert.Null(head.NextFireUtc);
+                    Assert.Null(head.LastFireUtc);
+
+                    // Nothing is due however far the clock runs, so the scheduler never claims a fire for it.
+                    var due = await ScheduleStore.ListDueAsync(db, syncedAt.AddYears(10), 1000);
+                    Assert.DoesNotContain(due, s => s.RepoId == repoId);
+
+                    var ready = await ScheduleStore.ListChainedReadyAsync(db, 1000);
+                    Assert.DoesNotContain(ready, s => s.RepoId == repoId);
+                }
+            }
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var ids = await db.Schedules.Where(s => s.RepoId == repoId).Select(s => s.Id).ToListAsync();
+            await db.ScheduleParents.Where(p => ids.Contains(p.ScheduleId)).ExecuteDeleteAsync();
+            await db.ScheduleMembers.Where(m => ids.Contains(m.ScheduleId)).ExecuteDeleteAsync();
+            await db.Schedules.Where(s => ids.Contains(s.Id)).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
         }
     }
 

@@ -196,9 +196,10 @@ public sealed class CatalogSync
     }
 
     /// <summary>One validated git-declared schedule, with the flows that joined it and where git declares it, ready
-    /// to stage into the schedule and schedule-member tables.</summary>
+    /// to stage into the schedule and schedule-member tables. <see cref="NextFireUtc"/> is null when the schedule has
+    /// no computable next fire: a chained one, or a cron whose date never comes.</summary>
     private sealed record PreparedSchedule(
-        string Name, IReadOnlyList<string> Members, Core.ScheduleSpec Spec, DateTime NextFireUtc,
+        string Name, IReadOnlyList<string> Members, Core.ScheduleSpec Spec, DateTime? NextFireUtc,
         ScheduleDefinitionSource Definition);
 
     /// <summary>One run artifact awaiting insertion: the projected header row (client-keyed, so re-adding it on
@@ -679,7 +680,10 @@ public sealed class CatalogSync
             // member. The expansion would skip it anyway (it joins only active pipelines), and leaving it out keeps
             // the stored member set an honest answer to "what does this fire run".
             var members = schedule.Members.Where(presentNames.Contains).ToList();
-            var nextFire = ScheduleClock.NextFire(spec.Cron, spec.IntervalSeconds, spec.Timezone, nowUtc) ?? nowUtc;
+            // A cron with no next occurrence (a date that never comes, such as 31 February) keeps no next fire, so the
+            // schedule stays parked: it never fires on its own, while a run-now still fires it. Arming it at the sync
+            // time instead would make every sync fire it once, and set off every schedule chained behind it.
+            var nextFire = ScheduleClock.NextFire(spec.Cron, spec.IntervalSeconds, spec.Timezone, nowUtc);
             schedules.Add(new PreparedSchedule(
                 schedule.Name, members, spec, nextFire,
                 new ScheduleDefinitionSource(schedule.OriginFile, schedule.OriginFlow, schedule.LibraryYaml)));
