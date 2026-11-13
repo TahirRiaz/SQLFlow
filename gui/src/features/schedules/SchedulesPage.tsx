@@ -122,6 +122,12 @@ function RunsWithCell({ schedule, onOpen }: { schedule: Schedule; onOpen: () => 
   );
 }
 
+/** The schedules a chained schedule fires behind, as one phrase ("a" or "a, b"); null for a clock-driven schedule. */
+function parentsOf(schedule: Schedule): string | null {
+  const parents = schedule.afterSchedules ?? [];
+  return parents.length === 0 ? null : parents.join(", ");
+}
+
 /**
  * When a schedule runs, in one cell. The cadence reads in words; the exact expression, the zone it is
  * evaluated in, and whether missed occurrences are backfilled live in the hover, because they answer a
@@ -130,21 +136,22 @@ function RunsWithCell({ schedule, onOpen }: { schedule: Schedule; onOpen: () => 
  * links: a schedule with no cron of its own is never evaluated against a clock, so it has no zone to speak of.
  */
 function TriggerCell({ schedule }: { schedule: Schedule }) {
-  // A chained link has no cadence by design. Naming what fires it is the whole answer to "why does this never
-  // run on its own"; a bare dash reads as a broken schedule.
-  if (schedule.cron === null && schedule.intervalSeconds === null && schedule.afterSchedule) {
+  // A chained link has no cadence by design. Naming what fires it is the whole answer to "why does this run when
+  // nobody asked"; a bare dash reads as a broken schedule.
+  const parents = parentsOf(schedule);
+  if (schedule.cron === null && schedule.intervalSeconds === null && parents !== null) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex min-w-0 items-center gap-1" data-testid="schedule-chained-after">
             <Link2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <span className="text-muted-foreground">after</span>
-            <Mono>{schedule.afterSchedule}</Mono>
+            <Mono>{parents}</Mono>
           </span>
         </TooltipTrigger>
-        <TooltipContent>
-          Chained, not clocked: no cron and no timezone of its own. It becomes due exactly once, when
-          {" "}{schedule.afterSchedule} has finished, so the two can never overlap.
+        <TooltipContent className="max-w-xs">
+          Chained, not clocked: no cron and no timezone of its own. It fires once each time {parents} has fired and
+          finished, whether that fire came from a clock or from someone pressing Run now.
         </TooltipContent>
       </Tooltip>
     );
@@ -585,15 +592,33 @@ export default function SchedulesPage() {
         // A chained link has no clock, so there is no instant to print. The Trigger cell one column left already
         // names the parent, so repeating it here would just be the same string twice; the dash carries the
         // explanation on hover instead, marked as hoverable so it does not read as a broken schedule.
-        if (row.nextFireUtc === null && row.afterSchedule) {
+        const parents = parentsOf(row);
+        if (row.nextFireUtc === null && parents !== null) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="cursor-help text-muted-foreground">-</span>
               </TooltipTrigger>
-              <TooltipContent>
-                Not on a clock: this becomes due the moment {row.afterSchedule} finishes, so there is no next
+              <TooltipContent className="max-w-xs">
+                Not on a clock: this becomes due the moment {parents} finishes, so there is no next
                 instant to predict.
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+
+        // A cron with no next fire names a date that never comes (31 February) or cannot be read: the schedule is
+        // parked, and fires only when someone runs it now. Saying "never" keeps that from reading as a schedule
+        // about to fire, or a broken one.
+        if (row.nextFireUtc === null && row.cron !== null) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-muted-foreground" data-testid="schedule-parked">never</span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Its cron ({row.cron}) names no date that comes, so it never fires on its own. Run now still fires it,
+                and the schedules chained behind it follow that run.
               </TooltipContent>
             </Tooltip>
           );

@@ -27,8 +27,8 @@ import type {
   PrepareQueryRequest, PreparedQuery,
   FlowParameters,
   PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineRunDurations, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoFile, RepoSyncResult, RepoTree, Role,
-  RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry,
-  RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
+  RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStartedByKind, RunStatement,
+  RunTraceEntry, RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
   RunTriggerAccepted, RunTriggerRequest, Schedule, ScheduleCreated, ScheduleDefinition, SchedulePlan, ScheduleRunAccepted, SessionResponse, TokenResponse,
   SearchHit, SourceDiscoverRequest, SourceDiscoverResult, StorageCleanup, StorageCleanupPreview, StorageDays, StorageReport,
   StorageRetention, Subscriber, SubscriberDossier, SubscriberHit,
@@ -238,6 +238,8 @@ export interface RunListQuery extends PageQuery {
   runId?: string;
   /** Keep only each pipeline's newest run (the batch status board); status filters apply to that latest run. */
   latest?: boolean;
+  /** Keep only the runs started this way (the board's "Started by" filter), by the rules each row's label follows. */
+  startedBy?: RunStartedByKind;
   /** Inclusive lower bound on WrittenUtc (ISO 8601, UTC): the schedules timeline reads runs by day. */
   from?: string;
   /** Inclusive upper bound on WrittenUtc (ISO 8601, UTC): the schedules timeline reads runs by day. */

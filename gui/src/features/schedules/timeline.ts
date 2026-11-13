@@ -3,7 +3,7 @@
 // rate). Kept side-effect-free so the chart and the page can share one source of truth and the math is testable
 // without a DOM. Every API timestamp is UTC by contract and goes through parseUtc before it becomes a number.
 
-import type { RunStatus, RunSummary, Schedule } from "../../api/types";
+import type { RunStartedBy, RunStatus, RunSummary, Schedule } from "../../api/types";
 import { parseUtc } from "../../lib/time";
 
 /** A selectable history window. `days` bounds the runs the timeline fetches (WrittenUtc within [now-days, now]). */
@@ -45,6 +45,9 @@ export interface RunBar {
   startMs: number;
   endMs: number;
   durationSeconds: number | null;
+  /** What started the run: the schedule on its own, behind its parents, or someone asking. A lane holds every run of
+   * its schedule's flows, so a bar there was not necessarily the schedule's own fire. */
+  startedBy: RunStartedBy | null;
 }
 
 /** One lane of the timeline: a schedule and the runs of its flow that fell inside the window. */
@@ -76,13 +79,19 @@ export interface TimelineStats {
   bestWindow: QuietWindow | null;
 }
 
-/** The human trigger label for a schedule, matching the wording the Schedules table uses. */
+/** The human trigger label for a schedule, matching the wording the Schedules table uses: its cron, its interval, or
+ * the schedules it chains behind. */
 export function triggerLabel(schedule: Schedule): string {
   if (schedule.cron !== null) {
     return `cron: ${schedule.cron}`;
   }
 
-  return schedule.intervalSeconds !== null ? `every ${schedule.intervalSeconds}s` : "manual";
+  if (schedule.intervalSeconds !== null) {
+    return `every ${schedule.intervalSeconds}s`;
+  }
+
+  const parents = schedule.afterSchedules ?? [];
+  return parents.length > 0 ? `after ${parents.join(", ")}` : "manual";
 }
 
 function toBar(run: RunSummary): RunBar {
@@ -98,6 +107,7 @@ function toBar(run: RunSummary): RunBar {
     startMs,
     endMs,
     durationSeconds: run.durationSeconds,
+    startedBy: run.startedBy,
   };
 }
 

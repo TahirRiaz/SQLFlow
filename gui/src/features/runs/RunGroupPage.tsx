@@ -23,6 +23,7 @@ import { Page } from "../../components/Page";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 import { RunDuration } from "../../components/RunDuration";
+import { RunStartedByLine } from "../../components/RunStartedBy";
 import { RunStatusBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
 import { useRunDock } from "./RunDockContext";
@@ -300,6 +301,8 @@ function RunGroupContent({ groupId }: { groupId: string }) {
 
       <DetailHeaderCard
         title={`${modeLabel}: ${group.anchor}`}
+        // What started the group (every member records it alike) reads straight under its name.
+        subtitle={group.startedBy !== null ? <RunStartedByLine startedBy={group.startedBy} /> : undefined}
         badges={(
           <>
             <Badge variant="outline" data-testid="group-mode">{group.mode}</Badge>

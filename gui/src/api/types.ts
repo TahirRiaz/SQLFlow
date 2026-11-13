@@ -242,6 +242,37 @@ export type RunValue = string | string[];
 /** How a run was scoped: one flow, a flow and its descendants (Node), or a whole batch / data source. */
 export type RunScope = "flow" | "node" | "batch";
 
+/** What started a run, as a reader asks it: a schedule on its own (its clock), a schedule behind its parents, a person or
+ * API client, an external trigger, the command line, or not recorded (a run older than the record). */
+export type RunStartedByKind = "schedule" | "chain" | "user" | "trigger" | "cli" | "unknown";
+
+/** What started a run, worded by the control plane so every client says the same thing. */
+export interface RunStartedBy {
+  kind: RunStartedByKind;
+  /** The answer in one sentence, e.g. "alice ran schedule nightly now." */
+  summary: string;
+  /** The person, API client, external trigger or command-line account that asked; null when the estate ran it itself. */
+  who: string | null;
+  /** The schedule whose member set the run is one of, whether it fired on its own or someone ran it; null otherwise. */
+  scheduleId: string | null;
+  scheduleName: string | null;
+  /** For a chained fire: the first run of the parent fire it followed, and that fire's flow and schedule. */
+  afterRunId: string | null;
+  afterScheduleName: string | null;
+  afterFlowName: string | null;
+  /** The external trigger's request that asked for the run. */
+  triggerRequestId: string | null;
+}
+
+/** One link of the chain of parent fires behind a chained run, from the fire it followed back to the first link. */
+export interface RunCause {
+  runId: string;
+  flowName: string;
+  groupId: string | null;
+  status: RunStatus;
+  startedBy: RunStartedBy;
+}
+
 export interface RunSummary {
   runId: string;
   pipelineId: string;
@@ -276,8 +307,9 @@ export interface RunSummary {
   /** Why a failed run failed, carried on the summary so a set (a schedule's fire, a batch run) can show its
    * failures where they happened. Null for every run that did not fail. */
   error: string | null;
-  /** What started the run: "schedule", "manual" (the GUI, the API, an MCP tool), or "cli" (a synced local
-   * run); null on runs recorded before it was tracked. */
+  /** The recorded trigger source: "schedule" (a schedule's clock), "chain" (a schedule behind its parents), "manual"
+   * (a person or client asked: the GUI, a schedule's Run now, an external trigger, the API, an MCP tool), or "cli" (a
+   * synced local run); null on runs recorded before it was tracked. Read startedBy for what to show. */
   triggerSource: string | null;
   fullLoad: boolean;
   backfillFrom: string | null;
@@ -297,6 +329,13 @@ export interface RunSummary {
   startUtc: string | null;
   /** When the run ended; null until it has. */
   endUtc: string | null;
+  /** The schedule whose fire enqueued the run (on its own or asked for); null for a run asked for directly. */
+  triggerScheduleId: string | null;
+  /** For a chained fire: the first run of the parent fire it followed; null otherwise. */
+  triggerRunId: string | null;
+  /** What started the run. The runs list and a run's read carry it; a group's live member stream leaves it null, since
+   * the group's own read carries the one every member shares. */
+  startedBy: RunStartedBy | null;
 }
 
 export interface RunDetail extends RunSummary {
@@ -323,8 +362,9 @@ export interface RunDetail extends RunSummary {
   failedStatementOrdinal: number | null;
   failedStatementStep: string | null;
   failedStatementSql: string | null;
-  /** The schedule whose fire enqueued this run, when triggerSource is "schedule"; null otherwise. */
-  triggerScheduleId: string | null;
+  /** For a chained run: the chain of parent fires behind it, from the fire it followed back to the first link (the
+   * person or clock that started it all). Empty for every other run. */
+  causes: RunCause[];
   /** The parameters a module kind's run was given, each one value or a list; empty for SQLFlow's own kinds. */
   values: Record<string, RunValue>;
   /** The kind-owned request a module kind's run was given, as JSON; null when it carried none. */
@@ -781,6 +821,8 @@ export interface RunGroup {
   /** How long the group took, first start to last end: the wall-clock time of the set, not the sum of its members'
    * durations. Null until it has ended, and for a group none of whose members started. */
   durationSeconds: number | null;
+  /** What started the group, which every member records alike; null when its members have all left the catalog. */
+  startedBy: RunStartedBy | null;
 }
 
 // ---- Schedules -------------------------------------------------------------------------------------------------------
@@ -827,9 +869,10 @@ export interface Schedule {
   operation: string | null;
   /** The parameters a fire runs its members with, each one value or a list; empty when it passes none. */
   values: Record<string, RunValue>;
-  /** The schedule this one CHAINS BEHIND, or null when it is driven by the clock. A chained schedule has no cadence
-   * of its own and a null `nextFireUtc`: it becomes due once, when the named parent's fire completes. */
-  afterSchedule?: string | null;
+  /** The schedules this one CHAINS BEHIND, in declaration order; empty or null when it is driven by the clock. A
+   * chained schedule has no cadence of its own and a null `nextFireUtc`: it becomes due once every named parent's fire
+   * has completed. */
+  afterSchedules: string[] | null;
   /** The schedules this one sets off when it finishes, in chain order. Firing the head of a five-link chain
    * dispatches all five, so a run dialog showing only this schedule's own members would understate it. */
   triggersSchedules?: ScheduleChainLink[] | null;

@@ -641,6 +641,11 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
           <div className="font-mono text-xs text-muted-foreground">
             {dateTimeLabel.format(new Date(hover.bar.startMs))}
           </div>
+          {/* A lane holds every run of its schedule's flows, so say what started this one: the schedule on its own, a
+              chain, or someone asking. */}
+          {hover.bar.startedBy !== null && (
+            <div className="mt-1 text-xs" data-testid="timeline-bar-started-by">{hover.bar.startedBy.summary}</div>
+          )}
         </div>
       )}
     </div>

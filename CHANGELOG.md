@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- A schedule's Run now and an external trigger's fire record their runs as asked for (`TriggerSource` `manual`, naming
+  the caller or `trigger:<name>`), where they were recorded as the schedule firing on its own (`schedule`). A schedule
+  fired behind its parents records `chain`. The `RunTriggerCause` migration records past run-now and trigger runs as
+  `manual`, told apart by who they name ([What started a run](docs/reference/concepts/what-started-a-run.md)).
 - A toast says what happened at a glance: the outcome's glyph in its status color on a tint of it, the message over its
   reason, an action as a small outline button, and the close button inside the card's corner, in the workbench's own
   typeface. A success toast stays five seconds, and the stack sits clear of the status bar
@@ -51,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- Every run says what started it: a schedule on its own, a schedule after its parents (with the parent fire it followed),
+  a person or client, an external trigger, or the command line. The runs board has a Started by column and filter
+  (`/runs?startedBy=`), a run's and a group's page say it under the title, a chained run's page lists the chain of fires
+  behind it back to the first link, and the schedule timeline's hover names it for each run. `GET /runs` takes
+  `startedBy` and carries `startedBy` on every run, a run's read adds `causes`, a group's read carries its `startedBy`,
+  and `sqlflow runs list` gains a STARTED BY column and `--started-by`
+  ([What started a run](docs/reference/concepts/what-started-a-run.md)).
 - A file flow reads a Microsoft Dataverse table, the data behind Power Apps, with `source.type: dataverse`: typed columns
   from the table's metadata, so a column added or lengthened in Power Apps reaches the target through schema evolution;
   an incremental `watermarkColumn` (`versionnumber` or `modifiedon`) asked of the service as a `$filter`; paging, and
@@ -177,6 +188,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a fire that ran nothing, and every schedule chained behind it fired its whole member set, once per sync of the
   repository. A claim that parks a schedule no longer counts as a fire, so a catalog already in that state stops
   without a change of its own ([Schedules](docs/reference/flow/schedule.md#from-yaml-to-the-catalog-sync-semantics)).
+- The Schedules page names the schedules a chained schedule fires behind ("after land-files"), where it showed a bare
+  dash: the GUI read a field the API does not send (`afterSchedule`, for `afterSchedules`). The schedule timeline labels
+  such a lane "after ..." instead of "manual", and a cron whose date never comes shows a next fire of "never", saying why
+  on hover ([Schedules](docs/reference/flow/schedule.md)).
 - A document whose `flowType` is unknown is refused with a menu that names all fourteen built-in kinds: `sftp` was missing
   from it. The flow overview counts the fourteen kinds it lists, where it said twelve, and gives an `api` flow its three
   transports (HTTP, SFTP, Azure Table), not S3; the copy page documents the S3 endpoint a `cpy` flow already has, with

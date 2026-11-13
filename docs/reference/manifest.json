@@ -1880,6 +1880,47 @@
       ]
     },
     {
+      "id": "concept-what-started-a-run",
+      "corpus": "reference",
+      "path": "concepts/what-started-a-run.md",
+      "title": "What started a run: how every run records it, and where it shows",
+      "type": "concept",
+      "summary": "Every run records what started it: a schedule on its clock, a schedule behind its parents' fire (with the fire it followed), a person or client, an external ...",
+      "keywords": [
+        "started by",
+        "what started a run",
+        "who started a run",
+        "requested by",
+        "trigger source",
+        "chained fire",
+        "run now",
+        "external trigger",
+        "RunStartedBy",
+        "RunStartedByDto",
+        "TriggerRunId",
+        "causes"
+      ],
+      "related": [
+        "concept-control-plane",
+        "flow-schedule",
+        "concept-external-triggers"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.Catalog/ScheduleStore.cs",
+        "src/SqlFlow.Catalog/Migrations/20261113120537_RunTriggerCause.cs",
+        "src/SqlFlow.ControlPlane/Background/ScheduleFire.cs",
+        "src/SqlFlow.ControlPlane/Background/SchedulerService.cs",
+        "src/SqlFlow.ControlPlane/Api/RunStartedBy.cs",
+        "src/SqlFlow.ControlPlane/Api/RunEndpoints.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.cs",
+        "gui/src/components/RunStartedBy.tsx",
+        "gui/src/features/runs/startedBy.ts",
+        "gui/src/features/runs/RunsPage.tsx"
+      ]
+    },
+    {
       "id": "flow-ai-context",
       "corpus": "reference",
       "path": "flow/ai-context.md",
