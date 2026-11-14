@@ -366,7 +366,9 @@ testids (`table-row`, `paged-table`, `group-header-row`, ...). Spec: card surfac
 rows; hairline row separators; hover `bg-accent/50` on clickable rows; multi-level tree grouping with
 chevrons (a `levels` list, each an independently expandable node level above the leaf rows, e.g. the Runs
 board's schedule -> batch -> step); skeleton rows while loading; `EmptyState` inside when empty; numeric
-columns right-aligned mono tabular; status columns render `StatusBadge`.
+columns right-aligned mono tabular; status columns render `StatusBadge`. A list longer than a page pages
+under its table through `TablePager` (rows per page, the range in view, previous and next), so every list reads and
+moves alike: `PagedTable` for rows a server pages, `usePagedRows` for rows the page already holds.
 
 ### 7.2a Trees
 
