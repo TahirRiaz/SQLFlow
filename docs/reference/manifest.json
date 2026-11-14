@@ -531,6 +531,8 @@
         "revoked lease",
         "graceful shutdown",
         "drain",
+        "leaving poll",
+        "offline nodes",
         "SIGTERM",
         "termination grace period",
         "scale-in",

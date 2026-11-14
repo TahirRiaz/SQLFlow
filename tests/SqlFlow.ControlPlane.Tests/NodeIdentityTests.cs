@@ -68,8 +68,9 @@ public sealed class NodeIdentityTests
         transport.OnPoll = () => stop.Cancel();
         await worker.RunAsync(new RunWorkerOptions { PollWait = TimeSpan.FromSeconds(1), DrainTimeout = TimeSpan.Zero }, stop.Token);
 
-        var poll = Assert.Single(transport.Polls);
-        Assert.Equal("worker-default-0123456789", poll.Node);
+        // The work poll, then the goodbye after the stop: both under the given name.
+        Assert.Equal(2, transport.Polls.Count);
+        Assert.All(transport.Polls, poll => Assert.Equal("worker-default-0123456789", poll.Node));
     }
 
     [Fact]

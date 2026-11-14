@@ -94,6 +94,14 @@ public sealed partial class RunWorker : IDisposable
     /// already be tripped) may keep retrying on its own deadline.</summary>
     private static readonly TimeSpan TerminalReportBudget = TimeSpan.FromMinutes(2);
 
+    /// <summary>How long the leaving poll may take, retries included. It is sent after the drain, inside the platform's
+    /// termination grace period, so it rides out a refusal from a replica that does not own dispatch but never holds
+    /// the exit for long.</summary>
+    private static readonly TimeSpan LeaveBudget = TimeSpan.FromSeconds(15);
+
+    /// <summary>The waits between leaving-poll attempts refused as retryable.</summary>
+    private static readonly TimeSpan[] LeaveWaits = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)];
+
     private readonly IServiceProvider _services;
     private readonly INodeTransport _transport;
     private readonly DocumentExecutor _executor;
@@ -116,6 +124,10 @@ public sealed partial class RunWorker : IDisposable
     // Set the first time a restart is initiated so the stop fires exactly once, even across the several polls that
     // may elapse while the drain completes.
     private int _restartInitiated;
+
+    // Set once a dispatcher has answered a poll from this node: only then does a fleet view list it, and only then is
+    // there anything for the leaving poll to take off.
+    private int _answered;
 
     // The runs this node is executing, keyed by run id: each with its own cancellation source (linked to the abort
     // token) and the attempt its hand-out carried (the fence every outcome report presents, and what the poll
@@ -160,7 +172,8 @@ public sealed partial class RunWorker : IDisposable
     /// what the node is already executing. Once it trips, the in-flight runs keep going (and the node keeps polling
     /// with no free slots, so their leases stay alive and the dispatcher never mistakes a draining node for a dead
     /// one) for up to <see cref="RunWorkerOptions.DrainTimeout"/>. Only when that window expires are the survivors
-    /// cancelled and left for the dispatcher's lease expiry to requeue.
+    /// cancelled and left for the dispatcher's lease expiry to requeue. Last, the node tells the dispatcher it is
+    /// leaving, so it comes off the fleet view instead of being listed offline.
     /// </summary>
     public async Task RunAsync(RunWorkerOptions options, CancellationToken stoppingToken)
     {
@@ -194,6 +207,7 @@ public sealed partial class RunWorker : IDisposable
                 var response = await PollAsync(
                     options, freeRuns, freeTasks, pollWait, allowSlotWake: freeRuns == 0 && freeTasks == 0, stoppingToken)
                     .ConfigureAwait(false);
+                Volatile.Write(ref _answered, 1);
                 backoff = MinBackoff;
                 // Applying the answer sits inside the same guard as the poll: nothing that happens to one response
                 // (a signal for a run that finished in the meantime, a launch that fails) may ever end the loop,
@@ -240,6 +254,42 @@ public sealed partial class RunWorker : IDisposable
         if (pending.Length > 0)
         {
             await DrainInFlightAsync(pending, options.DrainTimeout, abortCts).ConfigureAwait(false);
+        }
+
+        await LeaveAsync(options).ConfigureAwait(false);
+    }
+
+    /// <summary>The stopping node's last poll, once the drain is over: it says the node is leaving, so the dispatcher
+    /// takes it off the fleet view at once rather than listing it offline until <c>Dispatch:NodeRetentionHours</c>
+    /// prunes it. It reports what the node still holds, which after the drain is nothing (every execution has ended,
+    /// finished or severed), and a dispatcher keeps a node that reports work on the view. Best-effort on its own short
+    /// budget, since the stopping token is tripped and the platform's grace period is running: a node that cannot say
+    /// goodbye is pruned like one that crashed, and that is logged, never thrown.</summary>
+    private async Task LeaveAsync(RunWorkerOptions options)
+    {
+        if (Volatile.Read(ref _answered) == 0)
+        {
+            // No dispatcher ever answered this node (the control plane's own node on a replica that never owned
+            // dispatch, say), so no fleet view lists it and there is nothing to take off.
+            return;
+        }
+
+        var request = BuildRequest(options, 0, 0, 0) with { Leaving = true };
+        try
+        {
+            using var cts = new CancellationTokenSource(LeaveBudget);
+            await DispatcherRetry
+                .RunAsync(
+                    LeaveWaits,
+                    ct => _transport.PollAsync(request, ct),
+                    (ex, wait) => LogLeaveRetry(SecretHygiene.RedactedMessage(ex), (int)wait.TotalSeconds),
+                    cts.Token)
+                .ConfigureAwait(false);
+            LogLeft();
+        }
+        catch (Exception ex)
+        {
+            LogLeaveFailed(SecretHygiene.RedactedMessage(ex));
         }
     }
 
@@ -1304,6 +1354,15 @@ public sealed partial class RunWorker : IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Drained: every in-flight item finished and reported its outcome.")]
     private partial void LogDrained();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Told the dispatcher this node is leaving; it comes off the fleet view rather than being listed offline.")]
+    private partial void LogLeft();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Dispatcher unavailable for the leaving poll: {Error} (retrying in about {WaitSeconds}s)")]
+    private partial void LogLeaveRetry(string error, int waitSeconds);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not tell the dispatcher this node is leaving ({Error}); it stays listed offline until the control plane's Dispatch:NodeRetentionHours prunes it.")]
+    private partial void LogLeaveFailed(string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Drain window of {DrainSeconds}s expired with work still in flight; cancelling it. Each severed run's lease lapses and the dispatcher requeues it, which consumes one of its execution attempts. Raise the drain window, or the platform's termination grace period, if this recurs.")]
     private partial void LogDrainTimedOut(int drainSeconds);

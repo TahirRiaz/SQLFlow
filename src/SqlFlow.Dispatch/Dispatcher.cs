@@ -219,7 +219,9 @@ public sealed partial class Dispatcher : IDisposable
     /// <summary>Serves a node's poll: registers the heartbeat, renews the node's leases (reporting the ones it lost),
     /// collects pending cancels and a restart request, hands out as much eligible work as the node has room for, and
     /// otherwise parks the call until something changes or the wait elapses. A draining node is handed nothing, and
-    /// the first poll that shows it holding nothing is answered with the exit flag (see <see cref="NodeRegistry.Drain"/>).</summary>
+    /// the first poll that shows it holding nothing is answered with the exit flag (see <see cref="NodeRegistry.Drain"/>).
+    /// A leaving poll (<see cref="NodePollRequest.Leaving"/>) is handed nothing and answered at once; holding nothing,
+    /// its node comes off the fleet view on the next flush.</summary>
     public async Task<NodePollResponse> PollAsync(NodePollRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -234,9 +236,11 @@ public sealed partial class Dispatcher : IDisposable
             .Where(k => k.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToList();
-        var freeRunSlots = Math.Max(0, request.FreeRunSlots);
-        var freeTaskSlots = Math.Max(0, request.FreeTaskSlots);
-        var waitSeconds = Math.Clamp(request.WaitSeconds, 0, _options.LongPollSeconds);
+        // A leaving node will not poll again, so whatever it reports, it is given no slot to fill and no reason to wait:
+        // work handed to it would sit out a lease before another node could take it.
+        var freeRunSlots = request.Leaving ? 0 : Math.Max(0, request.FreeRunSlots);
+        var freeTaskSlots = request.Leaving ? 0 : Math.Max(0, request.FreeTaskSlots);
+        var waitSeconds = request.Leaving ? 0 : Math.Clamp(request.WaitSeconds, 0, _options.LongPollSeconds);
         var deadline = _clock.GetUtcNow() + TimeSpan.FromSeconds(waitSeconds);
         var holdsWork = request.HoldingRuns.Count > 0 || request.HoldingTasks.Count > 0;
 
@@ -763,14 +767,44 @@ public sealed partial class Dispatcher : IDisposable
         }
     }
 
-    private async Task FlushNodesAsync(CancellationToken ct)
+    /// <summary>Writes the fleet registry to the ledger: the last poll of every node that polled since the previous
+    /// flush, and, for a node whose last poll said it was leaving, the removal of its row, so a clean stop never lingers
+    /// on the fleet view as an offline node. The tick runs this every <see cref="DispatchOptions.NodeFlushSeconds"/>;
+    /// the host calls it once more on a graceful stop, before deactivating, so a node that left in the last seconds
+    /// (the control plane's own, which drains just before the dispatcher stops) is taken off too. Rows are written
+    /// here and nowhere else, one after another, so no heartbeat of a node can land after its removal. A write that
+    /// fails leaves that node and every one after it marked for the next flush (a node that left will not poll to mark
+    /// itself again), then throws. Does nothing while passive.</summary>
+    public async Task FlushNodesAsync(CancellationToken ct)
     {
-        foreach (var beat in Nodes.TakeDirty())
+        if (!_active)
         {
-            var restart = await _ledger.RecordNodeHeartbeatAsync(beat, ct).ConfigureAwait(false);
-            if (Nodes.SetRestartRequested(beat.Name, restart))
+            return;
+        }
+
+        var beats = Nodes.TakeDirty();
+        for (var i = 0; i < beats.Count; i++)
+        {
+            var beat = beats[i];
+            try
             {
-                Queue.WakeNode(beat.Name);
+                if (beat.Left)
+                {
+                    var removed = await _ledger.RemoveNodeAsync(beat.Name, ct).ConfigureAwait(false);
+                    LogNodeLeft(beat.Name, removed > 0);
+                    continue;
+                }
+
+                var restart = await _ledger.RecordNodeHeartbeatAsync(beat, ct).ConfigureAwait(false);
+                if (Nodes.SetRestartRequested(beat.Name, restart))
+                {
+                    Queue.WakeNode(beat.Name);
+                }
+            }
+            catch (Exception)
+            {
+                Nodes.MarkDirty(beats.Skip(i).Select(b => b.Name));
+                throw;
             }
         }
     }
@@ -978,6 +1012,9 @@ public sealed partial class Dispatcher : IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Pruned {Count} node(s) silent for more than {RetentionHours}h from the fleet registry.")]
     private partial void LogNodesPruned(int count, int retentionHours);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Node '{Node}' stopped cleanly and left the fleet registry (it had a row: {HadRow}).")]
+    private partial void LogNodeLeft(string node, bool hadRow);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Reconcile removed {Kind} {Id}: the ledger no longer holds it as memory did.")]
     private partial void LogReconcileRemoved(string kind, Guid id);

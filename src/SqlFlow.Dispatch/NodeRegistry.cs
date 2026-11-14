@@ -12,6 +12,10 @@ namespace SqlFlow.Dispatch;
 /// exit, through the same flag a restart uses, so a node finishes every run it was handed before it leaves. Draining
 /// lives only in memory and only the managed fleet sets it; with nothing drained, a poll answers exactly as it would
 /// without this.</para>
+/// <para>A node that stops cleanly says so on its last poll (<see cref="NodePollRequest.Leaving"/>). Holding nothing,
+/// it counts as offline from that moment, and the next flush removes its ledger row rather than writing it, so the
+/// fleet view lists only the nodes that are there and the ones that went silent without leaving. Its entry here stays
+/// until it expires like any silent node's, since the managed fleet still reasons about a worker it watched leave.</para>
 /// </summary>
 public sealed class NodeRegistry
 {
@@ -23,7 +27,8 @@ public sealed class NodeRegistry
     private readonly Dictionary<string, NodeState> _nodes = new(StringComparer.Ordinal);
 
     /// <summary>Records a poll: the node's capacity, holdings and pools, and when it was heard. A first poll from a
-    /// name registers it.</summary>
+    /// name registers it. A leaving poll that reports nothing held marks the node as left; any other poll clears the
+    /// mark, so a node that polls again after saying it was leaving is back on the fleet view.</summary>
     public void Touch(NodePollRequest request, IReadOnlyList<string> poolKeys, DateTime nowUtc)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -64,6 +69,9 @@ public sealed class NodeRegistry
                 state.IdleSinceUtc ??= nowUtc;
             }
 
+            // A node still reporting work has not left, whatever it says: its leases are real until they lapse, so it
+            // stays on the fleet view until it falls silent and ages out like a crashed node.
+            state.Left = request.Leaving && state.BusyRuns == 0 && state.BusyTasks == 0;
             state.Dirty = true;
         }
     }
@@ -169,7 +177,8 @@ public sealed class NodeRegistry
     }
 
     /// <summary>The heartbeats to flush: every node that polled since the last flush, each stamped with its last poll
-    /// time. Clears the dirty marks, so a node that stops polling is flushed once more and then no longer.</summary>
+    /// time and whether that poll was its leaving one. Clears the dirty marks, so a node that stops polling is flushed
+    /// once more and then no longer.</summary>
     public IReadOnlyList<NodeHeartbeat> TakeDirty()
     {
         lock (_gate)
@@ -185,10 +194,27 @@ public sealed class NodeRegistry
                 state.Dirty = false;
                 beats.Add(new NodeHeartbeat(
                     state.Name, state.Version, state.PoolKeys.Count > 0 ? state.PoolKeys[0] : string.Empty,
-                    state.BusyRuns, state.RunSlots, state.LastSeenUtc));
+                    state.BusyRuns, state.RunSlots, state.LastSeenUtc, state.Left));
             }
 
             return beats;
+        }
+    }
+
+    /// <summary>Marks nodes for the next flush again, after a flush could not write them. A name the registry has
+    /// forgotten meanwhile is skipped.</summary>
+    public void MarkDirty(IEnumerable<string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        lock (_gate)
+        {
+            foreach (var name in names)
+            {
+                if (_nodes.TryGetValue(name, out var state))
+                {
+                    state.Dirty = true;
+                }
+            }
         }
     }
 
@@ -217,7 +243,7 @@ public sealed class NodeRegistry
 
     /// <summary>How many online nodes serve a pool, and how many free run slots they reported between them. An
     /// untargeted run (the empty pool key) can go to any online node, so every node serves that key. A draining node
-    /// takes no new work, so it serves no pool.</summary>
+    /// takes no new work, so it serves no pool, and a node that has left is not online.</summary>
     public (int OnlineNodes, int FreeRunSlots) Capacity(string poolKey, DateTime nowUtc)
     {
         ArgumentNullException.ThrowIfNull(poolKey);
@@ -228,7 +254,7 @@ public sealed class NodeRegistry
             var slots = 0;
             foreach (var state in _nodes.Values)
             {
-                if (state.LastSeenUtc < onlineSince || !state.Serves(poolKey) || state.DrainRequestedUtc is not null)
+                if (!state.IsOnline(onlineSince) || !state.Serves(poolKey) || state.DrainRequestedUtc is not null)
                 {
                     continue;
                 }
@@ -241,7 +267,7 @@ public sealed class NodeRegistry
         }
     }
 
-    /// <summary>Every registered node, most recently seen first.</summary>
+    /// <summary>Every registered node, most recently seen first. A node that has left is listed offline.</summary>
     public IReadOnlyList<NodeView> Snapshot(DateTime nowUtc)
     {
         var onlineSince = nowUtc - OnlineWindow;
@@ -252,7 +278,7 @@ public sealed class NodeRegistry
                 .ThenBy(n => n.Name, StringComparer.Ordinal)
                 .Select(n => new NodeView(
                     n.Name, n.Version, n.PoolKeys, n.RunSlots, n.FreeRunSlots, n.TaskSlots, n.FreeTaskSlots,
-                    n.FirstSeenUtc, n.LastSeenUtc, n.StartedUtc, n.RestartRequestedUtc, n.LastSeenUtc >= onlineSince,
+                    n.FirstSeenUtc, n.LastSeenUtc, n.StartedUtc, n.RestartRequestedUtc, n.IsOnline(onlineSince),
                     n.BusyRuns, n.BusyTasks, n.IdleSinceUtc, n.DrainRequestedUtc, n.ExitSignalledUtc))
                 .ToList();
         }
@@ -307,7 +333,13 @@ public sealed class NodeRegistry
         /// <summary>When a poll answer last told the draining node to exit.</summary>
         public DateTime? LastExitSignalUtc { get; set; }
 
+        /// <summary>Whether the node's last poll said it was leaving, holding nothing.</summary>
+        public bool Left { get; set; }
+
         public bool Dirty { get; set; }
+
+        /// <summary>Polled within the online window, and has not left.</summary>
+        public bool IsOnline(DateTime onlineSince) => !Left && LastSeenUtc >= onlineSince;
 
         /// <summary>Every node serves the untargeted (empty) pool; a named pool only its members.</summary>
         public bool Serves(string poolKey) => poolKey.Length == 0 || PoolKeys.Contains(poolKey, StringComparer.Ordinal);

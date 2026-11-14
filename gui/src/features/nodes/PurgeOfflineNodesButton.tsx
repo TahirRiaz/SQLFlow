@@ -8,9 +8,9 @@ import { nodeApi } from "../../api/endpoints";
 import { useAuth } from "../../auth/AuthContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 
-/** Clears every offline node out of the fleet registry in one go. The list accumulates a dead row per worker pod
- *  (each revision, each autoscale-up registers under a fresh name), so deleting them one at a time is tedious; this
- *  is the bulk form of {@link NodeDeleteButton}, offered only to operators. */
+/** Clears every offline node out of the fleet registry in one go. A node that stops cleanly leaves the list itself, so
+ *  what remains offline went silent without leaving (killed, crashed, cut off), one row per worker pod since each
+ *  registers under a fresh name; this is the bulk form of {@link NodeDeleteButton}, offered only to operators. */
 export function PurgeOfflineNodesButton() {
   const { hasScope } = useAuth();
   const queryClient = useQueryClient();

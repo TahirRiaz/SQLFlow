@@ -136,6 +136,9 @@ public sealed class CatalogDispatchLedger : IDispatchLedger
     public Task<int> PruneNodesAsync(DateTime olderThanUtc, CancellationToken ct)
         => WithCatalogAsync(catalog => NodeStore.PruneStaleAsync(catalog, olderThanUtc, ct));
 
+    public Task<int> RemoveNodeAsync(string name, CancellationToken ct)
+        => WithCatalogAsync(catalog => NodeStore.DeleteAsync(catalog, name, ct));
+
     public Task<bool> TryAcquireOwnershipAsync(string owner, DateTime nowUtc, TimeSpan ttl, CancellationToken ct)
         => WithCatalogAsync(catalog => DispatchLeaseStore.TryAcquireAsync(
             catalog, DispatchLeaseStore.DispatchLeaseName, owner, nowUtc, ttl, ct));

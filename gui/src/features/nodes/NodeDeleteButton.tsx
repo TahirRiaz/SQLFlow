@@ -10,8 +10,8 @@ import { useAuth } from "../../auth/AuthContext";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 
 /** Removes a dead node from the fleet registry. Offered only for offline nodes (a live node would just re-register
- *  on its next heartbeat) and only to operators. The 24h prune clears these automatically; this is the on-demand
- *  removal. */
+ *  on its next heartbeat) and only to operators. A node that stops cleanly leaves on its own, and the dispatcher's
+ *  prune (Dispatch:NodeRetentionHours, 24 by default) clears one that went silent; this is the on-demand removal. */
 export function NodeDeleteButton({ node }: { node: Node }) {
   const { hasScope } = useAuth();
   const queryClient = useQueryClient();

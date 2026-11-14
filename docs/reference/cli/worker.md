@@ -19,6 +19,8 @@ keywords:
   - revoked lease
   - graceful shutdown
   - drain
+  - leaving poll
+  - offline nodes
   - SIGTERM
   - termination grace period
   - scale-in
@@ -124,6 +126,8 @@ One call, `POST /api/v1/node/poll`, is at once the heartbeat, the lease renewal,
 
 When the node has free slots and nothing is eligible, the dispatcher parks the call for up to `--poll-seconds` and answers the instant a run it could take is enqueued or becomes eligible, so a run handed to a standalone worker starts within milliseconds of being queued, not after a poll interval. When the node has no free slots the call is a heartbeat: it parks too, but only a signal for this node (a cancel, a revoked lease, a restart request) wakes it early. A slot freeing on the node cancels a parked heartbeat so the node re-polls with its new capacity at once.
 
+A stopping node's last poll carries `leaving: true` (see "Shutdown and the drain"). It is handed nothing and answered at once, whatever it reports, and when it holds nothing the dispatcher counts the node offline from then on and deletes its fleet registry row on the next flush, so a node that stops cleanly leaves the Nodes page instead of being listed offline. A control plane that predates the field reads it as a heartbeat with no free slot and no wait.
+
 A poll that cannot reach the control plane, or reaches a replica whose dispatcher is not the owner (HTTP 503 `Dispatch is not active on this replica` with a retry hint), is logged as `Dispatcher unavailable for polling: <redacted> (retrying in about Ns)` and retried with jittered backoff from 1 to 20 seconds; a poll the control plane rejects outright is logged as `Dispatcher poll error`. Held leases outlive several failed polls, so a brief control-plane blip never loses work.
 
 ### Leases
@@ -188,10 +192,11 @@ Both are registered through `PosixSignalRegistration` with `Cancel = true` (src/
 1. **Stops taking work.** Queued runs stay available to other nodes.
 2. **Drains.** Runs already in flight keep executing under a cancellation token that is deliberately NOT linked to the stopping token, so they finish and report their own outcomes. The node keeps polling (with no free slots) for the whole drain, which is load-bearing: a silent node's leases lapse and its runs are requeued, so a draining node that stopped polling would have the very work it is finishing re-executed underneath it.
 3. **Severs only on timeout.** If work is still in flight after `--drain-seconds`, it is cancelled and left for the dispatcher's lease expiry, with a warning naming the expired window. A severed run's trace feed drops whatever it still had queued rather than retrying it, so a node never hangs on the trace of a run it has abandoned. A node cannot drain forever, because the platform that asked it to stop will kill it regardless.
-4. **Stops the hosted services** it started, newest first (`StoppingAsync`, `StopAsync`, `StoppedAsync`), within 15 seconds in all, so what they hold (metrics not yet exported, say) is let go before the node's services are disposed. One that fails to stop, or that the time runs out on, is named in a `WARN` line on stderr, and the others still stop.
-5. Prints `SQLFlow worker stopped.` and exits 0.
+4. **Says it is leaving.** Its last poll carries `leaving: true`, holding nothing and asking for nothing, so the dispatcher takes it off the fleet view on its next flush. Each worker pod polls under a fresh name, so without this every revision swap and scale-in would leave a row listed offline until `Dispatch:NodeRetentionHours` pruned it. The poll has 15 seconds, retries included (a refusal from a replica that does not own dispatch is retried after 1, 2 and 4 seconds); a node that cannot get it through logs `Could not tell the dispatcher this node is leaving` and stops as usual, its row pruned like a crashed node's. A node no dispatcher ever answered skips it, since nothing lists it.
+5. **Stops the hosted services** it started, newest first (`StoppingAsync`, `StopAsync`, `StoppedAsync`), within 15 seconds in all, so what they hold (metrics not yet exported, say) is let go before the node's services are disposed. One that fails to stop, or that the time runs out on, is named in a `WARN` line on stderr, and the others still stop.
+6. Prints `SQLFlow worker stopped.` and exits 0.
 
-A **second** stop signal skips the drain: it falls through to the runtime's default termination, so a worker is never unkillable. The severed runs' leases lapse and the dispatcher requeues them exactly as a crash would.
+A **second** stop signal skips the drain: it falls through to the runtime's default termination, so a worker is never unkillable. The severed runs' leases lapse and the dispatcher requeues them exactly as a crash would, and, as after a crash, the node is listed offline until its row is pruned, since it never said it was leaving.
 
 Why this matters: a severed run reports no outcome at all, so it is recovered only by the lease expiry, which **consumes one of its three execution attempts** and repeats all of its work. In an autoscaled fleet where replicas are reclaimed routinely, three unlucky stops inside one run's life will fail a perfectly healthy run and report that the run itself was the cause. The drain is what stops routine scale-in from manufacturing those failures.
 

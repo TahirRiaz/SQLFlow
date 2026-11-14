@@ -136,8 +136,22 @@ public sealed partial class DispatchService : BackgroundService
             return;
         }
 
-        // A graceful stop: stop serving, then free the lease so the successor takes over at once. The release runs
-        // on its own short deadline because the stopping token is already tripped.
+        // A graceful stop: write the fleet registry once more, so a node that left since the last flush is off the
+        // fleet view (this host's own node stops just before this service does, and says it is leaving as it goes),
+        // then stop serving and free the lease so the successor takes over at once. Both run on their own short
+        // deadlines because the stopping token is already tripped.
+        using (var flush = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+        {
+            try
+            {
+                await _dispatcher.FlushNodesAsync(flush.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                LogFinalFlushFailed(SecretHygiene.RedactedMessage(ex));
+            }
+        }
+
         _dispatcher.Deactivate();
         using var release = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         try
@@ -165,4 +179,7 @@ public sealed partial class DispatchService : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Dispatch service tick error: {Error}")]
     private partial void LogTickError(string error);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The fleet registry could not be written on shutdown ({Error}); a node that left since the last flush stays listed offline until Dispatch:NodeRetentionHours prunes it.")]
+    private partial void LogFinalFlushFailed(string error);
 }
