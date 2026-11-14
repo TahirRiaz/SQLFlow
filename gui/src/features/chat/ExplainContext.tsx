@@ -1,4 +1,4 @@
-import { createContext, lazy, Suspense, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DrawerHeader, LeftDrawer } from "@/components/LeftDrawer";
@@ -10,8 +10,8 @@ import { navEntryFor, routeTitle } from "../../layout/nav";
 import { useActiveTabTitle } from "../../layout/workbench/TabsContext";
 import { branding } from "../../modules/branding";
 import {
-  changeSubject, codeExplanation, explainChangeQuestion, explainPageQuestion, type ExplainChange, type ExplainCode,
-  type ExplainPage, type ExplainQuestion, type PageOutline,
+  EXPLAIN_HEADING, askHeading, changeSubject, codeExplanation, explainChangeQuestion, explainPageQuestion, isAskedAlready,
+  type AssistantAsk, type ExplainChange, type ExplainCode, type ExplainPage, type ExplainQuestion, type PageOutline,
 } from "./explain";
 import { ExplainIcon } from "./ExplainIcon";
 
@@ -23,6 +23,13 @@ const DEFAULT_WIDTH = 480;
 /** The narrowest the drawer is dragged to; the widest is most of its frame, so the page always shows beside it. */
 const MIN_WIDTH = 360;
 const WIDTH_KEY = "sqlflow.explain.width";
+/**
+ * The same for a question asked wide: room for a file or a table in the answer, kept apart from an explanation's width,
+ * and never more than this share of a narrow window, so the page that asked stays in view beside it.
+ */
+const WIDE_WIDTH = 760;
+const WIDE_SHARE = 0.55;
+const WIDE_WIDTH_KEY = "sqlflow.explain.wideWidth";
 
 /** The content of the dialogs whose overlay holds the page, and so the drawer, out of reach. */
 const MODAL_CONTENT = '[data-slot="sheet-content"], [data-slot="dialog-content"], [data-slot="alert-dialog-content"]';
@@ -39,13 +46,22 @@ export interface ExplainValue {
   explainChange: (change: ExplainChange, origin: Element | null) => void;
   /** Explains the page in view: what the feature is for, what it shows, what a person does there. */
   explainPage: () => void;
+  /**
+   * Asks the assistant a question the page words itself, in the same drawer, under the heading the ask names: something
+   * made for the person rather than an explanation. Asked again while its conversation is open, it keeps that conversation.
+   */
+  ask: (ask: AssistantAsk, origin: Element | null) => void;
 }
 
 /** One explanation: what it is about, in a few words, and the question that opens its conversation. */
 interface Asked {
   id: number;
+  /** The drawer's heading: "Explain", or what a page's own question names. */
+  heading: string;
   subject: string;
   question: string;
+  /** Opened wide, at the width kept for wide questions. */
+  wide: boolean;
   /** Asked from inside a modal dialog, so it opens over the dialog rather than in the frame under it. */
   overDialog: boolean;
 }
@@ -75,8 +91,9 @@ function readOutline(): PageOutline {
  * does, its right edge dragged to make it wider or narrower, so the page stays in view beside it; maximized, it covers
  * the frame for the conversation alone, and restoring or closing it shows the page again as it was left. Asked from
  * inside a modal dialog, whose overlay holds the frame out of reach, it opens in a sheet from the left over the dialog.
- * Every explanation is a conversation of its own, kept with the others on the Assistant page. Offered only while the
- * assistant is configured: `useExplain` answers null otherwise, and the buttons stay hidden.
+ * Every explanation is a conversation of its own, kept with the others on the Assistant page. A page asks a question of
+ * its own wording the same way (`ask`): under its own heading, and wide when the answer holds a file or a table. Offered
+ * only while the assistant is configured: `useExplain` answers null otherwise, and the buttons stay hidden.
  */
 export function ExplainProvider({ children }: { children: ReactNode }) {
   const capabilities = useQuery({ queryKey: ["chat", "capabilities"], queryFn: () => chatApi.capabilities() });
@@ -97,9 +114,19 @@ export function ExplainProvider({ children }: { children: ReactNode }) {
     };
   }, [pathname, tabTitle]);
 
-  const ask = useCallback((subject: string, question: string, origin: Element | null) => {
+  // What the drawer holds open now, read where a question is asked: the same one asked again keeps its conversation.
+  const held = useRef<{ open: boolean; question: string | null }>({ open: false, question: null });
+  useEffect(() => {
+    held.current = { open, question: asked?.question ?? null };
+  }, [open, asked]);
+
+  const ask = useCallback((subject: string, question: string, origin: Element | null, heading = EXPLAIN_HEADING, wide = false) => {
+    if (isAskedAlready(held.current.open, held.current.question, question)) {
+      return;
+    }
+
     counter.current += 1;
-    setAsked({ id: counter.current, subject, question, overDialog: origin?.closest(MODAL_CONTENT) != null });
+    setAsked({ id: counter.current, heading, subject, question, wide, overDialog: origin?.closest(MODAL_CONTENT) != null });
     setOpen(true);
   }, []);
 
@@ -121,6 +148,7 @@ export function ExplainProvider({ children }: { children: ReactNode }) {
       const current = page();
       ask(`The ${current.title} page`, explainPageQuestion(current, readOutline(), branding().productName), null);
     },
+    ask: (asking, origin) => ask(asking.subject, asking.question, origin, askHeading(asking), asking.wide === true),
   }, [enabled, ask, page]);
 
   const state = useMemo(
@@ -135,7 +163,10 @@ export function ExplainProvider({ children }: { children: ReactNode }) {
         <SheetContent
           side="left"
           showCloseButton={false}
-          className={cn("gap-0 bg-card p-0", maximized ? "w-screen sm:max-w-none" : "w-[480px] sm:max-w-[85vw]")}
+          className={cn(
+            "gap-0 bg-card p-0",
+            maximized ? "w-screen sm:max-w-none" : asked?.wide === true ? "w-[760px] sm:max-w-[85vw]" : "w-[480px] sm:max-w-[85vw]",
+          )}
           data-testid="explain-sheet"
         >
           <SheetDescription className="sr-only">
@@ -147,7 +178,7 @@ export function ExplainProvider({ children }: { children: ReactNode }) {
               maximized={maximized}
               onMaximizedChange={setMaximized}
               onClose={close}
-              title={<SheetTitle className="text-[13px] leading-5 font-semibold">Explain</SheetTitle>}
+              title={<SheetTitle className="text-[13px] leading-5 font-semibold">{asked.heading}</SheetTitle>}
             />
           )}
         </SheetContent>
@@ -174,9 +205,11 @@ export function ExplainDrawer({ maximizedClassName }: { maximizedClassName: stri
   const { asked, maximized, setMaximized, close } = state;
   return (
     <LeftDrawer
-      label="Explain"
-      widthKey={WIDTH_KEY}
-      defaultWidth={DEFAULT_WIDTH}
+      // A wide question keeps a width of its own, so the drawer is read anew when the one asked changes kind.
+      key={asked.wide ? "wide" : "narrow"}
+      label={asked.heading}
+      widthKey={asked.wide ? WIDE_WIDTH_KEY : WIDTH_KEY}
+      defaultWidth={asked.wide ? Math.max(MIN_WIDTH, Math.min(WIDE_WIDTH, Math.round(window.innerWidth * WIDE_SHARE))) : DEFAULT_WIDTH}
       minWidth={MIN_WIDTH}
       maximized={maximized}
       maximizedClassName={maximizedClassName}
@@ -188,7 +221,7 @@ export function ExplainDrawer({ maximizedClassName }: { maximizedClassName: stri
         maximized={maximized}
         onMaximizedChange={setMaximized}
         onClose={close}
-        title={<h2 className="text-[13px] leading-5 font-semibold">Explain</h2>}
+        title={<h2 className="text-[13px] leading-5 font-semibold">{asked.heading}</h2>}
       />
     </LeftDrawer>
   );

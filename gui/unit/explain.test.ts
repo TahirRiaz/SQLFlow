@@ -3,8 +3,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  MAX_EXPLAIN_LENGTH, MAX_OUTLINE_ENTRIES, changeSubject, codeExplanation, codeSubject, explainChangeQuestion,
-  explainCodeQuestion, explainPageQuestion, languageName, tidyOutline, type ExplainPage,
+  EXPLAIN_HEADING, MAX_EXPLAIN_LENGTH, MAX_OUTLINE_ENTRIES, askHeading, changeSubject, codeExplanation, codeSubject,
+  explainChangeQuestion, explainCodeQuestion, explainPageQuestion, isAskedAlready, languageName, tidyOutline, type ExplainPage,
 } from "../src/features/chat/explain.ts";
 
 const PIPELINE: ExplainPage = {
@@ -13,6 +13,23 @@ const PIPELINE: ExplainPage = {
   area: "Pipelines",
   description: "Every pipeline across the repositories.",
 };
+
+describe("a question a page asks of the assistant", () => {
+  it("opens under its own heading, and under Explain's when it names none", () => {
+    assert.equal(askHeading({ heading: "Assistant" }), "Assistant");
+    assert.equal(askHeading({ heading: "  Assistant " }), "Assistant");
+    assert.equal(askHeading({}), EXPLAIN_HEADING);
+    assert.equal(askHeading({ heading: "  " }), EXPLAIN_HEADING);
+  });
+
+  it("keeps the conversation the drawer holds open when the same question is asked again", () => {
+    assert.equal(isAskedAlready(true, "Write the file.", "Write the file."), true);
+    assert.equal(isAskedAlready(true, "Write the file.", "Write another file."), false);
+    // A drawer closed has let its conversation go: the same question asks anew.
+    assert.equal(isAskedAlready(false, "Write the file.", "Write the file."), false);
+    assert.equal(isAskedAlready(true, null, "Write the file."), false);
+  });
+});
 
 describe("languageName", () => {
   it("names the languages the code windows show, and spells out any other", () => {
