@@ -54,6 +54,7 @@
     "src/features/runs/runInputs.ts",
     "src/features/runs/startedBy.ts",
     "src/features/schedules/scheduleValues.ts",
+    "src/features/schedules/timeline.ts",
     "src/lib/time.ts",
     "src/theme/designs.ts"
   ]

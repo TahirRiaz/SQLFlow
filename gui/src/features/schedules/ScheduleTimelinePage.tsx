@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Rows3 } from "lucide-react";
@@ -11,14 +11,15 @@ import { runApi, scheduleApi } from "../../api/endpoints";
 import type { RunStatus, RunSummary } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
-import { FilterBar } from "../../components/FilterBar";
-import { KpiCard } from "../../components/KpiCard";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
+import { SummaryStrip, type SummaryCell } from "../../components/SummaryStrip";
 import { pollingInterval } from "../../hooks/usePolling";
 import { formatDurationSeconds } from "../../lib/time";
-import { ScheduleTimelineChart, statusTone, type ScheduleTimelineHandle, type StatusTone } from "./ScheduleTimelineChart";
-import { buildRows, computeStats, DEFAULT_RANGE_KEY, RANGE_PRESETS, rangeByKey } from "./timeline";
+import { ScheduleTimelineChart } from "./ScheduleTimelineChart";
+import {
+  buildRows, computeStats, DEFAULT_RANGE_KEY, RANGE_PRESETS, rangeByKey, statusTone, type StatusTone, type TimelineStats,
+} from "./timeline";
 
 const DAY_MS = 86_400_000;
 
@@ -56,12 +57,52 @@ const TONE_SWATCH: Record<StatusTone, string> = {
   muted: "bg-muted-foreground",
 };
 
-/** The Schedules timeline: a day-by-day Gantt of when each schedule's flow actually ran, with the estate's
- * cadence rolled up into an insight strip (busiest hour, quietest free window, success rate). */
+/** The figures a new schedule is planned against, on one line above the chart: where the day is free, where it is
+ * busiest and how long a run takes first, then how the window went. A success rate below 90% speaks up; a healthy
+ * one stays quiet. */
+function summaryCells(stats: TimelineStats): SummaryCell[] {
+  const free = stats.bestWindow;
+  const busiest = stats.busiestHour;
+  const rate = stats.successRate;
+  return [
+    {
+      label: "Free window",
+      value: free?.range ?? "none",
+      caption: free === null ? "something runs every hour" : `${free.freeHours}h, nothing running`,
+      testId: "timeline-insight",
+    },
+    {
+      label: "Busiest hour",
+      value: busiest?.range ?? "-",
+      caption: busiest === null ? undefined : `${busiest.runCount} ${busiest.runCount === 1 ? "run starts" : "runs start"} then`,
+      testId: "timeline-insight",
+    },
+    {
+      label: "Average run",
+      value: stats.avgDurationSeconds == null ? "-" : formatDurationSeconds(stats.avgDurationSeconds),
+      testId: "timeline-insight",
+    },
+    {
+      label: "Runs",
+      value: String(stats.runCount),
+      caption: rate == null ? undefined : (
+        <span className={cn(rate < 50 ? "text-destructive" : rate < 90 && "text-warning")}>{`${rate}% succeeded`}</span>
+      ),
+      testId: "timeline-insight",
+    },
+    {
+      label: "Active schedules",
+      value: `${stats.activeScheduleCount} of ${stats.scheduleCount}`,
+      testId: "timeline-insight",
+    },
+  ];
+}
+
+/** The Schedules timeline: what runs when, so a new schedule can be put where the estate has room. A day-by-day Gantt
+ * of each schedule's runs, opened on the latest days with the free window shaded, under one line of the figures that
+ * plan it (free window, busiest hour, average run). */
 export default function ScheduleTimelinePage() {
   const [rangeKey, setRangeKey] = useState<string>(DEFAULT_RANGE_KEY);
-  const [zoomed, setZoomed] = useState(false);
-  const chartRef = useRef<ScheduleTimelineHandle>(null);
   const range = rangeByKey(rangeKey);
 
   const schedulesQuery = useQuery({
@@ -90,14 +131,6 @@ export default function ScheduleTimelinePage() {
     () => (schedules !== undefined ? computeStats(schedules, rows) : null),
     [schedules, rows],
   );
-
-  const successColor = stats?.successRate == null
-    ? undefined
-    : stats.successRate >= 90
-      ? "success" as const
-      : stats.successRate >= 50
-        ? "warning" as const
-        : "error" as const;
 
   const renderBody = () => {
     if (schedulesQuery.isError) {
@@ -148,14 +181,15 @@ export default function ScheduleTimelinePage() {
       );
     }
 
+    // Keyed by range: a new range opens on its latest days again, while a refetch of the same range keeps the view.
     return (
       <ScheduleTimelineChart
-        ref={chartRef}
+        key={rangeKey}
         rows={rows}
         windowStartMs={runsQuery.data.fromMs}
         windowEndMs={runsQuery.data.toMs}
         nowMs={runsQuery.data.toMs}
-        onZoomChange={setZoomed}
+        freeWindow={stats?.bestWindow ?? null}
       />
     );
   };
@@ -164,67 +198,40 @@ export default function ScheduleTimelinePage() {
     <Page data-testid="page-schedule-timeline">
       <PageHeader
         title="Schedule timeline"
-        subtitle="When each schedule's flow actually ran, across the selected window."
+        subtitle="What runs when, to plan where a new schedule fits."
         actions={(
-          <Button variant="outline" size="sm" asChild data-testid="timeline-to-table">
-            <RouterLink to="/schedules">
-              <Rows3 />
-              Table
-            </RouterLink>
-          </Button>
+          <>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={rangeKey}
+              onValueChange={(next) => {
+                if (next !== "") {
+                  setRangeKey(next);
+                }
+              }}
+              aria-label="History range"
+              data-testid="timeline-range"
+            >
+              {RANGE_PRESETS.map((preset) => (
+                <ToggleGroupItem key={preset.key} value={preset.key} className="h-8 px-2.5 text-xs" aria-label={preset.label}>
+                  {preset.key}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <Button variant="outline" size="sm" asChild data-testid="timeline-to-table">
+              <RouterLink to="/schedules">
+                <Rows3 />
+                Table
+              </RouterLink>
+            </Button>
+          </>
         )}
       />
 
-      <FilterBar>
-        {zoomed && (
-          <Button variant="outline" size="sm" onClick={() => chartRef.current?.reset()} data-testid="timeline-reset-zoom">
-            Reset zoom
-          </Button>
-        )}
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={rangeKey}
-          onValueChange={(next) => {
-            if (next !== "") {
-              setRangeKey(next);
-            }
-          }}
-          aria-label="History range"
-          data-testid="timeline-range"
-        >
-          {RANGE_PRESETS.map((preset) => (
-            <ToggleGroupItem key={preset.key} value={preset.key} className="h-8 px-2.5 text-xs" aria-label={preset.label}>
-              {preset.key}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </FilterBar>
-
-      {stats !== null && runsQuery.data !== undefined && (
-        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
-          <KpiCard label="Schedules" value={`${stats.activeScheduleCount}/${stats.scheduleCount}`} testId="timeline-insight" />
-          <KpiCard label="Runs" value={String(stats.runCount)} testId="timeline-insight" />
-          <KpiCard
-            label="Success"
-            value={stats.successRate == null ? "-" : `${stats.successRate}%`}
-            color={successColor}
-            testId="timeline-insight"
-          />
-          <KpiCard
-            label="Avg duration"
-            value={stats.avgDurationSeconds == null ? "-" : formatDurationSeconds(stats.avgDurationSeconds)}
-            testId="timeline-insight"
-          />
-          <KpiCard label="Busiest hour" value={stats.busiestHour ?? "-"} testId="timeline-insight" />
-          <KpiCard
-            label="Best window"
-            value={stats.bestWindow?.range ?? "-"}
-            caption={stats.bestWindow === null ? undefined : `${stats.bestWindow.freeHours}h free`}
-            testId="timeline-insight"
-          />
-        </div>
+      {stats !== null && stats.runCount > 0 && (
+        <SummaryStrip cells={summaryCells(stats)} minCellWidth={150} data-testid="timeline-summary" />
       )}
 
       <div className="rounded-lg border bg-card p-4">{renderBody()}</div>
@@ -241,8 +248,17 @@ export default function ScheduleTimelinePage() {
             <span className="size-3 rounded-full border-[1.5px] border-dashed border-primary bg-primary/10" />
             next fire
           </span>
+          {stats.bestWindow !== null && (
+            <span className="flex items-center gap-1.5">
+              {/* The band as the chart draws it: a tenth of the primary over the card, not over the page behind the legend. */}
+              <span className="relative size-3 overflow-hidden rounded-[3px] border bg-card">
+                <span className="absolute inset-0 bg-primary/10" />
+              </span>
+              free window
+            </span>
+          )}
           <span className="ml-auto">
-            Click a day to drill in · double-click the chart to zoom · scroll to zoom · drag to pan
+            Scroll to zoom · drag to pan · click a date or double-click the chart to open that day
           </span>
         </div>
       )}

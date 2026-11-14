@@ -1,28 +1,12 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import type { RunStatus } from "../../api/types";
 import { brandToken } from "../../theme/branding";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 import { formatDurationSeconds } from "../../lib/time";
-import type { RunBar, TimelineRow } from "./timeline";
-
-/** The status tones the timeline draws with (DESIGN.md 3.2): status colors are reserved for run states, and
- * cancelled/skipped/none read as muted. One mapping shared by the chart and the page's legend. */
-export type StatusTone = "success" | "destructive" | "info" | "warning" | "muted";
-
-export function statusTone(status: RunStatus | null): StatusTone {
-  switch (status) {
-    case "succeeded":
-      return "success";
-    case "failed":
-      return "destructive";
-    case "running":
-      return "info";
-    case "queued":
-      return "warning";
-    default:
-      return "muted";
-  }
-}
+import {
+  chosenView, FOCUS_DAYS, resolveView, statusTone, type QuietWindow, type RunBar, type TimelineRow, type TimelineView,
+} from "./timeline";
 
 /** The design tokens the SVG draws with, read off the document via getComputedStyle (the SVG attributes need
  * resolved color strings). Cached per design and mode; a change re-reads them. Never hex literals. */
@@ -54,18 +38,13 @@ function readPalette(): ChartPalette {
 
 interface ScheduleTimelineChartProps {
   rows: TimelineRow[];
-  /** The fetched window; the chart's initial (fully zoomed-out) viewport and the navigator's full extent. */
+  /** The fetched window: the navigator's full extent. The chart opens on its latest FOCUS_DAYS. A new range is a new
+   * chart (the page keys it by range), while a refetch of the same range slides the window and keeps the view. */
   windowStartMs: number;
   windowEndMs: number;
   nowMs: number;
-  /** Notifies the parent whenever the viewport is narrower than the full window, so it can offer a reset control
-   * in its own toolbar (kept out of the chart so it never overlaps the axis). */
-  onZoomChange?: (zoomed: boolean) => void;
-}
-
-/** Imperative handle: the parent's "Reset zoom" toolbar button calls this to restore the full window. */
-export interface ScheduleTimelineHandle {
-  reset: () => void;
+  /** The stretch of the day with nothing executing, shaded on every day in view; null when there is none. */
+  freeWindow: QuietWindow | null;
 }
 
 const LABEL_W = 208;
@@ -149,21 +128,45 @@ function makeTicks(startMs: number, endMs: number): Tick[] {
   return ticks;
 }
 
-/** A Gantt-style availability chart: one lane per schedule, one bar per run, colored by run status. The focus
- * chart on top shows the selected window; the navigator strip below is a brush over the whole fetched range,
- * drag its body to pan and its edges to zoom (the focus chart also takes scroll-to-zoom and drag-to-pan). */
-export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, ScheduleTimelineChartProps>(
-  function ScheduleTimelineChart({ rows, windowStartMs, windowEndMs, nowMs, onZoomChange }, ref) {
+/** One of the navigator's two view choices: a quiet text button, or the plain words of the one in effect. */
+function ViewChoice({ current, onClick, testId, children }: {
+  current: boolean;
+  onClick: () => void;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={current}
+      aria-pressed={current}
+      className={cn(
+        "rounded-sm underline-offset-4 outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        current ? "font-medium text-foreground" : "text-primary hover:underline",
+      )}
+      data-testid={testId}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A Gantt-style availability chart: one lane per schedule, one bar per run, colored by run status, with the day's free
+ * window shaded behind the lanes. The focus chart on top opens on the latest FOCUS_DAYS; the navigator strip below is a
+ * brush over the whole fetched range, drag its body to pan and its edges to zoom (the focus chart also takes
+ * scroll-to-zoom and drag-to-pan), and its gutter switches between the latest days and the whole window. */
+export function ScheduleTimelineChart({ rows, windowStartMs, windowEndMs, nowMs, freeWindow }: ScheduleTimelineChartProps) {
   const { palette: tokenKey } = useThemeMode();
   // Token values change with the design and mode put on <html>; the palette key keys the cache so a change re-reads
   // them (getComputedStyle has no reactivity of its own).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const palette = useMemo(readPalette, [tokenKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- tokenKey is the cache key itself, never read inside.
+  const palette = useMemo(() => readPalette(), [tokenKey]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const navRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(0);
-  const [view, setView] = useState<[number, number]>([windowStartMs, windowEndMs]);
+  const [chosen, setChosen] = useState<TimelineView>({ kind: "latest" });
   const [hover, setHover] = useState<HoverState | null>(null);
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   const dragRef = useRef<{ startX: number; viewStart: number; viewEnd: number } | null>(null);
@@ -174,10 +177,17 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
     [palette],
   );
 
-  // A new fetched window (range change or refetch) resets the viewport to fully zoomed out.
-  useEffect(() => {
-    setView([windowStartMs, windowEndMs]);
-  }, [windowStartMs, windowEndMs]);
+  const flatBars = useMemo(() => rows.flatMap((row) => row.bars), [rows]);
+  // The view is derived from what was chosen, not stored as two instants, so the 30-second refetch that slides the
+  // window to now keeps an operator's zoom where they put it (and the latest view on the newest runs).
+  const view = useMemo(
+    () => resolveView(chosen, flatBars, windowStartMs, windowEndMs),
+    [chosen, flatBars, windowStartMs, windowEndMs],
+  );
+  const settle = useCallback(
+    ([start, end]: [number, number]) => setChosen(chosenView(start, end, windowEndMs)),
+    [windowEndMs],
+  );
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -233,10 +243,10 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
       const dayStart = Math.max(windowStartMs, localMidnight(ms));
       const dayEnd = Math.min(windowEndMs, localMidnight(ms) + DAY_MS);
       if (dayEnd - dayStart >= MIN_SPAN_MS) {
-        setView([dayStart, dayEnd]);
+        settle([dayStart, dayEnd]);
       }
     },
-    [windowStartMs, windowEndMs],
+    [windowStartMs, windowEndMs, settle],
   );
 
   // Wheel-zoom on the focus chart is a non-passive native listener so it can preventDefault the page scroll.
@@ -258,12 +268,12 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
       const factor = event.deltaY < 0 ? 1 / 1.2 : 1.2;
       const nextSpan = Math.max(MIN_SPAN_MS, Math.min(viewSpan * factor, windowSpan));
       const ratio = (cursorMs - viewStart) / viewSpan;
-      setView(panTo(cursorMs - ratio * nextSpan, nextSpan));
+      settle(panTo(cursorMs - ratio * nextSpan, nextSpan));
     };
 
     svg.addEventListener("wheel", onWheel, { passive: false });
     return () => svg.removeEventListener("wheel", onWheel);
-  }, [viewStart, viewSpan, plotW, windowSpan, panTo]);
+  }, [viewStart, viewSpan, plotW, windowSpan, panTo, settle]);
 
   // --- Focus chart drag-to-pan ---------------------------------------------------------------------------------
   const onFocusPointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -284,7 +294,7 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
 
     const span = drag.viewEnd - drag.viewStart;
     const deltaMs = -((event.clientX - drag.startX) / plotW) * span;
-    setView(panTo(drag.viewStart + deltaMs, span));
+    settle(panTo(drag.viewStart + deltaMs, span));
   };
 
   const endFocusDrag = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -318,7 +328,7 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
       // Click on empty track: recenter the current span on the click, then let the drag pan from there.
       const clickedMs = windowStartMs + ((mouseX - LABEL_W) / plotW) * windowSpan;
       const [ns, ne] = panTo(clickedMs - viewSpan / 2, viewSpan);
-      setView([ns, ne]);
+      settle([ns, ne]);
       navDragRef.current = { mode: "pan", startX: event.clientX, viewStart: ns, viewEnd: ne };
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
@@ -336,11 +346,11 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
 
     const deltaMs = ((event.clientX - drag.startX) / plotW) * windowSpan;
     if (drag.mode === "pan") {
-      setView(panTo(drag.viewStart + deltaMs, drag.viewEnd - drag.viewStart));
+      settle(panTo(drag.viewStart + deltaMs, drag.viewEnd - drag.viewStart));
     } else if (drag.mode === "left") {
-      setView(resizeTo(drag.viewStart + deltaMs, drag.viewEnd));
+      settle(resizeTo(drag.viewStart + deltaMs, drag.viewEnd));
     } else {
-      setView(resizeTo(drag.viewStart, drag.viewEnd + deltaMs));
+      settle(resizeTo(drag.viewStart, drag.viewEnd + deltaMs));
     }
   };
 
@@ -360,16 +370,39 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
 
     return cols;
   }, [viewStart, viewEnd]);
-  const flatBars = useMemo(() => rows.flatMap((row) => row.bars), [rows]);
-  const focusHeight = AXIS_H + rows.length * LANE_H + 6;
-  const isZoomed = viewStart > windowStartMs + 1000 || viewEnd < windowEndMs - 1000;
-  const nowX = xOf(nowMs);
 
-  useImperativeHandle(ref, () => ({ reset: () => setView([windowStartMs, windowEndMs]) }), [windowStartMs, windowEndMs]);
-  useEffect(() => {
-    onZoomChange?.(isZoomed);
-  }, [isZoomed, onZoomChange]);
-  useEffect(() => () => onZoomChange?.(false), [onZoomChange]);
+  // The free window on every day in view, so the gap a new schedule could take shows where it falls between the bars.
+  // Each band starts at the window's local hour and one that crosses midnight runs on into the next day; the day before
+  // the view is included so such a band still shows at the view's left edge. Local clock arithmetic (setHours), not
+  // fixed 24-hour steps, so a daylight-saving day keeps the band on its hours.
+  const freeBands = useMemo(() => {
+    if (freeWindow === null) {
+      return [];
+    }
+
+    const bands: { startMs: number; endMs: number }[] = [];
+    const day = new Date(localMidnight(viewStart));
+    day.setDate(day.getDate() - 1);
+    while (day.getTime() < viewEnd) {
+      const start = new Date(day);
+      start.setHours(freeWindow.startHour);
+      const end = new Date(start);
+      end.setHours(start.getHours() + freeWindow.freeHours);
+      if (end.getTime() > viewStart && start.getTime() < viewEnd) {
+        bands.push({ startMs: Math.max(viewStart, start.getTime()), endMs: Math.min(viewEnd, end.getTime()) });
+      }
+
+      day.setDate(day.getDate() + 1);
+    }
+
+    return bands;
+  }, [freeWindow, viewStart, viewEnd]);
+  const focusHeight = AXIS_H + rows.length * LANE_H + 6;
+  const showingAll = viewStart <= windowStartMs + 1000 && viewEnd >= windowEndMs - 1000;
+  // The two view choices only mean something when the window is wider than the latest days; a 24-hour window is both.
+  const canFocus = windowSpan > FOCUS_DAYS * DAY_MS + 1000;
+  const windowDays = Math.round(windowSpan / DAY_MS);
+  const nowX = xOf(nowMs);
   const selLeft = navXOf(viewStart);
   const selRight = navXOf(viewEnd);
 
@@ -415,6 +448,20 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
           onPointerCancel={endFocusDrag}
           onDoubleClick={onFocusDoubleClick}
         >
+          {freeBands.map((band) => (
+            <rect
+              key={`free-${band.startMs}`}
+              x={xOf(band.startMs)}
+              y={AXIS_H}
+              width={Math.max(0, xOf(band.endMs) - xOf(band.startMs))}
+              height={focusHeight - AXIS_H}
+              fill={palette.primary}
+              fillOpacity={0.1}
+              pointerEvents="none"
+              data-testid="timeline-free-band"
+            />
+          ))}
+
           {ticks.map((tick) => {
             const x = xOf(tick.ms);
             return (
@@ -489,7 +536,9 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
                   {row.label.length > 24 ? `${row.label.slice(0, 23)}…` : row.label}
                 </text>
 
-                {row.nextFireMs !== null && row.nextFireMs >= viewStart && row.nextFireMs <= viewEnd && (
+                {/* A disabled or paused schedule keeps the next fire it had when it stopped, an instant it will not fire
+                    at: only a schedule that is running marks one. */}
+                {row.enabled && !row.paused && row.nextFireMs !== null && row.nextFireMs >= viewStart && row.nextFireMs <= viewEnd && (
                   <circle
                     cx={xOf(row.nextFireMs)}
                     cy={centerY}
@@ -552,76 +601,99 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
         </svg>
       </div>
 
-      {/* Navigator brush over the whole fetched window. */}
-      <svg
-        ref={navRef}
-        width={width}
-        height={NAV_H}
-        role="presentation"
-        style={{ display: "block", touchAction: "none" }}
-        onPointerDown={onNavPointerDown}
-        onPointerMove={onNavPointerMove}
-        onPointerUp={endNavDrag}
-        onPointerCancel={endNavDrag}
-      >
-        <text x={8} y={NAV_LANE_TOP - 6} fill={palette.muted} fontSize={10} fontWeight={600}>
-          OVERVIEW
-        </text>
-        <text x={8} y={NAV_LANE_BOTTOM} fill={palette.muted} fontSize={10}>
-          drag to pan · edges to zoom
-        </text>
-
-        {/* Track */}
-        <rect
-          x={LABEL_W}
-          y={NAV_LANE_TOP}
-          width={Math.max(0, width - LABEL_W)}
-          height={NAV_LANE_BOTTOM - NAV_LANE_TOP}
-          fill={palette.foreground}
-          fillOpacity={0.04}
-          rx={3}
-        />
-
-        {/* Every run as a faint tick, so the busy stretches of the window are visible at a glance. */}
-        {flatBars.map((bar) => (
-          <line
-            key={bar.runId}
-            x1={navXOf(bar.startMs)}
-            y1={NAV_LANE_TOP + 3}
-            x2={navXOf(bar.startMs)}
-            y2={NAV_LANE_BOTTOM - 3}
-            stroke={statusColor(bar.status)}
-            strokeWidth={1.25}
-            strokeOpacity={0.55}
-          />
-        ))}
-
-        {/* Selection window */}
-        <rect
-          x={selLeft}
-          y={NAV_LANE_TOP}
-          width={Math.max(2, selRight - selLeft)}
-          height={NAV_LANE_BOTTOM - NAV_LANE_TOP}
-          fill={palette.primary}
-          fillOpacity={0.16}
-          stroke={palette.primary}
-          strokeWidth={1.5}
-          rx={2}
-          style={{ cursor: "grab" }}
-        />
-        {[selLeft, selRight].map((x, i) => (
+      {/* Navigator brush over the whole fetched window, with the two views it can jump to in its gutter. */}
+      <div className="relative">
+        <div
+          className="absolute left-0 top-0 flex flex-col justify-center gap-1 pl-2"
+          style={{ width: LABEL_W - 2 * HANDLE_HIT, height: NAV_H }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Overview</span>
+          {canFocus && (
+            <div className="flex items-center gap-1.5 text-xs" data-testid="timeline-view">
+              <ViewChoice
+                current={chosen.kind === "latest"}
+                onClick={() => setChosen({ kind: "latest" })}
+                testId="timeline-view-latest"
+              >
+                {`Latest ${FOCUS_DAYS} days`}
+              </ViewChoice>
+              <span aria-hidden className="text-muted-foreground">·</span>
+              <ViewChoice
+                current={showingAll}
+                onClick={() => setChosen({ kind: "from", startMs: windowStartMs })}
+                testId="timeline-view-all"
+              >
+                {`All ${windowDays} days`}
+              </ViewChoice>
+            </div>
+          )}
+        </div>
+        <svg
+          ref={navRef}
+          width={width}
+          height={NAV_H}
+          role="presentation"
+          style={{ display: "block", touchAction: "none" }}
+          onPointerDown={onNavPointerDown}
+          onPointerMove={onNavPointerMove}
+          onPointerUp={endNavDrag}
+          onPointerCancel={endNavDrag}
+        >
+          {/* Track */}
           <rect
-            key={i === 0 ? "handle-left" : "handle-right"}
-            x={x - 3}
-            y={NAV_LANE_TOP - 1}
-            width={6}
-            height={NAV_LANE_BOTTOM - NAV_LANE_TOP + 2}
-            rx={2}
-            fill={palette.primary}
-            style={{ cursor: "ew-resize" }}
+            x={LABEL_W}
+            y={NAV_LANE_TOP}
+            width={Math.max(0, width - LABEL_W)}
+            height={NAV_LANE_BOTTOM - NAV_LANE_TOP}
+            fill={palette.foreground}
+            fillOpacity={0.04}
+            rx={3}
           />
-        ))}
-      </svg>
+  
+          {/* Every run as a faint tick, so the busy stretches of the window are visible at a glance. */}
+          {flatBars.map((bar) => (
+            <line
+              key={bar.runId}
+              x1={navXOf(bar.startMs)}
+              y1={NAV_LANE_TOP + 3}
+              x2={navXOf(bar.startMs)}
+              y2={NAV_LANE_BOTTOM - 3}
+              stroke={statusColor(bar.status)}
+              strokeWidth={1.25}
+              strokeOpacity={0.55}
+            />
+          ))}
+  
+          {/* Selection window */}
+          <rect
+            x={selLeft}
+            y={NAV_LANE_TOP}
+            width={Math.max(2, selRight - selLeft)}
+            height={NAV_LANE_BOTTOM - NAV_LANE_TOP}
+            fill={palette.primary}
+            fillOpacity={0.16}
+            stroke={palette.primary}
+            strokeWidth={1.5}
+            rx={2}
+            style={{ cursor: "grab" }}
+            data-testid="timeline-view-selection"
+          >
+            <title>Drag to move the view, drag an edge to widen or narrow it</title>
+          </rect>
+          {[selLeft, selRight].map((x, i) => (
+            <rect
+              key={i === 0 ? "handle-left" : "handle-right"}
+              x={x - 3}
+              y={NAV_LANE_TOP - 1}
+              width={6}
+              height={NAV_LANE_BOTTOM - NAV_LANE_TOP + 2}
+              rx={2}
+              fill={palette.primary}
+              style={{ cursor: "ew-resize" }}
+            />
+          ))}
+        </svg>
+      </div>
 
       {hover !== null && (
         <div
@@ -650,4 +722,4 @@ export const ScheduleTimelineChart = forwardRef<ScheduleTimelineHandle, Schedule
       )}
     </div>
   );
-});
+}
