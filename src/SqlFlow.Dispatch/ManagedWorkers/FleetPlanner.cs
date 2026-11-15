@@ -16,7 +16,11 @@ public sealed record FleetWorker(
 /// <see cref="ResumedUtc"/> is when it last resumed after a pause in its own ticks (the process stood still, or its clock
 /// jumped), which restarts the same timers, since nobody could be heard during the pause. <see cref="ListCurrent"/> is
 /// false when the launcher could not be asked this tick and <see cref="Workers"/> holds what it said last.
-/// <see cref="WorkerTimeLimit"/> is the longest the platform lets a worker run, when it limits it.</summary>
+/// <see cref="WorkerTimeLimit"/> is the longest the platform lets a worker run, when it limits it.
+/// <see cref="NextWaveRuns"/> is, per pool, what a job in flight hands out next
+/// (<see cref="DispatchState.CountNextWave"/>): a pool keeps the workers that needs when it lets idle ones go.
+/// <see cref="RunsInFlight"/> is, per pool, how many of its runs are queued or executing: while there are any, a job is
+/// in flight, and its idle workers each wait the whole idle time rather than sharing it.</summary>
 public sealed record FleetSnapshot(
     DateTime NowUtc,
     DateTime TakeoverUtc,
@@ -28,7 +32,9 @@ public sealed record FleetSnapshot(
     IReadOnlyDictionary<string, DateTime> BlockedUntilUtc,
     TimeSpan? WorkerTimeLimit = null,
     DateTime? ResumedUtc = null,
-    IReadOnlyDictionary<string, int>? EligibleWholeNodeRuns = null)
+    IReadOnlyDictionary<string, int>? EligibleWholeNodeRuns = null,
+    IReadOnlyDictionary<string, EligibleQueuedRuns>? NextWaveRuns = null,
+    IReadOnlyDictionary<string, int>? RunsInFlight = null)
 {
     /// <summary>Since when this control plane has watched the fleet without a gap: the later of the takeover and the
     /// last resume. Silence, start and idle times count from here at the earliest.</summary>
@@ -111,7 +117,9 @@ public sealed record FleetPlan(
 /// stale launcher list nothing is stopped and only a pool's minimum is restored. While the control plane hears no node
 /// at all (every node it knows went quiet together), the silence is most likely its own or the network's: no worker
 /// that has polled is stopped for silence and nothing is started for demand, so the fleet never replaces itself
-/// wholesale over a blip; the minimum is still restored once a silent worker's grace has passed. Two rules override the
+/// wholesale over a blip; the minimum is still restored once a silent worker's grace has passed. A worker that said it
+/// was leaving (<see cref="NodeView.Left"/>) is neither silent nor unheard: it is leaving, so it stops counting toward
+/// its pool at once and a fleet whose workers all left cleanly is simply empty. Two rules override the
 /// minimum, because the alternative is worse: a worker near the platform's time limit drains before the platform ends it
 /// mid-run, and a worker whose pool is no longer managed drains.
 /// </remarks>
@@ -175,15 +183,18 @@ public static class FleetPlanner
         return hard > maxLifetime ? maxLifetime + ((hard - maxLifetime) / 2) : hard * 3 / 4;
     }
 
-    /// <summary>Whether this control plane hears no node at all: it knows at least one, and none has polled within
-    /// <see cref="ManagedFleetSettings.PollFreshness"/> (counted from <see cref="FleetSnapshot.WatchedSinceUtc"/> at the
-    /// earliest). Every node going quiet together points at the control plane or the network between them, not at the
-    /// workers, and a new worker would not get through either.</summary>
+    /// <summary>Whether this control plane hears no node at all: it knows at least one that has not left, and none of
+    /// them has polled within <see cref="ManagedFleetSettings.PollFreshness"/> (counted from
+    /// <see cref="FleetSnapshot.WatchedSinceUtc"/> at the earliest). Every node going quiet together points at the
+    /// control plane or the network between them, not at the workers, and a new worker would not get through either.
+    /// A node that said it was leaving is not one of them: its silence is what it announced, so a fleet whose workers
+    /// all stopped cleanly is empty, not unheard.</summary>
     internal static bool HearsNoNode(FleetSnapshot snapshot, ManagedFleetSettings settings)
     {
         var watched = snapshot.WatchedSinceUtc;
-        return snapshot.Nodes.Count > 0
-            && snapshot.Nodes.All(n => snapshot.NowUtc - Later(n.LastSeenUtc, watched) > settings.PollFreshness);
+        var expected = snapshot.Nodes.Where(n => !n.Left).ToList();
+        return expected.Count > 0
+            && expected.All(n => snapshot.NowUtc - Later(n.LastSeenUtc, watched) > settings.PollFreshness);
     }
 
     private static FleetWorkerPhase Classify(
@@ -255,9 +266,11 @@ public static class FleetPlanner
         }
 
         var restarting = node.RestartRequestedUtc is { } restart && restart > node.StartedUtc;
-        if (node.DrainRequestedUtc is not null || restarting)
+        if (node.DrainRequestedUtc is not null || restarting || node.Left)
         {
-            // Leaving (drained, or restarted by an operator): it takes no new work and does not count toward the minimum.
+            // Leaving (drained, restarted by an operator, or stopped by something else and said so on its last poll): it
+            // takes no new work and does not count toward the minimum, so a worker that left unasked is replaced on this
+            // tick rather than once its silence has outlasted a blip.
             if (node.Online && node.ExitSignalledUtc is { } told && now - told >= settings.ExitTimeout)
             {
                 if (canStop)
@@ -274,7 +287,11 @@ public static class FleetPlanner
                 if (canStop)
                 {
                     stops.Add(new PlannedStop(
-                        worker.Name, worker.Pool, $"it went silent while leaving {Minutes(now - node.LastSeenUtc)} ago", FailedStart: false));
+                        worker.Name, worker.Pool,
+                        node.Left
+                            ? $"it said it was leaving {Minutes(now - node.LastSeenUtc)} ago, and the platform still runs it"
+                            : $"it went silent while leaving {Minutes(now - node.LastSeenUtc)} ago",
+                        FailedStart: false));
                 }
 
                 return FleetWorkerPhase.Lost;
@@ -455,19 +472,62 @@ public static class FleetPlanner
         // Shrinking: only with nothing eligible queued for the pool, only workers idle long enough (counted from the
         // takeover or a resume at the earliest), the quiet ones and then the oldest first, and never below the minimum of
         // fresh Ready workers.
-        if (eligible == 0 && fresh > minimum)
+        //
+        // How long an idle worker waits depends on how many the pool can spare. Keeping one idle is a bet that work
+        // follows; each further one is a longer bet, since work that needs j workers at once is rarer than work that
+        // needs one. So with j idle workers to spare, the next to leave has waited Idle / j: the last of them the whole
+        // idle time, the one before half of it, and so on, which costs the pool about Idle x ln(j) of idle time in all
+        // where one wait for each costs Idle x j. No wait is shorter than MinIdle, about what starting a worker costs:
+        // under that, letting a worker go and starting it again costs more than keeping it would have.
+        //
+        // A job in flight keeps its workers, in two steps.
+        //
+        // While it still has steps waiting to start (runs of the pool queued behind a wave of their group), no idle
+        // worker leaves at all. The wave that opens next lands on the workers free at that moment, and how many it needs
+        // is not on the queue: a run that splits its work over workers asks for them only once it has planned. A worker
+        // let go now would be started again when the wave opens.
+        //
+        // While runs of the pool are executing and nothing waits behind a wave, every idle worker waits the whole idle
+        // time, not a share of it: a run may still split, and the run after it is queued only once it ends. The wait is
+        // bounded on purpose. One run that takes hours would otherwise hold every worker that stood beside it idle for
+        // as long, which costs far more than starting a worker again.
+        //
+        // Only once the pool is quiet, with no run of its own queued or executing, is the idle time shared.
+        var nextWave = snapshot.NextWaveRuns?.GetValueOrDefault(key) ?? default;
+        if (eligible == 0 && nextWave.Runs == 0)
         {
+            var keep = minimum;
             var idle = ready
                 .Select(w => (Worker: w, Node: nodes[w.Name]))
-                .Where(x => !IsBusy(x.Node) && x.Node.IdleSinceUtc is { } since
-                    && now - Later(since, snapshot.WatchedSinceUtc) >= settings.Idle)
+                .Where(x => !IsBusy(x.Node) && x.Node.IdleSinceUtc is not null)
                 .OrderBy(x => now - x.Node.LastSeenUtc <= settings.PollFreshness)
                 .ThenBy(x => x.Worker.LaunchedUtc ?? x.Node.StartedUtc)
                 .ThenBy(x => x.Worker.Name, StringComparer.Ordinal)
-                .Take(fresh - minimum);
-            foreach (var (worker, _) in idle)
+                .ToList();
+            // The workers that may leave are the first in that order; of those, the longest idle goes first, and each one
+            // that goes leaves a longer wait for the next.
+            var spare = Math.Max(0, Math.Min(fresh - keep, idle.Count));
+            var leaving = idle
+                .Take(spare)
+                .Select(x => (x.Worker, IdleFor: now - Later(x.Node.IdleSinceUtc!.Value, snapshot.WatchedSinceUtc)))
+                .OrderByDescending(x => x.IdleFor)
+                .ThenBy(x => x.Worker.Name, StringComparer.Ordinal)
+                .ToList();
+            var inFlight = (snapshot.RunsInFlight?.GetValueOrDefault(key) ?? 0) > 0;
+            for (var i = 0; i < leaving.Count; i++)
             {
-                drains.Add(new PlannedDrain(worker.Name, key, $"idle for {Minutes(settings.Idle)} or more with nothing queued"));
+                var remaining = leaving.Count - i;
+                var wait = inFlight ? settings.Idle : IdleWait(settings, remaining);
+                if (leaving[i].IdleFor < wait)
+                {
+                    break;
+                }
+
+                drains.Add(new PlannedDrain(
+                    leaving[i].Worker.Name, key,
+                    remaining == 1 || inFlight
+                        ? $"idle for {Minutes(wait)} or more with nothing queued"
+                        : $"idle for {Minutes(wait)} or more with nothing queued, one of {remaining} idle workers the pool can spare"));
             }
         }
 
@@ -476,6 +536,13 @@ public static class FleetPlanner
             key, minimum, pool.MaxWorkers, target, starting, ready.Count, due.Count, draining, busy, eligible, unserved, slots,
             blockedUntil, silent);
     }
+
+    /// <summary>How long the next idle worker to leave must have been idle when <paramref name="spare"/> idle workers can
+    /// be spared: <see cref="ManagedFleetSettings.Idle"/> shared between them, never less than
+    /// <see cref="ManagedFleetSettings.MinIdle"/>. One to spare waits the whole idle time; six wait a sixth of it each,
+    /// or the minimum where that is longer.</summary>
+    internal static TimeSpan IdleWait(ManagedFleetSettings settings, int spare)
+        => TimeSpan.FromTicks(Math.Max(settings.MinIdle.Ticks, settings.Idle.Ticks / Math.Max(1, spare)));
 
     /// <summary>Whether a node holds or was just handed work.</summary>
     private static bool IsBusy(NodeView node) => node.BusyRuns > 0 || node.BusyTasks > 0 || node.IdleSinceUtc is null;

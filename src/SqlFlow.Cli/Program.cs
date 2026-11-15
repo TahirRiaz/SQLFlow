@@ -2545,11 +2545,15 @@ internal static class Program
                                                  trace (or the group's member stream) and exits by the terminal
                                                  outcome.
               sqlflow runs list [--status s] [--flow name] [--batch b] [--kind k] [--repo r] [--group g] [--latest]
+                                [--started-by schedule|chain|user|trigger|cli|unknown]
               sqlflow runs show <runId> [--files --statements --assertions --keys --metrics]
               sqlflow runs trace <runId> [--follow]
                                                  The run inbox, one run's full header (with drill-down sections), and
                                                  the consolidated trace: plain text at rest, live streamed with
-                                                 --follow (reconnects with resume cursors on a drop).
+                                                 --follow (reconnects with resume cursors on a drop). Each run says
+                                                 what started it: a schedule on its own or after its parents, a
+                                                 person, an external trigger or the command line; --started-by
+                                                 lists only the runs started that way.
               sqlflow groups show <groupId> [--follow] | cancel <groupId> | rerun <groupId> [--follow]
                                                  A node/batch run group: rollup + members (live with --follow), group
                                                  cancellation, and rerun (a fresh re-expansion of the same anchor).

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, Loader2,
+  ArrowLeft, CircleAlert, Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { DEFAULT_PAGE_SIZE } from "@/lib/paging";
 import { cn } from "@/lib/utils";
 import type {
   DatasourceDatabase, DatasourceObject, DatasourceObjectPage, DatasourceSchema,
@@ -22,6 +22,7 @@ import { activeFilterClass, FilterBar } from "../../components/FilterBar";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
+import { TablePager } from "../../components/TablePager";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
 import { ObjectInspector } from "./ObjectInspector";
 import { useCompute } from "./useCompute";
@@ -70,7 +71,7 @@ export default function DatasourceBrowsePage() {
   const [includeViews, setIncludeViews] = useLocalStorageState("sqlflow.filters.datasourceBrowse.includeViews", true);
   const [includeSystem, setIncludeSystem] = useLocalStorageState("sqlflow.filters.datasourceBrowse.includeSystem", false);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [selected, setSelected] = useState<DatasourceObject | null>(null);
 
   // Any signed-in user may browse (the control plane's operate policy admits every authenticated caller), so the only
@@ -142,9 +143,6 @@ export default function DatasourceBrowsePage() {
   }
 
   const total = Number(objects.data?.total ?? 0);
-  const from = total === 0 ? 0 : page * pageSize + 1;
-  const to = Math.min(total, (page + 1) * pageSize);
-  const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
 
   return (
     <Page data-testid="page-datasource-browse">
@@ -274,58 +272,20 @@ export default function DatasourceBrowsePage() {
           : "No tables or views match this scope."}
         data-testid="browse-objects-table"
         footer={(
-          <div className="flex items-center justify-between gap-4 border-t border-border px-3 py-1.5">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              Rows per page
-              <Select
-                value={String(pageSize)}
-                onValueChange={(value) => {
-                  const nextSize = Number.parseInt(value, 10);
-                  setPageSize(nextSize);
-                  setPage(0);
-                  loadObjects(0, nextSize, appliedNameLike);
-                }}
-              >
-                <SelectTrigger size="sm" className="h-7 w-[72px] text-xs" aria-label="Rows per page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[25, 50, 100, 200].map((size) => (
-                    <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="font-mono tabular-nums">{from}-{to} of {total}</span>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label="Previous page"
-                disabled={page === 0}
-                onClick={() => {
-                  const next = Math.max(0, page - 1);
-                  setPage(next);
-                  loadObjects(next, pageSize, appliedNameLike);
-                }}
-              >
-                <ChevronLeft />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label="Next page"
-                disabled={page >= lastPage}
-                onClick={() => {
-                  const next = Math.min(lastPage, page + 1);
-                  setPage(next);
-                  loadObjects(next, pageSize, appliedNameLike);
-                }}
-              >
-                <ChevronRight />
-              </Button>
-            </div>
-          </div>
+          <TablePager
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPage={(next) => {
+              setPage(next);
+              loadObjects(next, pageSize, appliedNameLike);
+            }}
+            onPageSize={(nextSize) => {
+              setPageSize(nextSize);
+              setPage(0);
+              loadObjects(0, nextSize, appliedNameLike);
+            }}
+          />
         )}
       />
       {objects.data !== null && (

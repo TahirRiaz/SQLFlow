@@ -181,6 +181,55 @@ public sealed class ScheduleChainingTests
         }
     }
 
+    [SkippableFact]
+    public async Task ParentFireRun_IsTheParentsLastRun_OnlyWhileThatRunBelongsToItsLastFire()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var repoId = Guid.NewGuid();
+        var parentFire = new DateTime(2026, 8, 2, 20, 10, 0, DateTimeKind.Utc);
+        var fireRun = Run(repoId, Guid.NewGuid(), RunStatuses.Succeeded);
+        // The dispatcher stamps a run a moment after the fire instant the schedule records.
+        fireRun.EnqueuedUtc = parentFire.AddMilliseconds(40);
+
+        try
+        {
+            await using (var seed = CatalogDatabase.Create(cs))
+            {
+                var parent = Parent(repoId, "p", parentFire, fireRun.GroupId!.Value);
+                parent.LastRunId = fireRun.RunId;
+                seed.Schedules.Add(parent);
+                seed.Schedules.Add(Child(repoId, "c", "p"));
+                seed.Runs.Add(fireRun);
+                await seed.SaveChangesAsync();
+            }
+
+            var childId = CatalogIdentity.YamlSchedule(repoId, "c");
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                Assert.Equal(fireRun.RunId, await ScheduleStore.GetParentFireRunAsync(db, childId, parentFire));
+            }
+
+            // The parent fires again and enqueues nothing (every member left): its last run is now an earlier fire's, and
+            // a chained fire must not name a run it did not follow.
+            var emptyFire = parentFire.AddHours(1);
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await db.Schedules.Where(s => s.RepoId == repoId && s.Name == "p")
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.LastFireUtc, emptyFire));
+            }
+
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                Assert.Null(await ScheduleStore.GetParentFireRunAsync(db, childId, emptyFire));
+            }
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
     private static CatalogSchedule Parent(Guid repoId, string name, DateTime lastFireUtc, Guid groupId) => new()
     {
         Id = CatalogIdentity.YamlSchedule(repoId, name),

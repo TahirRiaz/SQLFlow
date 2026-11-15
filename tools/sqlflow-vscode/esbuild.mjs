@@ -2,6 +2,7 @@ import { build, context } from 'esbuild';
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { languageClientOnMinimatch11 } from './languageClientMinimatch.mts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
@@ -47,6 +48,7 @@ const options = {
     target: 'node18',
     format: 'cjs',
     external: ['vscode'],
+    plugins: [languageClientOnMinimatch11],
     sourcemap: !production,
     minify: production,
     logLevel: 'info',

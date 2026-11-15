@@ -367,6 +367,148 @@ public sealed class ScheduleApiTests
 
     [SkippableFact]
     [Trait("Category", "Integration")]
+    public async Task Scheduler_ParkingACronThatNeverComes_IsNotAFire_SoTheScheduleChainedBehindItStaysPut()
+    {
+        // The state a catalog was left in when a sync armed a 31 February cron at the sync time: the parent is due,
+        // its last real fire long consumed by the schedule chained behind it. The scheduler must park the parent
+        // without counting a fire, or the child follows with its whole member set on every such park.
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+        var pipelineId = CatalogIdentity.Pipeline(repoId, flowName);
+        var parentId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        var lastRealFire = DateTime.UtcNow.AddDays(-2);
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+
+        try
+        {
+            await SeedActivePipeline(cs, repoId, flowName);
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Schedules.Add(new CatalogSchedule
+                {
+                    Id = parentId,
+                    RepoId = repoId,
+                    Name = "parked_" + flowName,
+                    Cron = "0 0 31 2 *",
+                    Timezone = "UTC",
+                    Enabled = true,
+                    Source = "yaml",
+                    NextFireUtc = DateTime.UtcNow.AddMinutes(-1),
+                    LastFireUtc = lastRealFire,
+                    CreatedUtc = DateTime.UtcNow,
+                    UpdatedUtc = DateTime.UtcNow,
+                });
+                db.Schedules.Add(new CatalogSchedule
+                {
+                    Id = childId,
+                    RepoId = repoId,
+                    Name = "tail_" + flowName,
+                    Timezone = "UTC",
+                    Enabled = true,
+                    Source = "yaml",
+                    LastParentFireUtc = lastRealFire,
+                    CreatedUtc = DateTime.UtcNow,
+                    UpdatedUtc = DateTime.UtcNow,
+                    Parents =
+                    [
+                        new CatalogScheduleParent
+                        {
+                            ScheduleId = childId, RepoId = repoId, ParentName = "parked_" + flowName, Ordinal = 0,
+                        },
+                    ],
+                });
+                db.ScheduleMembers.Add(new CatalogScheduleMember
+                {
+                    ScheduleId = childId,
+                    PipelineId = pipelineId,
+                    RepoId = repoId,
+                    FlowName = flowName,
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Creating the client starts the host, and with it the scheduler (1s tick in tests), which parks the parent:
+            // its cron has no next occurrence.
+            using var client = factory.CreateClient();
+            CatalogSchedule? parent = null;
+            for (var attempt = 0; attempt < 60; attempt++)
+            {
+                await using var db = CatalogDatabase.Create(cs);
+                parent = await db.Schedules.AsNoTracking().SingleAsync(s => s.Id == parentId);
+                if (parent.NextFireUtc is null)
+                {
+                    break;
+                }
+
+                await Task.Delay(250);
+            }
+
+            Assert.NotNull(parent);
+            Assert.Null(parent.NextFireUtc);
+            Assert.Equal(lastRealFire, parent.LastFireUtc!.Value, TimeSpan.FromMilliseconds(1));
+
+            // Give the chained scan several ticks to react, as it did when the park counted as a fire.
+            await Task.Delay(TimeSpan.FromSeconds(4));
+
+            await using (var verify = CatalogDatabase.Create(cs))
+            {
+                var child = await verify.Schedules.AsNoTracking().SingleAsync(s => s.Id == childId);
+                Assert.Equal(lastRealFire, child.LastParentFireUtc!.Value, TimeSpan.FromMilliseconds(1));
+                Assert.Null(child.LastRunId);
+                Assert.False(await verify.Runs.AnyAsync(r => r.PipelineId == pipelineId));
+            }
+        }
+        finally
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await db.ScheduleParents.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+            }
+
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task CreateSchedule_WithACronThatNeverComes_IsCreatedParked()
+    {
+        // 31 February is a valid cron with no occurrence: the schedule exists, can be run now, and never fires on its own.
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+
+        try
+        {
+            await SeedActivePipeline(cs, repoId, flowName);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["operate"]);
+
+            using var create = await PostAsync(client, token, "/api/v1/schedules",
+                new CreateScheduleRequest(repoId, [flowName], "0 0 31 2 *", null, "UTC", true));
+            Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+            var created = await create.Content.ReadFromJsonAsync<ScheduleCreated>();
+            Assert.NotNull(created);
+            Assert.Null(created.NextFireUtc);
+
+            await using var db = CatalogDatabase.Create(cs);
+            var row = await db.Schedules.AsNoTracking().SingleAsync(s => s.Id == created.Id);
+            Assert.Null(row.NextFireUtc);
+            Assert.Null(row.LastFireUtc);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Integration")]
     public async Task ScheduleList_ReportsHowTheLastFireEnded()
     {
         // "Did the last execution work" must be answerable from the list: the schedule row carries the tally of the

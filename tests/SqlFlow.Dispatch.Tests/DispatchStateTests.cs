@@ -468,6 +468,40 @@ public sealed class DispatchStateTests
         Assert.Single(snapshot.Pools, p => p.Pool == "nobody" && p.QueuedRuns == 1);
     }
     [Fact]
+    public void CountNextWave_CountsWhatAJobInFlightHandsOutNext_PerPool_UnderItsCap()
+    {
+        var state = new DispatchState();
+        var job = Guid.NewGuid();
+        var capped = Guid.NewGuid();
+
+        // A job on its first wave, with three runs in the second and two in the third.
+        state.AddLeasedRun(Make.Run(At(0), pool: "etl", group: job, wave: 0), "n1", T0, T0.AddMinutes(1));
+        foreach (var wave in new[] { 1, 1, 1, 2, 2 })
+        {
+            state.AddQueuedRun(Make.Run(At(1), pool: "etl", group: job, wave: wave));
+        }
+
+        // Another, capped at two at once, with four runs in its second wave, one of which takes a node to itself.
+        state.AddLeasedRun(Make.Run(At(0), pool: "etl", group: capped, wave: 0, cap: 2), "n2", T0, T0.AddMinutes(1));
+        for (var i = 0; i < 4; i++)
+        {
+            state.AddQueuedRun(Make.Run(At(2), pool: "etl", group: capped, wave: 1, cap: 2) with { WholeNode = i == 0 });
+        }
+
+        // A run in no group, and one whose wave is open, are not waiting on a wave: they are eligible, not next.
+        state.AddQueuedRun(Make.Run(At(3), pool: "etl"));
+        state.AddQueuedRun(Make.Run(At(3), pool: "etl", group: job, wave: 0));
+
+        // Only the wave that opens next counts (three of the first job, not its third wave), and no more of the capped
+        // job than its cap lets run at once.
+        var next = state.CountNextWave("etl");
+        Assert.Equal(new EligibleQueuedRuns(5, 1), next);
+        Assert.Equal(2, next.Nodes(4)); // one node to itself, the other four share one
+        Assert.Equal(default, state.CountNextWave(string.Empty));
+        Assert.Equal(default, state.CountNextWave("nobody"));
+    }
+
+    [Fact]
     public void CountEligibleQueuedRuns_CountsOnlyWhatANodeCouldTakeNow_PerPool()
     {
         var state = new DispatchState();

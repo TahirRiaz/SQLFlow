@@ -355,7 +355,13 @@ public static class FlowLoadProfiles
         var pattern = flow.Source.Options.TryGetValue("srcFile", out var file) && !string.IsNullOrWhiteSpace(file)
             ? $"'{file}' "
             : string.Empty;
-        var files = $"the {flow.Source.Type} files {pattern}under {flow.Source.Location}";
+        // A Dataverse table is rows read over HTTP, not files: the sentences name the table, and its watermark bound is
+        // asked of the service rather than applied to what was read.
+        var table = Core.Dataverse.DataverseSourceOptions.IsDataverse(flow.Source.Type);
+        var files = table
+            ? Core.Dataverse.DataverseSourceOptions.Describe(flow.Source)
+            : $"the {flow.Source.Type} files {pattern}under {flow.Source.Location}";
+        var everything = table ? $"every row of {files}" : $"every one of {files}";
         var incremental = flow.Incremental;
 
         string readMode;
@@ -364,20 +370,24 @@ public static class FlowLoadProfiles
         if (incremental is null)
         {
             readMode = FlowReadModes.Full;
-            read = $"reads every one of {files} on every run; no incremental watermark is declared";
+            read = $"reads {everything} on every run; no incremental watermark is declared";
         }
         else if (incremental.FullLoad)
         {
             readMode = FlowReadModes.Full;
-            read = $"reads every one of {files} on every run (incremental.fullLoad is set, so the watermark is bypassed)";
+            read = $"reads {everything} on every run (incremental.fullLoad is set, so the watermark is bypassed)";
         }
         else if (!string.IsNullOrWhiteSpace(incremental.WatermarkColumn))
         {
             readMode = FlowReadModes.Incremental;
             watermarks = [incremental.WatermarkColumn!];
-            read = string.Create(
-                CultureInfo.InvariantCulture,
-                $"reads {files} but keeps only rows with {incremental.WatermarkColumn} greater than the target's high-water mark minus an overlap of {incremental.WatermarkOverlap}");
+            read = table
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"reads only the rows of {files} with {incremental.WatermarkColumn} greater than the target's high-water mark minus an overlap of {incremental.WatermarkOverlap}, in {incremental.WatermarkColumn} order; with no prior watermark every row is read")
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"reads {files} but keeps only rows with {incremental.WatermarkColumn} greater than the target's high-water mark minus an overlap of {incremental.WatermarkOverlap}");
         }
         else
         {

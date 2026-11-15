@@ -122,6 +122,38 @@ export function codeExplanation(code: ExplainCode, page: ExplainPage, productNam
   return { subject: codeSubject(code), question: explainCodeQuestion(code, page, productName) };
 }
 
+/** The heading the drawer wears for an explanation, and for a question that names no heading of its own. */
+export const EXPLAIN_HEADING = "Explain";
+
+/**
+ * A question a page words itself and asks of the assistant in the drawer Explain opens: something made for the person
+ * (a file written, a draft checked) rather than an explanation of what the page shows.
+ */
+export interface AssistantAsk {
+  /** The drawer's heading, in a word or two ("Assistant"); "Explain" when left out or blank. */
+  heading?: string;
+  /** What is asked, in a few words, under the heading. */
+  subject: string;
+  /** The question that opens the conversation. */
+  question: string;
+  /** Opens the drawer wide, at a width kept apart from an explanation's: for an answer holding a file or a table. */
+  wide?: boolean;
+}
+
+/** The heading an ask opens under: its own, trimmed, or Explain's. */
+export function askHeading(ask: Pick<AssistantAsk, "heading">): string {
+  const heading = ask.heading?.trim() ?? "";
+  return heading === "" ? EXPLAIN_HEADING : heading;
+}
+
+/**
+ * Whether asking `question` is the conversation the drawer already holds open: asked again (a second click, a button
+ * pressed twice), it keeps that conversation rather than starting the same one over.
+ */
+export function isAskedAlready(open: boolean, held: string | null, question: string): boolean {
+  return open && held === question;
+}
+
 /** Two versions of one document, as a comparison window shows them. */
 export interface ExplainChange {
   original: string;

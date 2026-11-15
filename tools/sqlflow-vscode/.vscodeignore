@@ -3,6 +3,7 @@ test/**
 src/**
 node_modules/**
 esbuild.mjs
+languageClientMinimatch.mts
 tsconfig.json
 **/*.map
 **/*.ts

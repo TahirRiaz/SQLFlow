@@ -82,7 +82,12 @@ spec:
     name: sqlflow-worker-default
   minReplicaCount: 0   # scale to zero when nothing is eligible and no node is busy
   maxReplicaCount: 10
-  cooldownPeriod: 300  # keep a warm worker for five minutes after the work drains
+  # An idle pool is compute paid for nothing, so it goes to zero 60 seconds after the target last asked for a
+  # replica (KEDA waits 300 by default): about what starting a node costs, so a shorter wait would stop nodes only to
+  # start them again. The target reads zero only when nothing is queued that could start and nothing runs, and the
+  # scaler reads it four times inside the cool-down, so a job in flight never loses its nodes to it. A pool that is
+  # only partly idle shrinks on the autoscaler's own five minute window.
+  cooldownPeriod: 60
   pollingInterval: 15
   triggers:
     - type: metrics-api

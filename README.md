@@ -80,6 +80,7 @@ by the catalog database. See [docs/architecture.md](docs/architecture.md).
 | `src/SqlFlow.SqlServer` | SQL Server introspection, DDL generation, bulk load, type mapping |
 | `src/SqlFlow.Sources` | File source readers (CSV, XLS, JSON, XML, Parquet) and type inference |
 | `src/SqlFlow.DuckDb` | DuckDB-backed source reader (Parquet, CSV, JSON, Delta) |
+| `src/SqlFlow.Dataverse` | Microsoft Dataverse (Power Apps) source reader, through the Dataverse Web API |
 | `src/SqlFlow.Providers` | Foreign database catalog discovery (MySQL, PostgreSQL, Oracle) |
 | `src/SqlFlow.Catalog` | The shadow catalog: pipelines, schedules, run history, sync |
 | `src/SqlFlow.Lineage` | Lineage graph computation across the flow estate |

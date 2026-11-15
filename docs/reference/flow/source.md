@@ -69,6 +69,7 @@ At run time the engine picks the first registered `ISourceReader` whose `CanHand
 | `xml` | `XmlSourceReader` | XML files, flattened path-based. |
 | `parquet`, `prq` | `ParquetSourceReader` | Apache Parquet files; the file's own schema supplies typed columns. |
 | `duckdb`, `delta` | `DuckDbSourceReader` | DuckDB queries over Parquet/CSV/JSON files, globs, partitioned datasets, and Delta tables. |
+| `dataverse` | `DataverseSourceReader` | A Microsoft Dataverse (Power Apps) table through the Dataverse Web API, typed from the table's metadata; see [Dataverse source](source-types/dataverse.md). |
 
 A `type` no reader claims fails at run time (src/SqlFlow.Core/Engine/FlowRunner.cs):
 

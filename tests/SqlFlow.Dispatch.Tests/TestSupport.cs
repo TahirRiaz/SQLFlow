@@ -617,6 +617,13 @@ internal sealed class FakeLedger : IDispatchLedger
         return Task.FromResult(stale.Count);
     }
 
+    public async Task<int> RemoveNodeAsync(string name, CancellationToken ct)
+    {
+        await WriteGateAsync(ct);
+        Calls.Enqueue($"leave:{name}");
+        return Nodes.TryRemove(name, out _) ? 1 : 0;
+    }
+
     public Task<bool> TryAcquireOwnershipAsync(string owner, DateTime nowUtc, TimeSpan ttl, CancellationToken ct)
     {
         lock (_gate)
@@ -696,9 +703,9 @@ internal static class Make
     public static NodePollRequest Poll(
         string node, int freeRuns = 1, IReadOnlyList<string>? pools = null, IReadOnlyList<HeldRun>? holding = null,
         int waitSeconds = 0, int freeTasks = 0, IReadOnlyList<Guid>? holdingTasks = null, DateTime? startedUtc = null,
-        int runSlots = 4)
+        int runSlots = 4, bool leaving = false)
         => new(node, "test", pools ?? [], runSlots, freeRuns, 2, freeTasks, holding ?? [], holdingTasks ?? [],
-            startedUtc ?? new DateTime(2026, 9, 11, 11, 0, 0, DateTimeKind.Utc), waitSeconds);
+            startedUtc ?? new DateTime(2026, 9, 11, 11, 0, 0, DateTimeKind.Utc), waitSeconds, leaving);
 
     public const string Artifact = """{ "schemaVersion": 1, "success": true }""";
 

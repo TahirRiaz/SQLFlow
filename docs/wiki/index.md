@@ -113,6 +113,9 @@ to narrow a search to one kind of page.
 - [The run queue lives in the control plane](decisions/dispatch-in-control-plane.md) - why the
   queue left SQL Server for an in-memory dispatcher journaled to the catalog, why a node speaks only
   to the control plane, what was rejected, and the decisions that changed while it shipped.
+- [A Dataverse table is a source type of the file flow](decisions/dataverse-is-a-source-type.md) - why
+  Power Apps data is read by a source reader rather than a new flowType, why it lands typed, why deletes are left
+  to a full reload instead of change tracking, and why the engine now names the watermark order on every run.
 
 ### Incidents
 

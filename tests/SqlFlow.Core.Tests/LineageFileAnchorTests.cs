@@ -168,4 +168,31 @@ public sealed class LineageFileAnchorTests : IDisposable
         Assert.Equal(["${env:LAKE_ROOT}/incoming"], FileNames(report));
         Assert.True(DependsOn(report, "fetch", "load"));
     }
+
+    [Fact]
+    public void A_dataverse_table_is_one_node_per_environment_and_table()
+    {
+        static string Dataverse(string name, string location, string table)
+            => string.Join('\n',
+                $"name: {name}",
+                "source:",
+                "  type: dataverse",
+                $"  location: {location}",
+                "  options:",
+                $"    table: {table}",
+                "target:",
+                "  connection: ${env:SQLFLOW_CONN_DWH}",
+                "  schema: pre",
+                $"  table: {name}") + '\n';
+
+        Write("crm/account.yaml", Dataverse("Crm_Account", "https://contoso.crm4.dynamics.com", "account"));
+        Write("crm/account_copy.yaml", Dataverse("Crm_Account_Copy", "https://contoso.crm4.dynamics.com/", "Account"));
+        Write("crm/contact.yaml", Dataverse("Crm_Contact", "${env:DV_URL}", "contact"));
+
+        var report = Build();
+
+        Assert.Equal(["${env:DV_URL}/contact", "https://contoso.crm4.dynamics.com/account"], FileNames(report));
+        Assert.Contains(report.Edges, e => e.Flow == "Crm_Account_Copy" && e.Relation == LineageRelation.Reads
+            && e.ObjectKey == NodeKey.For(ServerIdentity.FileSystem, null, null, "https://contoso.crm4.dynamics.com/account"));
+    }
 }

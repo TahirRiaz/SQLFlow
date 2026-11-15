@@ -15,6 +15,7 @@
     <ProjectReference Include="..\SqlFlow.Sources\SqlFlow.Sources.csproj" />
     <ProjectReference Include="..\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
     <ProjectReference Include="..\SqlFlow.DuckDb\SqlFlow.DuckDb.csproj" />
+    <ProjectReference Include="..\SqlFlow.Dataverse\SqlFlow.Dataverse.csproj" />
     <ProjectReference Include="..\SqlFlow.Orchestration\SqlFlow.Orchestration.csproj" />
     <ProjectReference Include="..\SqlFlow.HealthCheck\SqlFlow.HealthCheck.csproj" />
     <ProjectReference Include="..\SqlFlow.Azure\SqlFlow.Azure.csproj" />

@@ -1239,7 +1239,13 @@ public sealed class FlowSetCollector
                 var readLocation = !string.IsNullOrWhiteSpace(flow.Source.Location)
                     ? flow.Source.Location!
                     : Option(flow.Source.Options, "srcPath");
-                if (!string.IsNullOrWhiteSpace(readLocation))
+                if (Core.Dataverse.DataverseSourceOptions.IsDataverse(flow.Source.Type))
+                {
+                    // A Dataverse table is read over HTTP, like an acquisition's endpoint: one node per environment
+                    // and table, and nothing lands into it, so it consumes no file drop.
+                    result.Facts.Add(FileFact(flow.Name, LineageRelation.Reads, Core.Dataverse.DataverseSourceOptions.Identity(flow.Source)));
+                }
+                else if (!string.IsNullOrWhiteSpace(readLocation))
                 {
                     var fileNode = files.Identity(readLocation!);
                     result.Facts.Add(FileFact(flow.Name, LineageRelation.Reads, fileNode));

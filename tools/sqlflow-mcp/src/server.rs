@@ -563,6 +563,10 @@ pub struct ListRunsInput {
     pub batch: Option<String>,
     /// Only the latest run per pipeline.
     pub latest: Option<bool>,
+    /// Only the runs started this way: schedule (a schedule on its own clock), chain (a schedule after its parents),
+    /// user (a person or API client), trigger (an external trigger), cli (the command line), or unknown.
+    #[serde(rename = "startedBy")]
+    pub started_by: Option<String>,
     pub page: Option<i64>,
     #[serde(rename = "pageSize")]
     pub page_size: Option<i64>,
@@ -2108,12 +2112,13 @@ not a flow (a mapping, a schedule library): {path, type, required}. list_flow_ki
     // ---- Runs (read) -----------------------------------------------------
 
     #[tool(
-        description = "List runs, filterable by repo, pipeline, status, flow name, batch, and latest-only. Each row \
-            carries the outcome (status, error, rows loaded / inserted / updated / deleted) and what kind of \
-            run it was: `triggerSource` (schedule / manual / cli), `fullLoad` and `backfillFrom`/`backfillTo` \
-            (operator overrides), and `incrementalMode` / `incrementalFilter` / `incrementalWatermark`, the \
-            read scope the engine actually applied (null when the run never reached the read or the flow \
-            kind has no incremental surface). Read those before comparing row counts across runs."
+        description = "List runs, filterable by repo, pipeline, status, flow name, batch, latest-only, and what started \
+            them (`startedBy`). Each row carries the outcome (status, error, rows loaded / inserted / updated / \
+            deleted), what started it (`startedBy`: its `kind`, `who`, the schedule, and a `summary` sentence to \
+            quote), and what kind of run it was: `fullLoad` and `backfillFrom`/`backfillTo` (operator overrides), \
+            and `incrementalMode` / `incrementalFilter` / `incrementalWatermark`, the read scope the engine \
+            actually applied (null when the run never reached the read or the flow kind has no incremental \
+            surface). Read those before comparing row counts across runs."
     )]
     async fn list_runs(&self, Parameters(i): Parameters<ListRunsInput>) -> String {
         let q = vec![
@@ -2123,6 +2128,7 @@ not a flow (a mapping, a schedule library): {path, type, required}. list_flow_ki
             ("flowName", i.flow_name.unwrap_or_default()),
             ("batch", i.batch.unwrap_or_default()),
             ("latest", i.latest.map(|b| b.to_string()).unwrap_or_default()),
+            ("startedBy", i.started_by.unwrap_or_default()),
             ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
             ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
         ];
@@ -2131,7 +2137,8 @@ not a flow (a mapping, a schedule library): {path, type, required}. list_flow_ki
 
     #[tool(
         description = "Get one run by id: status, timings, row counts, error, the failed statement (on a failed run), \
-            what started it (`triggerSource`, `triggerScheduleId`), the operator's overrides (fullLoad, \
+            what started it (`startedBy`, with a `summary` sentence to quote; for a run a chained schedule fired, \
+            `causes` walks the parent fires back to the person or clock that set it off), the operator's overrides (fullLoad, \
             backfill window, source filter), and the incremental scope the engine actually applied \
             (`incrementalMode`, `incrementalFilter`, `incrementalWatermark`, `incrementalWatermarkSource`). \
             The SQL it executed is in run_statements; quote that, never reconstruct it."

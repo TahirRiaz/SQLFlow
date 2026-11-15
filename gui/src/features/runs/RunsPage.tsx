@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { RunStatus, RunSummary } from "../../api/types";
+import type { RunStartedByKind, RunStatus, RunSummary } from "../../api/types";
 import { pipelineApi, runApi } from "../../api/endpoints";
 import { activeFilterClass, FilterBar } from "../../components/FilterBar";
 import { FilterCombobox, type FilterOption } from "../../components/FilterCombobox";
@@ -22,12 +22,14 @@ import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column, type TableGrouping } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 import { RunDuration } from "../../components/RunDuration";
+import { RunStartedByCell } from "../../components/RunStartedBy";
 import { RunStatusBadge, rollupStatus } from "../../components/StatusBadge";
 import { useNow } from "../../hooks/useNow";
 import { secondsSince, setTiming } from "../../lib/runTiming";
 import { formatDurationSeconds, parseUtc } from "../../lib/time";
 import { contributedKinds, kindContribution } from "../../modules/registry";
 import { scheduleFilterOptions, useAllSchedules } from "../schedules/useAllSchedules";
+import { isStartedByKind, startedByAnyLabel, startedByFilterOptions } from "./startedBy";
 import { TriggerRunDialog } from "./TriggerRunDialog";
 
 const statuses: RunStatus[] = ["queued", "running", "succeeded", "failed", "cancelled", "skipped"];
@@ -61,6 +63,12 @@ const enqueuedColumn: Column<RunSummary> = {
   header: "Enqueued",
   render: (row) => <RelativeTime value={row.enqueuedUtc ?? row.writtenUtc} />,
 };
+// What started each run sits beside when it was enqueued: a run nobody expected is answered on the row that shows it.
+const startedByColumn: Column<RunSummary> = {
+  id: "started-by",
+  header: "Started by",
+  render: (row) => <RunStartedByCell startedBy={row.startedBy} />,
+};
 const durationColumn: Column<RunSummary> = {
   id: "duration",
   header: "Duration",
@@ -85,6 +93,7 @@ const baseColumns: Column<RunSummary>[] = [
   flowColumn,
   kindColumn,
   enqueuedColumn,
+  startedByColumn,
   durationColumn,
   ...impactColumns,
 ];
@@ -102,6 +111,7 @@ const flatColumns: Column<RunSummary>[] = [
     render: (row) => <span className="font-mono tabular-nums">{row.wave >= 0 ? row.wave : "-"}</span>,
   },
   enqueuedColumn,
+  startedByColumn,
   durationColumn,
   ...impactColumns,
 ];
@@ -332,6 +342,7 @@ export default function RunsPage() {
   const [triggerOpen, setTriggerOpen] = useState(false);
   const [batchRun, setBatchRun] = useState<{ repoId: string | null; batch: string } | null>(null);
   const [status, setStatus] = useLocalStorageState<RunStatus | null>("sqlflow.filters.runs.status", null);
+  const [startedBy, setStartedBy] = useLocalStorageState<RunStartedByKind | null>("sqlflow.filters.runs.startedBy", null);
   const [kind, setKind] = useLocalStorageState("sqlflow.filters.runs.kind", "all");
   // The kinds the build's GUI modules contribute are filterable like the built-in ones, and a board filtered to one of
   // them carries that kind's own run columns.
@@ -357,6 +368,10 @@ export default function RunsPage() {
   // filter (ignoring an unrecognised value).
   useUrlSeed(searchParams.get("status"), (value) => {
     if (statuses.includes(value as RunStatus)) setStatus(value as RunStatus);
+  });
+  // A link can open the board on the runs started one way, as /runs?startedBy=user (ignoring an unrecognised value).
+  useUrlSeed(searchParams.get("startedBy"), (value) => {
+    if (isStartedByKind(value)) setStartedBy(value);
   });
 
   useEffect(() => {
@@ -425,8 +440,8 @@ export default function RunsPage() {
 
       <FilterBar>
         {/* Free-text search leads the row (DESIGN.md 7.1), then the filters read left to right down the source
-            hierarchy (schedule -> batch -> kind), through the run's state and history scope (status, last/all), to
-            the display toggle (group). */}
+            hierarchy (schedule -> batch -> kind), through the run's state, what started it and the history scope
+            (status, started by, last/all), to the display toggle (group). */}
         <Input
           value={flowNameInput}
           onChange={(e) => setFlowNameInput(e.target.value)}
@@ -481,6 +496,26 @@ export default function RunsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={startedBy ?? "all"}
+          onValueChange={(value) => setStartedBy(isStartedByKind(value) ? value : null)}
+        >
+          <SelectTrigger
+            size="sm"
+            active={startedBy !== null}
+            className="h-8 w-52"
+            aria-label="Started by"
+            data-testid="filter-started-by"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{startedByAnyLabel}</SelectItem>
+            {startedByFilterOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <ToggleGroup
           type="single"
           variant="outline"
@@ -507,13 +542,14 @@ export default function RunsPage() {
       </FilterBar>
 
       <PagedTable
-        queryKey={["runs", "list", status, flowName, kind, batch, scheduleId, view, grouped]}
+        queryKey={["runs", "list", status, startedBy, flowName, kind, batch, scheduleId, view, grouped]}
         fetchPage={(page, pageSize) => {
           // An id names one run, whichever filters are set and however old it is.
           const runId = RUN_ID.exec(flowName)?.[0];
           return runApi.list(runId === undefined
             ? {
               status: status ?? undefined,
+              startedBy: startedBy ?? undefined,
               flowName: flowName === "" ? undefined : flowName,
               flowKind: kind === "all" ? undefined : kind,
               batch: batch === "" ? undefined : batch,

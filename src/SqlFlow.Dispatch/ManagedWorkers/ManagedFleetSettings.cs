@@ -20,8 +20,15 @@ public sealed class ManagedFleetSettings
     /// <summary>How often the fleet compares each pool with what it needs.</summary>
     public TimeSpan Tick { get; init; } = TimeSpan.FromSeconds(3);
 
-    /// <summary>How long a surplus worker stays idle before it is asked to leave.</summary>
-    public TimeSpan Idle { get; init; } = TimeSpan.FromMinutes(5);
+    /// <summary>How long a pool's last surplus worker stays idle before it is asked to leave. With several idle workers
+    /// to spare they share this time between them (<see cref="FleetPlanner.IdleWait"/>), so the more a pool has idle,
+    /// the sooner the next one leaves, down to <see cref="MinIdle"/>.</summary>
+    public TimeSpan Idle { get; init; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>The shortest any idle worker waits before it is asked to leave, however many are idle: a quarter of
+    /// <see cref="Idle"/>, 30 seconds by default, about what starting a worker costs. A shorter wait would let a worker
+    /// go and start it again for more than keeping it would have cost.</summary>
+    public TimeSpan MinIdle => TimeSpan.FromTicks(Idle.Ticks / 4);
 
     /// <summary>How long a started worker may take to poll, and how long a worker may stay silent, before it is stopped.</summary>
     public TimeSpan StartTimeout { get; init; } = TimeSpan.FromMinutes(10);

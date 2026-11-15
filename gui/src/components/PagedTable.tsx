@@ -1,13 +1,12 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type CSSProperties, type ReactNode, useEffect } from "react";
 import type { PagedResult } from "../api/types";
 import { isApiError } from "../api/client";
 import { pollingInterval } from "../hooks/usePolling";
+import { useTablePaging } from "../hooks/useTablePaging";
 import { CorrelationError } from "./CorrelationError";
 import { DataTable, type Column, type RowSelection, type TableGrouping } from "./DataTable";
+import { TablePager } from "./TablePager";
 
 // Re-exported so the pages keep importing the table types from here (their single table entry point).
 export type { Column, RowSelection, TableGrouping } from "./DataTable";
@@ -40,25 +39,16 @@ interface PagedTableProps<T> {
  * The single paged list-page code path: server-side offset paging against the API's PagedResult on top of
  * the shared DataTable shell (loading skeletons, the shared error and empty rendering, optional selection and
  * tree grouping), with optional polling for live views. Pages that already hold their rows render DataTable
- * directly instead.
+ * directly instead, paging them with `usePagedRows` under the same TablePager.
  */
 export function PagedTable<T>({
   queryKey, fetchPage, columns, rowKey, onRowClick, pollMs, rowSx, emptyMessage, grouping, selection, toolbar,
   onPageLoaded, minWidth, "data-testid": testId,
 }: PagedTableProps<T>) {
-  const [page, setPage] = useState(0); // rendered 0-based; the API is 1-based
-  const [pageSize, setPageSize] = useState(50);
-
-  // A filter change is a different list, so the offset into the old one is meaningless: narrowing 400 rows to 3 while
-  // parked on page 3 would render an empty table over a filter that matched. The key identifies the list (every
-  // filter value is in it by contract), and resetting during render means the first request is for page 1, not a
-  // discarded fetch of a page past the end.
-  const listKey = JSON.stringify(queryKey);
-  const [shownList, setShownList] = useState(listKey);
-  if (listKey !== shownList) {
-    setShownList(listKey);
-    setPage(0);
-  }
+  // The page is counted from 0, the API's from 1. A filter change is a different list (every filter value is in the
+  // key by contract), so it starts on its first page.
+  const paging = useTablePaging(JSON.stringify(queryKey));
+  const { page, pageSize } = paging;
 
   const query = useQuery({
     queryKey: [...queryKey, page, pageSize],
@@ -83,12 +73,6 @@ export function PagedTable<T>({
   }
 
   const result = query.data;
-  const total = result?.total ?? 0;
-  // A capped listing pages only through what it counted; the "+" says there is more past it.
-  const capped = result?.totalCapped === true;
-  const from = total === 0 ? 0 : page * pageSize + 1;
-  const to = Math.min(total, (page + 1) * pageSize);
-  const lastPage = Math.max(0, Math.ceil(total / pageSize) - 1);
 
   return (
     <DataTable
@@ -103,56 +87,8 @@ export function PagedTable<T>({
       toolbar={toolbar}
       minWidth={minWidth}
       data-testid={testId ?? "paged-table"}
-      footer={(
-        <div className="flex items-center justify-between gap-4 border-t border-border px-3 py-1.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            Rows per page
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => {
-                setPageSize(Number.parseInt(value, 10));
-                setPage(0);
-              }}
-            >
-              <SelectTrigger size="sm" className="h-7 w-[72px] text-xs" aria-label="Rows per page">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[25, 50, 100, 200].map((size) => (
-                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <span
-              className="font-mono tabular-nums"
-              title={capped ? "The listing counts this far; narrow the filter to reach the rest" : undefined}
-              data-testid="paged-table-range"
-            >
-              {from}-{to} of {total}{capped ? "+" : ""}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Previous page"
-              disabled={page === 0}
-              onClick={() => setPage((current) => Math.max(0, current - 1))}
-            >
-              <ChevronLeft />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Next page"
-              disabled={page >= lastPage}
-              onClick={() => setPage((current) => Math.min(lastPage, current + 1))}
-            >
-              <ChevronRight />
-            </Button>
-          </div>
-        </div>
-      )}
+      // A capped listing pages only through what it counted; the "+" says there is more past it.
+      footer={<TablePager {...paging} total={result?.total ?? 0} capped={result?.totalCapped === true} />}
     />
   );
 }

@@ -58,6 +58,15 @@ public static class WatermarkPredicate
     /// <summary>Source option carrying the <see cref="WatermarkKind"/> name.</summary>
     public const string KindOption = "incrementalKind";
 
+    /// <summary>
+    /// Source option naming the flow's declared row-level watermark column on every run that declares one, with or
+    /// without a bound (a first run into an empty target, a forced full load). The bulk load commits batch by batch,
+    /// so a run that fails part way leaves the rows it already committed; a reader that can choose its row order reads
+    /// in this column's ascending order, so what is committed is always the lowest watermarks and the next run's
+    /// <c>MAX</c> resumes exactly after them. A reader that cannot order its rows ignores it.
+    /// </summary>
+    public const string OrderColumnOption = "incrementalOrderColumn";
+
     /// <summary>The culture-invariant serialization of a bound, round-trippable by <see cref="ParseKind"/> plus the comparison helpers.</summary>
     public static string Format(WatermarkValue bound)
     {

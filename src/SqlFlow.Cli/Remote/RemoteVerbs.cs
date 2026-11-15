@@ -342,19 +342,20 @@ internal static partial class RemoteVerbs
                     var runs = await client.ListRunsAsync(
                         repoId, Program.GetOption(args, "--status"), Program.GetOption(args, "--flow"),
                         Program.GetOption(args, "--batch"), Program.GetOption(args, "--kind"), groupId,
-                        args.Contains("--latest"), page, pageSize, ct).ConfigureAwait(false);
+                        args.Contains("--latest"), page, pageSize, ct, Program.GetOption(args, "--started-by")).ConfigureAwait(false);
                     if (json)
                     {
                         Console.WriteLine(JsonSerializer.Serialize(runs, ControlPlaneClient.JsonIndented));
                         return 0;
                     }
 
-                    Console.WriteLine($"{"RUN",-36}  {"STATUS",-9}  {"FLOW",-32}  {"KIND",-5}  {"WAVE",4}  {"DURATION",9}  {"ROWS",10}  WRITTEN (UTC)");
+                    Console.WriteLine($"{"RUN",-36}  {"STATUS",-9}  {"FLOW",-32}  {"KIND",-5}  {"WAVE",4}  {"DURATION",9}  {"ROWS",10}  {"WRITTEN (UTC)",-19}  STARTED BY");
                     foreach (var run in runs.Items)
                     {
                         Console.WriteLine(
                             $"{run.RunId,-36}  {run.Status,-9}  {Truncate(run.FlowName, 32),-32}  {run.FlowKind,-5}  {run.Wave,4}  " +
-                            $"{FormatDuration(run.DurationSeconds),9}  {FormatCount(run.RowsLoaded),10}  {run.WrittenUtc:yyyy-MM-dd HH:mm:ss}");
+                            $"{FormatDuration(run.DurationSeconds),9}  {FormatCount(run.RowsLoaded),10}  {run.WrittenUtc,-19:yyyy-MM-dd HH:mm:ss}  " +
+                            FormatStartedBy(run.StartedBy));
                     }
 
                     Console.WriteLine($"({runs.Items.Count} of {runs.Total} run(s), page {runs.Page})");
@@ -470,6 +471,11 @@ internal static partial class RemoteVerbs
 
                     Note(json, $"group {group.GroupId}: {group.Mode} '{group.Anchor}', {group.MemberCount} member(s), enqueued {group.EnqueuedUtc:yyyy-MM-dd HH:mm:ss} UTC" +
                                (group.CommitSha is null ? string.Empty : $", commit {group.CommitSha}"));
+                    if (group.StartedBy is { } startedBy)
+                    {
+                        Note(json, $"  started by: {startedBy.Summary}");
+                    }
+
                     Note(json, $"  {FormatCounts(group.Counts)}");
                     Note(json, $"  {FormatGroupTiming(group)}");
                     if (!json)
@@ -1070,6 +1076,18 @@ internal static partial class RemoteVerbs
     private static void PrintRunDetail(RunDetailDto run)
     {
         Console.WriteLine($"run {run.RunId}: {run.Status}");
+        if (run.StartedBy is { } startedBy)
+        {
+            Console.WriteLine($"  started by:  {startedBy.Summary}");
+        }
+
+        // A chained run's parent fires, from the one it followed back to the first link, which says who or which clock
+        // set the chain off.
+        foreach (var cause in run.Causes ?? [])
+        {
+            Console.WriteLine($"  after:       {cause.FlowName} run {cause.RunId} ({cause.Status}): {cause.StartedBy.Summary}");
+        }
+
         Console.WriteLine($"  flow:        {run.FlowName} ({run.FlowKind}), batch {run.Batch}, wave {run.Wave}");
         Console.WriteLine($"  repo:        {run.RepoId?.ToString() ?? "(none)"}  pipeline {run.PipelineId}{(run.GroupId is null ? string.Empty : $"  group {run.GroupId}")}");
         Console.WriteLine($"  lifecycle:   enqueued {FormatUtc(run.EnqueuedUtc)}, start {FormatUtc(run.StartUtc)}, end {FormatUtc(run.EndUtc)}, duration {FormatDuration(run.DurationSeconds)}");
@@ -1181,6 +1199,20 @@ internal static partial class RemoteVerbs
 
     private static string FormatUtc(DateTime? value)
         => value is { } utc ? utc.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) : "-";
+
+    /// <summary>What started a run, in the few words a list row has: the schedule, the person, the trigger or the
+    /// account, and how. The control plane's whole sentence is on <c>runs show</c>.</summary>
+    internal static string FormatStartedBy(RunStartedByDto? startedBy) => startedBy?.Kind switch
+    {
+        null => "-",
+        "schedule" => $"schedule {startedBy.ScheduleName ?? "(removed)"}",
+        "chain" => $"schedule {startedBy.ScheduleName ?? "(removed)"} after {startedBy.AfterScheduleName ?? "its parents"}",
+        "user" => (startedBy.Who ?? "unnamed caller") + (startedBy.ScheduleName is null ? string.Empty : $" (ran {startedBy.ScheduleName})"),
+        "trigger" => $"trigger {startedBy.Who}" + (startedBy.ScheduleName is null ? string.Empty : $" (fired {startedBy.ScheduleName})"),
+        "cli" => startedBy.Who is null ? "command line" : $"command line, {startedBy.Who}",
+        "unknown" => "not recorded",
+        _ => startedBy.Summary,
+    };
 
     private static string FormatDuration(double? seconds)
         => seconds is { } s

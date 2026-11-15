@@ -3,7 +3,7 @@
   "product": "SQLFlow V3",
   "generatedFrom": "source code: src/SqlFlow.Core/Model and src/SqlFlow.Yaml",
   "naming": "Every loader builds its YamlDotNet IDeserializer with `new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build()` (src/SqlFlow.Yaml/YamlFlowLoader.cs:17-20 and identically in all other loaders). Rule: a C# PascalCase DTO property binds to the camelCase YAML key, i.e. the property name with its leading capital(s) lowercased at each word boundary start; example: C# `PreProcess` binds YAML key `preProcess`, `OnConvertError` binds `onConvertError`, `As` binds `as`. Two carve-outs: (1) dictionary KEYS are never renamed by the convention; `source.options` and `schema.overrides` map keys bind verbatim and are re-wrapped case-insensitively by the mapping layer (YamlFlowLoader.cs:59-61, 253). (2) Enum-like VALUES are plain strings parsed case-insensitively; for load.mode and transform.onConvertError, '-' and '_' are stripped first (NormalizeToken, YamlFlowLoader.cs:286-288), so `truncate-load` == `TruncateLoad`; schema.evolve is parsed case-insensitively but without separator stripping. There are no [YamlMember] aliases anywhere; the only key-level 'alias' is that the YAML key `transform` populates the model property FlowDefinition.Inference (hand-mapped, not a converter).",
-  "keyCount": 170,
+  "keyCount": 184,
   "keys": [
     {
       "path": "batch",
@@ -378,9 +378,9 @@
       "path": "source.location",
       "type": "string",
       "required": false,
-      "description": "Path, URI, or glob interpreted by the selected reader: for the file readers it is the search root (SrcPath, falling back to options.srcPath); for duckdb/delta it is the file/glob/table path fed to read_parquet/read_csv_auto/read_json_auto/delta_scan and is required unless options.query is set. A non-rooted location is resolved against the flow file's directory by DocumentLoader.ResolveRelativeLocation (src/SqlFlow.Execution/DocumentLoader.cs:81-91).",
+      "description": "Path, URI, or glob interpreted by the selected reader: for the file readers it is the search root (SrcPath, falling back to options.srcPath); for duckdb/delta it is the file/glob/table path fed to read_parquet/read_csv_auto/read_json_auto/delta_scan and is required unless options.query is set. A non-rooted location is resolved against the flow file's directory by DocumentLoader.ResolveRelativeLocation (src/SqlFlow.Execution/DocumentLoader.cs:81-91). For dataverse it is the environment URL alone (https://<org>.crm.dynamics.com, no path), or a ${...} reference resolved when the flow runs; the reader adds the Web API path itself.",
       "definedIn": "src/SqlFlow.Yaml/FlowYaml.cs:57",
-      "validation": "Reader-time: file readers throw SqlFlowException \"Source requires a 'location' (file path, folder, or URI).\" when both location and srcPath are blank (src/SqlFlow.Sources/FileSourceReaderBase.cs:391-393); duckdb throws SqlFlowException \"A duckdb source needs a 'location' (a file/glob/table path) or a 'query' option.\" (src/SqlFlow.DuckDb/DuckDbQuery.cs:26-27)."
+      "validation": "Reader-time: file readers throw SqlFlowException \"Source requires a 'location' (file path, folder, or URI).\" when both location and srcPath are blank (src/SqlFlow.Sources/FileSourceReaderBase.cs:391-393); duckdb throws SqlFlowException \"A duckdb source needs a 'location' (a file/glob/table path) or a 'query' option.\" (src/SqlFlow.DuckDb/DuckDbQuery.cs:26-27). dataverse: a missing, non-https or path-bearing location throws SqlFlowException at load (validate) and at run time (DataverseSourceOptions.Parse, src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs)."
     },
     {
       "path": "source.options",
@@ -389,6 +389,16 @@
       "default": "{} (empty, case-insensitive)",
       "description": "Flat reader-specific option bag. Dictionary KEYS bind verbatim (the camelCase naming convention does not rename map keys) and the loader re-wraps them with StringComparer.OrdinalIgnoreCase (src/SqlFlow.Yaml/YamlFlowLoader.cs:59-61). VALUES are strings parsed leniently by SourceOptions.GetBool/GetInt (unparseable values silently fall back to the default; src/SqlFlow.Core/Model/SourceOptions.cs:11-17). Unknown keys are silently carried and ignored by readers that do not consume them.",
       "definedIn": "src/SqlFlow.Yaml/FlowYaml.cs:58"
+    },
+    {
+      "path": "source.options.apiVersion",
+      "type": "string",
+      "required": false,
+      "default": "9.2",
+      "appliesWhen": "source.type == dataverse",
+      "description": "The Dataverse Web API version the reader calls (api/data/v<version>/).",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "Must look like 9.2 (a leading v is allowed)."
     },
     {
       "path": "source.options.arrayHandling",
@@ -416,6 +426,34 @@
       "appliesWhen": "source.type == xml",
       "description": "Prefix applied to an attribute's flattened column name.",
       "definedIn": "src/SqlFlow.Core/Model/PreIngestionXml.cs:171"
+    },
+    {
+      "path": "source.options.authorityHost",
+      "type": "string",
+      "required": false,
+      "default": "https://login.microsoftonline.com",
+      "appliesWhen": "source.type == dataverse",
+      "description": "The Microsoft Entra authority host of the explicit service principal, for a sovereign cloud (https://login.microsoftonline.us). The host's own identity takes its authority from AZURE_AUTHORITY_HOST.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "Must be an https URL, and only with an explicit service principal."
+    },
+    {
+      "path": "source.options.clientId",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.type == dataverse",
+      "description": "The application (client) id of an explicit service principal, as a value or a ${...} reference. The principal must be an application user in the environment with a security role that reads the table.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "Set together with tenantId and clientSecret, or not at all."
+    },
+    {
+      "path": "source.options.clientSecret",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.type == dataverse",
+      "description": "The client secret of an explicit service principal: a whole ${env:NAME} or ${keyvault:vault/secret} reference, resolved only when the flow runs.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "A literal value fails at load (validate) and at run time: \"'clientSecret' must be a ${env:NAME} or ${keyvault:vault/secret} reference, never a literal.\"; a reference that does not resolve fails the run naming the option."
     },
     {
       "path": "source.options.cloudAuth",
@@ -457,10 +495,10 @@
       "type": "string",
       "required": false,
       "default": "(empty = every column of the relation)",
-      "appliesWhen": "source.type in (duckdb,delta)",
-      "description": "Comma-separated projection of target column names to select from the relation, kept in the requested order; matching is case-insensitive.",
+      "appliesWhen": "source.type in (duckdb,delta,dataverse)",
+      "description": "Comma-separated projection of target column names to select from the relation, kept in the requested order; matching is case-insensitive. dataverse: comma-separated logical names to read, in the order written; the table's primary key lands first and the incremental watermark column is always read, named or not.",
       "definedIn": "src/SqlFlow.DuckDb/DuckDbQuery.cs:160",
-      "validation": "A name the relation does not have: SqlFlowException \"duckdb source 'columns' names '<name>', which the relation does not have. Available: <list>.\" (src/SqlFlow.DuckDb/DuckDbSourceReader.cs:171-184)."
+      "validation": "A name the relation does not have: SqlFlowException \"duckdb source 'columns' names '<name>', which the relation does not have. Available: <list>.\" (src/SqlFlow.DuckDb/DuckDbSourceReader.cs:171-184). dataverse: a name the table does not have, or a column the Web API cannot return in a row (image, file, party list, calendar rules, virtual), throws SqlFlowException naming it (src/SqlFlow.Dataverse/DataverseReadPlan.cs)."
     },
     {
       "path": "source.options.commentCharacter",
@@ -575,6 +613,16 @@
       "definedIn": "src/SqlFlow.Core/Model/PreIngestionCsv.cs:280"
     },
     {
+      "path": "source.options.excludeColumns",
+      "type": "string",
+      "required": false,
+      "default": "(empty)",
+      "appliesWhen": "source.type == dataverse",
+      "description": "Comma-separated logical names to leave out of an otherwise full read (a large multiline column, say). Cannot be combined with columns.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "Combined with columns, naming a column the table does not have, or naming the primary key or the watermark column: SqlFlowException naming the option."
+    },
+    {
       "path": "source.options.excludePaths",
       "type": "string",
       "required": false,
@@ -621,8 +669,8 @@
       "path": "source.options.filter",
       "type": "string",
       "required": false,
-      "appliesWhen": "source.type in (duckdb,delta)",
-      "description": "Verbatim WHERE expression pushed into the DuckDB query for predicate pushdown; AND-combined with the engine's fileDate partition predicate and the injected incremental watermark predicate.",
+      "appliesWhen": "source.type in (duckdb,delta,dataverse)",
+      "description": "Verbatim WHERE expression pushed into the DuckDB query for predicate pushdown; AND-combined with the engine's fileDate partition predicate and the injected incremental watermark predicate. dataverse: an OData $filter expression (statecode eq 0) AND-combined with the injected watermark bound; the flow author is the trust boundary.",
       "definedIn": "src/SqlFlow.DuckDb/DuckDbQuery.cs:167"
     },
     {
@@ -669,6 +717,16 @@
       "description": "Explicit scan format selecting read_parquet / read_csv_auto / read_json_auto / delta_scan over the location. Ignored for source.type delta, which always resolves to delta (src/SqlFlow.DuckDb/DuckDbQuery.cs:42-54).",
       "definedIn": "src/SqlFlow.DuckDb/DuckDbQuery.cs:50",
       "validation": "Unknown value: SqlFlowException \"Unknown duckdb source format '<v>'. Use parquet, csv, json, or delta.\" (src/SqlFlow.DuckDb/DuckDbQuery.cs:36)."
+    },
+    {
+      "path": "source.options.formattedValues",
+      "type": "boolean",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "source.type == dataverse",
+      "description": "When true, each choice, status, state, yes/no, multi-select and lookup column gets a sibling <column>name column holding its label (the OData.Community.Display.V1.FormattedValue annotation). A polymorphic lookup (customer, owner, or a lookup with several target tables) always gets a <column>type column naming the table it points at.",
+      "definedIn": "src/SqlFlow.Dataverse/DataverseReadPlan.cs",
+      "validation": "true or false, else SqlFlowException. A label that would land on a column of the table's own name is refused."
     },
     {
       "path": "source.options.fullLoad",
@@ -865,6 +923,14 @@
       "validation": "Unknown name throws SqlFlowException \"Unknown incremental watermark kind '<k>'.\" (src/SqlFlow.Core/Model/Watermark.cs:78-84)."
     },
     {
+      "path": "source.options.incrementalOrderColumn",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "any source.type (row-level incremental)",
+      "description": "ENGINE-INJECTED reserved key: the flow's declared incremental.watermarkColumn, written by FlowRunner.AnnounceWatermarkOrder on every run that declares one, with or without a bound. The bulk load commits batch by batch, so a reader that can order its rows (dataverse) reads in this column's ascending order, and a run that fails part way leaves the lowest watermarks committed for the next run's MAX to resume after. Not an authoring surface.",
+      "definedIn": "src/SqlFlow.Core/Model/Watermark.cs"
+    },
+    {
       "path": "source.options.incrementalValue",
       "type": "string",
       "required": false,
@@ -916,6 +982,16 @@
       "definedIn": "src/SqlFlow.Core/Model/PreIngestionJsn.cs:152"
     },
     {
+      "path": "source.options.maxAttempts",
+      "type": "integer",
+      "required": false,
+      "default": "8",
+      "appliesWhen": "source.type == dataverse",
+      "description": "Total attempts per request, the first included. Throttling (429) and transient statuses (408, 425, 500, 502, 503, 504) are retried with exponential backoff; Retry-After is honoured as the shortest wait.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "A whole number from 1 to 20."
+    },
+    {
       "path": "source.options.maxBufferSize",
       "type": "int",
       "required": false,
@@ -933,6 +1009,36 @@
       "description": "Maximum nesting depth flattened into columns; deeper values are emitted as JSON/XML strings. XML counterpart at PreIngestionXml.cs:167.",
       "definedIn": "src/SqlFlow.Core/Model/PreIngestionJsn.cs:157",
       "validation": "Values below 1 throw SqlFlowException \"Invalid maxDepth '<n>'. Use a positive integer.\" (src/SqlFlow.Sources/JsonSourceReader.cs:247-250; XmlSourceReader.cs:115-118)."
+    },
+    {
+      "path": "source.options.maxPageMegabytes",
+      "type": "integer",
+      "required": false,
+      "default": "256",
+      "appliesWhen": "source.type == dataverse",
+      "description": "The largest response page held in memory, in megabytes; a page past it fails the run naming pageSize and this option.",
+      "definedIn": "src/SqlFlow.Dataverse/DataverseSourceReader.cs",
+      "validation": "A whole number from 1 to 2048."
+    },
+    {
+      "path": "source.options.maxRetryDelaySeconds",
+      "type": "integer",
+      "required": false,
+      "default": "300",
+      "appliesWhen": "source.type == dataverse",
+      "description": "The longest single wait between attempts, which also bounds an honoured Retry-After. Dataverse service protection asks for waits of minutes, so keep it at least that long.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "A whole number from 1 to 3600."
+    },
+    {
+      "path": "source.options.pageSize",
+      "type": "integer",
+      "required": false,
+      "default": "5000",
+      "appliesWhen": "source.type == dataverse",
+      "description": "Rows per page, sent as the Prefer: odata.maxpagesize preference. Lower it for a table with wide rows if a page passes maxPageMegabytes.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "A whole number from 1 to 5000, else SqlFlowException \"'pageSize' value '<v>' is not a whole number from 1 to 5000.\"."
     },
     {
       "path": "source.options.readAhead",
@@ -1249,6 +1355,24 @@
       "definedIn": "src/SqlFlow.Core/Model/PreIngestionCsv.cs:269"
     },
     {
+      "path": "source.options.table",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.type == dataverse",
+      "description": "Required for dataverse: the table's logical name (account, cr6b2_project), lower-cased. The reader reads its metadata on every run, so a column added or widened in Power Apps reaches the target through schema evolution.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "Missing or not letters, digits and underscores starting with a letter: SqlFlowException \"A dataverse source needs the option 'table'...\" / \"'table' value '<v>' is not a Dataverse logical name...\"."
+    },
+    {
+      "path": "source.options.tenantId",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.type == dataverse",
+      "description": "The Microsoft Entra tenant of an explicit service principal, as a value or a ${...} reference. With tenantId, clientId and clientSecret all absent the reader signs in with the host's Azure identity (SQLFLOW_AZURE_AUTH).",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "Set together with clientId and clientSecret, or not at all."
+    },
+    {
       "path": "source.options.textQualifier",
       "type": "string",
       "required": false,
@@ -1256,6 +1380,16 @@
       "appliesWhen": "source.type == csv",
       "description": "Text qualifier enclosing string values; only the first character is used. Takes precedence over the qualifier alias.",
       "definedIn": "src/SqlFlow.Core/Model/PreIngestionCsv.cs:279"
+    },
+    {
+      "path": "source.options.timeoutSeconds",
+      "type": "integer",
+      "required": false,
+      "default": "300",
+      "appliesWhen": "source.type == dataverse",
+      "description": "Seconds one request may take before it is retried as a transient failure.",
+      "definedIn": "src/SqlFlow.Core/Dataverse/DataverseSourceOptions.cs",
+      "validation": "A whole number from 10 to 3600."
     },
     {
       "path": "source.options.trgDBSchTbl",
@@ -1381,7 +1515,7 @@
       "path": "source.type",
       "type": "string",
       "required": true,
-      "description": "Open string discriminator selecting an ISourceReader at run time via case-insensitive CanHandle; it never changes the YAML shape of source.options. Tokens registered in this codebase (SqlFlowEngineServices.cs:40-45): csv (CsvSourceReader), json/jsonl/ndjson (JsonSourceReader), xml (XmlSourceReader), xls/xlsx (XlsSourceReader), parquet/prq (ParquetSourceReader), duckdb/delta (DuckDbSourceReader; 'delta' forces the delta_scan format regardless of the format option).",
+      "description": "Open string discriminator selecting an ISourceReader at run time via case-insensitive CanHandle; it never changes the YAML shape of source.options. Tokens registered in this codebase (SqlFlowEngineServices.cs:40-45): csv (CsvSourceReader), json/jsonl/ndjson (JsonSourceReader), xml (XmlSourceReader), xls/xlsx (XlsSourceReader), parquet/prq (ParquetSourceReader), duckdb/delta (DuckDbSourceReader; 'delta' forces the delta_scan format regardless of the format option). dataverse (DataverseSourceReader, src/SqlFlow.Dataverse): a Microsoft Dataverse (Power Apps) table read through the Dataverse Web API, typed from the table's metadata, into the same load and schema evolution as a file.",
       "enumValues": [
         "csv",
         "json",
@@ -1393,7 +1527,8 @@
         "parquet",
         "prq",
         "duckdb",
-        "delta"
+        "delta",
+        "dataverse"
       ],
       "definedIn": "src/SqlFlow.Yaml/FlowYaml.cs:56",
       "validation": "Blank/missing throws FlowValidationException \"<source>: 'source.type' is required.\" (src/SqlFlow.Yaml/YamlFlowLoader.cs:73,290-293). An unregistered token parses fine and fails at run time with SqlFlowException \"No source reader is registered for source type '<t>'.\" (src/SqlFlow.Core/Engine/FlowRunner.cs:508-509); the set is open, extensible by implementing ISourceReader."

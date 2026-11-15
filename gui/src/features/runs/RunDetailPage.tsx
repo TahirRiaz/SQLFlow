@@ -27,6 +27,7 @@ import { Page } from "../../components/Page";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 import { RunDuration } from "../../components/RunDuration";
+import { RunCauseChain, RunStartedByLine } from "../../components/RunStartedBy";
 import { RunStatusBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
 import { pollingInterval } from "../../hooks/usePolling";
@@ -330,6 +331,11 @@ function RunDetailContent({ runId }: { runId: string }) {
 
       <DetailHeaderCard
         title={run.flowName}
+        // What started the run reads straight under its name, before its identifiers: the first thing asked of a run
+        // nobody expected.
+        subtitle={run.startedBy !== null
+          ? <RunStartedByLine startedBy={run.startedBy} linkAfterRun={run.causes.length === 0} />
+          : undefined}
         badges={(
           <>
             <RunStatusBadge status={run.status} />
@@ -427,11 +433,6 @@ function RunDetailContent({ runId }: { runId: string }) {
             </span>
           </DetailPair>
         )}
-        {run.requestedBy && (
-          <DetailPair label="Requested by">
-            <span className="break-all font-mono text-[12px]" data-testid="run-requested-by">{run.requestedBy}</span>
-          </DetailPair>
-        )}
         <DetailPair label="Target pool">{run.targetPool ?? "-"}</DetailPair>
         <DetailPair label="Node"><span className="break-all font-mono text-[12px]">{run.claimedByNode ?? "-"}</span></DetailPair>
         {/* Host repeats the node name on a single-container node; surface it only when it actually adds a value. */}
@@ -439,6 +440,8 @@ function RunDetailContent({ runId }: { runId: string }) {
           <DetailPair label="Host"><span className="break-all font-mono text-[12px]">{run.host}</span></DetailPair>
         )}
       </DetailHeaderCard>
+
+      <RunCauseChain causes={run.causes} />
 
       {run.status === "failed" && run.failedStatementSql !== null && (
         <Card className="gap-2 rounded-lg border-destructive/50 p-3" data-testid="run-failed-statement">

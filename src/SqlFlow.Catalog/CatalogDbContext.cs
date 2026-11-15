@@ -244,6 +244,9 @@ public sealed class CatalogDbContext : DbContext
                 .HasFilter($"[Status] = '{RunStatuses.Running}' AND [FanOutRoot] IS NULL");
             // A root's fan-out members by state: the root reads them while it waits, and they end when it does.
             entity.HasIndex(r => new { r.FanOutRoot, r.Status });
+            // What a run set off: the runs of the chained fires that followed it. Only a chained fire's runs carry
+            // the link, so the filtered index holds those alone.
+            entity.HasIndex(r => r.TriggerRunId).HasFilter("[TriggerRunId] IS NOT NULL");
         });
 
         modelBuilder.Entity<CatalogRunGroup>(entity =>

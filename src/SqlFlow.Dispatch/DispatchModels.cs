@@ -113,5 +113,7 @@ public sealed record FanOutEnqueueRecord(
 
 /// <summary>A node's heartbeat as the registry flushes it to the ledger: the node's name, build, pool, how many runs
 /// it is executing and how many it can execute at once (the replica-sizing terms an autoscaler reads back from the
-/// fleet registry), stamped with when the node was last heard from.</summary>
-public sealed record NodeHeartbeat(string Name, string? Version, string? Pool, int BusyRuns, int RunSlots, DateTime LastSeenUtc);
+/// fleet registry), stamped with when the node was last heard from. <see cref="Left"/> says that poll was the node's
+/// last (it stopped cleanly holding nothing), so the flush removes its row instead of writing it.</summary>
+public sealed record NodeHeartbeat(
+    string Name, string? Version, string? Pool, int BusyRuns, int RunSlots, DateTime LastSeenUtc, bool Left = false);

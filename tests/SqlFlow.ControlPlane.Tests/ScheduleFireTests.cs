@@ -325,14 +325,83 @@ public sealed class ScheduleFireTests
             await SeedPipelineAsync(db, repoId, solo, wave: 0, batch: "one");
             var schedule = await SeedScheduleAsync(db, repoId, $"hourly_{suffix}", [solo]);
 
-            // A run-now is a person asking: the run names them, while its trigger source still says a schedule fired it.
+            // A run-now is a person asking: the run names them and records it as asked for, never as the schedule firing on
+            // its own, while still naming the schedule whose members it ran.
             await ScheduleFire.EnqueueAsync(
                 db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default,
-                requestedBy: "  alice  ");
+                origin: ScheduleFire.Origin.AskedBy("  alice  "));
 
             var run = Assert.Single(await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync());
             Assert.Equal("alice", run.RequestedBy);
-            Assert.Equal(RunTriggerSources.Schedule, run.TriggerSource);
+            Assert.Equal(RunTriggerSources.Manual, run.TriggerSource);
+            Assert.Equal(schedule.Id, run.TriggerScheduleId);
+            Assert.Null(run.TriggerRunId);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task Fire_BehindItsParents_RecordsTheChainAndTheParentFireItFollowed_OnEveryRun()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+        string first = $"b_{suffix}", second = $"c_{suffix}";
+        var parentFireRun = Guid.CreateVersion7();
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await SeedPipelineAsync(db, repoId, first, wave: 0, batch: "two");
+            await SeedPipelineAsync(db, repoId, second, wave: 1, batch: "two");
+            var schedule = await SeedScheduleAsync(db, repoId, $"model_{suffix}", [first, second]);
+
+            // A chained fire is the schedule's own, made because its parents fired: it records the schedule as the one
+            // that asked, and the parent fire's run it followed, so the chain can be walked back.
+            await ScheduleFire.EnqueueAsync(
+                db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default,
+                origin: ScheduleFire.Origin.Chain(parentFireRun));
+
+            var runs = await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync();
+            Assert.Equal(2, runs.Count);
+            Assert.All(runs, r =>
+            {
+                Assert.Equal(RunTriggerSources.Chain, r.TriggerSource);
+                Assert.Equal($"schedule:model_{suffix}", r.RequestedBy);
+                Assert.Equal(schedule.Id, r.TriggerScheduleId);
+                Assert.Equal(parentFireRun, r.TriggerRunId);
+            });
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task Fire_AskedForByACallerWithNoName_IsRecordedAsAsked_NeverAsTheSchedule()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+        var solo = $"a_{suffix}";
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await SeedPipelineAsync(db, repoId, solo, wave: 0, batch: "one");
+            var schedule = await SeedScheduleAsync(db, repoId, $"hourly_{suffix}", [solo]);
+
+            await ScheduleFire.EnqueueAsync(
+                db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default,
+                origin: ScheduleFire.Origin.AskedBy(null));
+
+            var run = Assert.Single(await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync());
+            Assert.Equal(RunTriggerSources.Manual, run.TriggerSource);
+            Assert.Equal(SqlFlow.ControlPlane.Api.RequestActor.Unknown, run.RequestedBy);
         }
         finally
         {

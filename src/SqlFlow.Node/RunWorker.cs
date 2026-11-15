@@ -94,6 +94,21 @@ public sealed partial class RunWorker : IDisposable
     /// already be tripped) may keep retrying on its own deadline.</summary>
     private static readonly TimeSpan TerminalReportBudget = TimeSpan.FromMinutes(2);
 
+    /// <summary>How long the leaving poll may take, retries included. It is sent after the drain, inside the platform's
+    /// termination grace period (the default drain and this together stay under the ten minutes the worker's
+    /// deployment declares), so it never holds the exit for long.</summary>
+    internal static readonly TimeSpan LeaveBudget = TimeSpan.FromSeconds(30);
+
+    /// <summary>The waits between leaving-poll attempts refused as retryable: a quarter of a minute in all, so the
+    /// goodbye rides out a dispatch hand-over. A deployment swaps the control plane and its workers together, and the
+    /// replica taking over dispatch retries the ownership lease only every
+    /// <see cref="DispatchOptions.OwnershipRenewSeconds"/> (10 by default); waits that end sooner would leave the
+    /// workers of every deployment listed offline.</summary>
+    internal static readonly TimeSpan[] LeaveWaits =
+    [
+        TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8),
+    ];
+
     private readonly IServiceProvider _services;
     private readonly INodeTransport _transport;
     private readonly DocumentExecutor _executor;
@@ -116,6 +131,15 @@ public sealed partial class RunWorker : IDisposable
     // Set the first time a restart is initiated so the stop fires exactly once, even across the several polls that
     // may elapse while the drain completes.
     private int _restartInitiated;
+
+    // Set once a dispatcher has answered a poll from this node: only then does a fleet view list it, and only then is
+    // there anything for the leaving poll to take off.
+    private int _answered;
+
+    // What this node executes at once, set once in RunAsync and reported on every poll, the drain's included: a node
+    // finishing what it holds has no slot free, but it is no smaller than it was.
+    private int _runSlots;
+    private int _taskSlots;
 
     // The runs this node is executing, keyed by run id: each with its own cancellation source (linked to the abort
     // token) and the attempt its hand-out carried (the fence every outcome report presents, and what the poll
@@ -160,7 +184,8 @@ public sealed partial class RunWorker : IDisposable
     /// what the node is already executing. Once it trips, the in-flight runs keep going (and the node keeps polling
     /// with no free slots, so their leases stay alive and the dispatcher never mistakes a draining node for a dead
     /// one) for up to <see cref="RunWorkerOptions.DrainTimeout"/>. Only when that window expires are the survivors
-    /// cancelled and left for the dispatcher's lease expiry to requeue.
+    /// cancelled and left for the dispatcher's lease expiry to requeue. Last, the node tells the dispatcher it is
+    /// leaving, so it comes off the fleet view instead of being listed offline.
     /// </summary>
     public async Task RunAsync(RunWorkerOptions options, CancellationToken stoppingToken)
     {
@@ -171,6 +196,8 @@ public sealed partial class RunWorker : IDisposable
 
         _startedUtc = _clock.GetUtcNow().UtcDateTime;
         _onRestartRequested = options.OnRestartRequested;
+        _runSlots = options.MaxConcurrentRuns;
+        _taskSlots = options.MaxConcurrentComputeTasks;
         _pools = options.Pools.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.Ordinal).ToList();
         var pollWait = TimeSpan.FromSeconds(Math.Clamp((int)options.PollWait.TotalSeconds, 1, NodeProtocol.MaxWaitSeconds));
 
@@ -192,8 +219,9 @@ public sealed partial class RunWorker : IDisposable
             try
             {
                 var response = await PollAsync(
-                    options, freeRuns, freeTasks, pollWait, allowSlotWake: freeRuns == 0 && freeTasks == 0, stoppingToken)
+                    freeRuns, freeTasks, pollWait, allowSlotWake: freeRuns == 0 && freeTasks == 0, stoppingToken)
                     .ConfigureAwait(false);
+                Volatile.Write(ref _answered, 1);
                 backoff = MinBackoff;
                 // Applying the answer sits inside the same guard as the poll: nothing that happens to one response
                 // (a signal for a run that finished in the meantime, a launch that fails) may ever end the loop,
@@ -241,6 +269,42 @@ public sealed partial class RunWorker : IDisposable
         {
             await DrainInFlightAsync(pending, options.DrainTimeout, abortCts).ConfigureAwait(false);
         }
+
+        await LeaveAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>The stopping node's last poll, once the drain is over: it says the node is leaving, so the dispatcher
+    /// takes it off the fleet view at once rather than listing it offline until <c>Dispatch:NodeRetentionHours</c>
+    /// prunes it. It reports what the node still holds, which after the drain is nothing (every execution has ended,
+    /// finished or severed), and a dispatcher keeps a node that reports work on the view. Best-effort on its own short
+    /// budget, since the stopping token is tripped and the platform's grace period is running: a node that cannot say
+    /// goodbye is pruned like one that crashed, and that is logged, never thrown.</summary>
+    private async Task LeaveAsync()
+    {
+        if (Volatile.Read(ref _answered) == 0)
+        {
+            // No dispatcher ever answered this node (the control plane's own node on a replica that never owned
+            // dispatch, say), so no fleet view lists it and there is nothing to take off.
+            return;
+        }
+
+        var request = BuildRequest(0, 0, 0) with { Leaving = true };
+        try
+        {
+            using var cts = new CancellationTokenSource(LeaveBudget);
+            await DispatcherRetry
+                .RunAsync(
+                    LeaveWaits,
+                    ct => _transport.PollAsync(request, ct),
+                    (ex, wait) => LogLeaveRetry(SecretHygiene.RedactedMessage(ex), (int)wait.TotalSeconds),
+                    cts.Token)
+                .ConfigureAwait(false);
+            LogLeft();
+        }
+        catch (Exception ex)
+        {
+            LogLeaveFailed(SecretHygiene.RedactedMessage(ex));
+        }
     }
 
     /// <summary>One poll with the node's current capacity and holdings. When <paramref name="allowSlotWake"/> is set
@@ -248,9 +312,9 @@ public sealed partial class RunWorker : IDisposable
     /// cancels the parked poll and surfaces as <see cref="SlotFreedException"/>, so the loop re-polls with the new
     /// capacity at once; a poll that reported free slots is never cancelled, because a hand-out may be in flight.</summary>
     private async Task<NodePollResponse> PollAsync(
-        RunWorkerOptions options, int freeRuns, int freeTasks, TimeSpan pollWait, bool allowSlotWake, CancellationToken ct)
+        int freeRuns, int freeTasks, TimeSpan pollWait, bool allowSlotWake, CancellationToken ct)
     {
-        var request = BuildRequest(options, freeRuns, freeTasks, (int)pollWait.TotalSeconds);
+        var request = BuildRequest(freeRuns, freeTasks, (int)pollWait.TotalSeconds);
         if (!allowSlotWake)
         {
             return await _transport.PollAsync(request, ct).ConfigureAwait(false);
@@ -279,9 +343,9 @@ public sealed partial class RunWorker : IDisposable
         }
     }
 
-    private NodePollRequest BuildRequest(RunWorkerOptions options, int freeRuns, int freeTasks, int waitSeconds)
+    private NodePollRequest BuildRequest(int freeRuns, int freeTasks, int waitSeconds)
         => new(
-            _node, _version, _pools, options.MaxConcurrentRuns, freeRuns, options.MaxConcurrentComputeTasks, freeTasks,
+            _node, _version, _pools, _runSlots, freeRuns, _taskSlots, freeTasks,
             _running.Select(r => new HeldRun(r.Key, r.Value.Attempt)).ToList(),
             _runningTasks.Keys.ToList(), _startedUtc, waitSeconds);
 
@@ -413,8 +477,9 @@ public sealed partial class RunWorker : IDisposable
     }
 
     /// <summary>A poll that takes no work: renews the leases of what this node holds and observes cancels and
-    /// revocations. Best-effort, never throws (a failed poll is logged; the next one retries), and skipped while the
-    /// node holds nothing.</summary>
+    /// revocations. It reports the node's real capacity with no slot free, so the fleet view keeps showing what the
+    /// node executes at once while it finishes (a zero there read as a node with no slots at all). Best-effort, never
+    /// throws (a failed poll is logged; the next one retries), and skipped while the node holds nothing.</summary>
     private async Task HeartbeatAsync(CancellationToken ct)
     {
         if (_running.IsEmpty && _runningTasks.IsEmpty)
@@ -424,10 +489,7 @@ public sealed partial class RunWorker : IDisposable
 
         try
         {
-            var request = new NodePollRequest(
-                _node, _version, _pools, 0, 0, 0, 0,
-                _running.Select(r => new HeldRun(r.Key, r.Value.Attempt)).ToList(),
-                _runningTasks.Keys.ToList(), _startedUtc, 0);
+            var request = BuildRequest(freeRuns: 0, freeTasks: 0, waitSeconds: 0);
             var response = await _transport.PollAsync(request, ct).ConfigureAwait(false);
             foreach (var runId in response.CancelRuns.Concat(response.RevokedRuns))
             {
@@ -1304,6 +1366,15 @@ public sealed partial class RunWorker : IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Drained: every in-flight item finished and reported its outcome.")]
     private partial void LogDrained();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Told the dispatcher this node is leaving; it comes off the fleet view rather than being listed offline.")]
+    private partial void LogLeft();
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Dispatcher unavailable for the leaving poll: {Error} (retrying in about {WaitSeconds}s)")]
+    private partial void LogLeaveRetry(string error, int waitSeconds);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not tell the dispatcher this node is leaving ({Error}); it stays listed offline until the control plane's Dispatch:NodeRetentionHours prunes it.")]
+    private partial void LogLeaveFailed(string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Drain window of {DrainSeconds}s expired with work still in flight; cancelling it. Each severed run's lease lapses and the dispatcher requeues it, which consumes one of its execution attempts. Raise the drain window, or the platform's termination grace period, if this recurs.")]
     private partial void LogDrainTimedOut(int drainSeconds);

@@ -66,7 +66,9 @@ internal static class IntegrationDb
         return ResolvedConnectionString.Value!;
     }
 
-    public static FlowRunner RealRunner()
+    /// <summary>The real engine over the sink, with every built-in reader plus <paramref name="extraReaders"/> (a reader
+    /// wired to a scripted service, say).</summary>
+    public static FlowRunner RealRunner(params ISourceReader[] extraReaders)
     {
         var fileStores = new IFileStore[] { new LocalFileStore() };
         return new FlowRunner(
@@ -77,6 +79,7 @@ internal static class IntegrationDb
                 new XmlSourceReader(new LocalFileLifecycle(), fileStores),
                 new ParquetSourceReader(new LocalFileLifecycle(), fileStores),
                 new SqlFlow.DuckDb.DuckDbSourceReader(),
+                .. extraReaders,
             ],
             new SqlServerTypeMapper(),
             new SqlServerSchemaProvider(),

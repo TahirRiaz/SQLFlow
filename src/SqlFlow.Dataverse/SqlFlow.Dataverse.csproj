@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.Dataverse</RootNamespace>
+    <Description>Microsoft Dataverse source reader (source.type: dataverse): reads a Power Apps table through the Dataverse Web API with typed columns from the table's metadata, paging, a pushed-down watermark bound, and the shared retry, Retry-After and SSRF guard, streaming rows into the SQLFlow engine's bulk load and schema evolution.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.Azure\SqlFlow.Azure.csproj" />
+    <ProjectReference Include="..\SqlFlow.Acquire\SqlFlow.Acquire.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SqlFlow.Core.Tests" />
+  </ItemGroup>
+
+</Project>

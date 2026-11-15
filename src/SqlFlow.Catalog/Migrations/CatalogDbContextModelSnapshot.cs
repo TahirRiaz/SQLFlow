@@ -1798,6 +1798,9 @@ namespace SqlFlow.Catalog.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
+                    b.Property<Guid?>("TriggerRunId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("TriggerScheduleId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1821,6 +1824,9 @@ namespace SqlFlow.Catalog.Migrations
                     b.HasIndex("PipelineId");
 
                     b.HasIndex("RepoId");
+
+                    b.HasIndex("TriggerRunId")
+                        .HasFilter("[TriggerRunId] IS NOT NULL");
 
                     b.HasIndex("WrittenUtc");
 

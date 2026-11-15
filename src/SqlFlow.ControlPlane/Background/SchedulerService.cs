@@ -179,7 +179,12 @@ public sealed partial class SchedulerService : BackgroundService
             LogStaleParents(schedule.Id, schedule.Name, staleParents, schedule.ParentFreshnessHours);
         }
 
-        var fire = await ScheduleFire.EnqueueAsync(catalog, _dispatcher, _services.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>(), schedule, now, ct).ConfigureAwait(false);
+        // The runs record the parent fire they followed, so a chained run traces back through its parents to whoever,
+        // or whichever clock, started the first link.
+        var parentFireRun = await ScheduleStore.GetParentFireRunAsync(catalog, schedule.Id, parentFireUtc, ct).ConfigureAwait(false);
+        var fire = await ScheduleFire.EnqueueAsync(
+            catalog, _dispatcher, _services.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>(), schedule, now, ct,
+            origin: ScheduleFire.Origin.Chain(parentFireRun)).ConfigureAwait(false);
         switch (fire.Outcome)
         {
             case ScheduleFire.Outcome.ScopeEmpty:
@@ -245,7 +250,7 @@ public sealed partial class SchedulerService : BackgroundService
         {
             // No computable next fire (a malformed cron/time zone, or a cron with no further occurrence): the claim
             // above advanced the schedule to null, so it is parked and not scanned again, and this occurrence is not
-            // enqueued.
+            // enqueued. The claim left the last fire as it was, so nothing chained behind this schedule follows.
             LogParked(schedule.Id, schedule.Name);
             return;
         }

@@ -60,7 +60,11 @@ public sealed record HeldRun(Guid RunId, int Attempt);
 /// known without configuration. <see cref="HoldingRuns"/> and <see cref="HoldingTasks"/> renew the node's leases;
 /// anything the dispatcher no longer attributes to the node comes back revoked. <see cref="StartedUtc"/> lets a
 /// restart request older than this incarnation be ignored. <see cref="WaitSeconds"/> is how long the node is
-/// willing to wait for work or a signal before an empty answer.</para></summary>
+/// willing to wait for work or a signal before an empty answer.</para>
+/// <para><see cref="Leaving"/> marks a stopping node's last poll, sent once its drain is over: it is handed nothing and
+/// answered at once, and when it holds nothing the dispatcher takes the node off the fleet view on its next flush, so a
+/// node that stops cleanly does not linger there as offline. A dispatcher that predates the flag reads the poll as a
+/// saturated heartbeat with no wait.</para></summary>
 public sealed record NodePollRequest(
     string Node,
     string? Version,
@@ -72,7 +76,8 @@ public sealed record NodePollRequest(
     IReadOnlyList<HeldRun> HoldingRuns,
     IReadOnlyList<Guid> HoldingTasks,
     DateTime StartedUtc,
-    int WaitSeconds);
+    int WaitSeconds,
+    bool Leaving = false);
 
 /// <summary>Everything a node needs to execute a handed-out run, resolved by the control plane from the catalog
 /// at hand-out time so the node never opens a catalog connection: the flow's identity and where its file lives

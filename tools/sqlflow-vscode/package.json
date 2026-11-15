@@ -505,6 +505,9 @@
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   },
+  "overrides": {
+    "minimatch": "^11.0.8"
+  },
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",

@@ -434,7 +434,7 @@ public sealed class TriggerRequestProcessor
             {
                 fire = await ScheduleFire.EnqueueAsync(
                     _catalog, _dispatcher, _documents, schedule, firingUtc, ct, batch.Count == 0 ? null : batch, null,
-                    request.RequestedBy).ConfigureAwait(false);
+                    ScheduleFire.Origin.AskedBy(request.RequestedBy)).ConfigureAwait(false);
             }
             catch (SqlFlow.Core.SqlFlowException ex)
             {

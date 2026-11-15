@@ -80,10 +80,11 @@ public static class NodeStore
                 ct);
     }
 
-    /// <summary>Removes a node from the fleet registry by name. The registry only ever records liveness, so a node's
-    /// row carries no dependent state and deleting it is safe: it simply drops a dead entry from the fleet view. If
-    /// the named node is in fact still alive, it re-registers on its very next heartbeat, so this is also harmless to
-    /// call on a live node. Returns the number of rows removed (0 when no such node exists).</summary>
+    /// <summary>Removes a node from the fleet registry by name: an operator dropping a dead entry, or the dispatcher's
+    /// flush taking off a node that left cleanly. The registry only ever records liveness, so a node's row carries no
+    /// dependent state and deleting it is safe. If the named node is in fact still alive, it re-registers on its very
+    /// next heartbeat, so this is also harmless to call on a live node. Returns the number of rows removed (0 when no
+    /// such node exists).</summary>
     public static Task<int> DeleteAsync(CatalogDbContext catalog, string name, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
@@ -91,11 +92,11 @@ public static class NodeStore
         return catalog.Nodes.Where(n => n.Name == name).ExecuteDeleteAsync(ct);
     }
 
-    /// <summary>Prunes nodes whose last heartbeat predates <paramref name="olderThanUtc"/>: dead entries the fleet
-    /// accumulates because every worker pod (each orchestrator revision, each autoscale-up) registers under a fresh
-    /// name and the registry never removes the ones that stopped heartbeating. A node genuinely restarting comes back
-    /// within seconds under a new name, so a long-stale row is always gone for good. Returns the number pruned. Safe
-    /// to run on a schedule: a live node is never stale, so it is never touched.</summary>
+    /// <summary>Prunes nodes whose last heartbeat predates <paramref name="olderThanUtc"/>: the dead entries of nodes
+    /// that went silent without leaving (killed, crashed, cut off), since every worker pod (each orchestrator revision,
+    /// each autoscale-up) registers under a fresh name and only a clean stop takes its own row off. A node genuinely
+    /// restarting comes back within seconds under a new name, so a long-stale row is always gone for good. Returns the
+    /// number pruned. Safe to run on a schedule: a live node is never stale, so it is never touched.</summary>
     public static Task<int> PruneStaleAsync(CatalogDbContext catalog, DateTime olderThanUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);

@@ -112,6 +112,10 @@ public interface IDispatchLedger
     /// <summary>Removes fleet-registry rows not heard from since <paramref name="olderThanUtc"/>.</summary>
     Task<int> PruneNodesAsync(DateTime olderThanUtc, CancellationToken ct);
 
+    /// <summary>Removes the fleet-registry row of a node that left cleanly. Returns how many rows were removed (0 when
+    /// it had none).</summary>
+    Task<int> RemoveNodeAsync(string name, CancellationToken ct);
+
     /// <summary>Acquires or renews the single dispatch ownership lease for <paramref name="owner"/>: succeeds when the
     /// lease is free, expired, or already held by this owner. Exactly one owner holds it at a time.</summary>
     Task<bool> TryAcquireOwnershipAsync(string owner, DateTime nowUtc, TimeSpan ttl, CancellationToken ct);

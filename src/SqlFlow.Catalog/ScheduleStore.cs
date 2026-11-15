@@ -154,6 +154,31 @@ public static class ScheduleStore
     }
 
     /// <summary>
+    /// The run a chained fire records it followed (<see cref="CatalogRun.TriggerRunId"/>): the first run of the parent
+    /// fire at <paramref name="parentFireUtc"/>, the newest of the schedule's parent fires as
+    /// <see cref="GetParentFireStateAsync"/> read it. That is the parent's <see cref="CatalogSchedule.LastRunId"/> when
+    /// the run was enqueued by that fire, at or after its instant; a parent fire that enqueued nothing (an empty member
+    /// set) leaves <see cref="CatalogSchedule.LastRunId"/> on an earlier fire, so null is answered rather than a run the
+    /// chain did not follow. Null too when no parent fired at that instant.
+    /// </summary>
+    public static Task<Guid?> GetParentFireRunAsync(
+        CatalogDbContext catalog, Guid scheduleId, DateTime parentFireUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        return (
+                from p in catalog.ScheduleParents.AsNoTracking()
+                where p.ScheduleId == scheduleId
+                join parent in catalog.Schedules.AsNoTracking()
+                    on new { p.RepoId, Name = p.ParentName } equals new { parent.RepoId, parent.Name }
+                where parent.LastFireUtc == parentFireUtc
+                join run in catalog.Runs.AsNoTracking() on parent.LastRunId equals (Guid?)run.RunId
+                where run.EnqueuedUtc >= parent.LastFireUtc
+                orderby p.Ordinal
+                select (Guid?)run.RunId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>
     /// Atomically claims a chained schedule's fire by stamping the newest parent fire it is reacting to, from the
     /// value the caller observed (normally null, or the previous consumed instant). Returns true only for the winner,
     /// so when several control-plane nodes see the same completed parent set exactly one child fire is enqueued.
@@ -228,19 +253,31 @@ public static class ScheduleStore
     /// caller observed to the next occurrence. Returns true only if this caller won the race: the compare-and-swap on
     /// the observed next-fire means that when several control-plane nodes scan the same due schedule, exactly one
     /// advances it (and so exactly one enqueues the run); the losers see zero rows affected and move on.
+    /// <para>
+    /// A claim whose <paramref name="newNextFireUtc"/> is null parks the schedule (its cron or time zone has no next
+    /// occurrence) and enqueues nothing, so it is not a fire: <see cref="CatalogSchedule.LastFireUtc"/> keeps the
+    /// schedule's last real fire. Stamping it would read as a parent fire to every schedule chained behind this one,
+    /// and they would follow an occurrence that never ran.
+    /// </para>
     /// </summary>
     public static async Task<bool> TryClaimFireAsync(
         CatalogDbContext catalog, Guid id, DateTime observedNextFireUtc, DateTime? newNextFireUtc, DateTime nowUtc,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        var affected = await catalog.Schedules
-            .Where(s => s.Id == id && s.NextFireUtc == observedNextFireUtc)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(x => x.NextFireUtc, newNextFireUtc)
-                .SetProperty(x => x.LastFireUtc, nowUtc)
-                .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
-            .ConfigureAwait(false);
+        var claim = catalog.Schedules.Where(s => s.Id == id && s.NextFireUtc == observedNextFireUtc);
+        var affected = newNextFireUtc is null
+            ? await claim
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.NextFireUtc, (DateTime?)null)
+                    .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
+                .ConfigureAwait(false)
+            : await claim
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.NextFireUtc, newNextFireUtc)
+                    .SetProperty(x => x.LastFireUtc, nowUtc)
+                    .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
+                .ConfigureAwait(false);
         return affected > 0;
     }
 
@@ -284,12 +321,13 @@ public static class ScheduleStore
     /// inserted with the computed next fire. An existing one has its definition refreshed from git, but the
     /// operational state set through the API is preserved: a <see cref="CatalogSchedule.Paused"/> flag survives the
     /// re-sync, and the next-fire cadence is only reset when the cron/interval/time-zone actually changed (an
-    /// unchanged sync never disturbs the firing rhythm). Returns the schedule id.
+    /// unchanged sync never disturbs the firing rhythm). A null <paramref name="computedNextFireUtc"/> (a cron whose
+    /// date never comes) stores no next fire, so the schedule stays parked. Returns the schedule id.
     /// </summary>
     public static Task<Guid> UpsertYamlScheduleAsync(
         CatalogDbContext catalog, Guid repoId, string scheduleName, IReadOnlyCollection<string> members, string? cron,
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
-        DateTime computedNextFireUtc, DateTime nowUtc, ScheduleDefinitionSource? definition = null,
+        DateTime? computedNextFireUtc, DateTime nowUtc, ScheduleDefinitionSource? definition = null,
         IReadOnlyList<string>? afterSchedules = null, int parentFreshnessHours = ScheduleDefaults.ParentFreshnessHours,
         string? operation = null, IReadOnlyDictionary<string, string>? values = null,
         CancellationToken ct = default)
@@ -309,7 +347,7 @@ public static class ScheduleStore
     public static async Task<Guid> StageYamlUpsertAsync(
         CatalogDbContext catalog, Guid repoId, string scheduleName, IReadOnlyCollection<string> members, string? cron,
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
-        DateTime computedNextFireUtc, DateTime nowUtc, ScheduleDefinitionSource? definition = null,
+        DateTime? computedNextFireUtc, DateTime nowUtc, ScheduleDefinitionSource? definition = null,
         IReadOnlyList<string>? afterSchedules = null, int parentFreshnessHours = ScheduleDefaults.ParentFreshnessHours,
         string? operation = null, IReadOnlyDictionary<string, string>? values = null,
         CancellationToken ct = default)
@@ -411,7 +449,9 @@ public static class ScheduleStore
             else if (definitionChanged || chainChanged || existing.NextFireUtc is null)
             {
                 // Only reset the cadence when the timing definition changed; an unchanged re-sync leaves the next fire
-                // (and the operator's pause) exactly as they were.
+                // (and the operator's pause) exactly as they were. A schedule with no stored next fire is re-armed with
+                // the computed one, which stays null for a cron whose date never comes: a parked schedule remains
+                // parked through every sync instead of being armed to fire at once.
                 existing.NextFireUtc = computedNextFireUtc;
             }
         }
@@ -593,11 +633,12 @@ public static class ScheduleStore
     /// schedules plus API ones, one schedule per name: under the repo's schedule-name lock
     /// (<see cref="LockScheduleNamesAsync"/>) the name is checked and the schedule inserted as one step, so a name
     /// another schedule holds, or takes in a concurrent sync, is refused with
-    /// <see cref="ScheduleNameTakenException"/> rather than failing on the unique index.</summary>
+    /// <see cref="ScheduleNameTakenException"/> rather than failing on the unique index. A null
+    /// <paramref name="computedNextFireUtc"/> (a cron whose date never comes) creates the schedule parked.</summary>
     public static Task<Guid> CreateApiScheduleAsync(
         CatalogDbContext catalog, Guid repoId, string scheduleName, IReadOnlyCollection<string> members, string? cron,
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
-        DateTime computedNextFireUtc, DateTime nowUtc, string? operation = null,
+        DateTime? computedNextFireUtc, DateTime nowUtc, string? operation = null,
         IReadOnlyDictionary<string, string>? values = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);

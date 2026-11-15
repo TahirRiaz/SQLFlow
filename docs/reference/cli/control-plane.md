@@ -87,8 +87,12 @@ sqlflow trigger --repo bb --flow load_orders --scope node --preview   # the flow
 sqlflow trigger --repo bb --flow load_orders --scope node [--from d --to d] --follow
                                                   # the flow + descendants, live-streamed; only a window applies
 sqlflow schedules run <id>                        # a whole source: its schedule's members (--scope batch is gone)
-sqlflow runs list [--status failed --flow orders --latest]            # the run inbox
+sqlflow runs list [--status failed --flow orders --latest]            # the run inbox, each row with what started it
+sqlflow runs list --started-by user                                   # only the runs a person or client asked for
+                                                                      # (schedule|chain|user|trigger|cli|unknown)
 sqlflow runs show <runId> [--files --statements --assertions --keys --metrics]
+                                                                      # 'started by:', and for a chained run each
+                                                                      # fire behind it ('after:')
 sqlflow runs trace <runId> [--follow]                                 # consolidated trace; --follow rides the live SSE
 sqlflow runs cancel <runId>                                           # API when a URL is configured; --db forces the
                                                                       # direct-catalog break-glass route

@@ -645,6 +645,126 @@ public sealed class DispatcherTests
     }
 
     [Fact]
+    public async Task Poll_ALeavingNodeIsHandedNothing_AndAnsweredAtOnce()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var run = Make.Run(T0);
+        ledger.AddQueued(run);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+
+        // It reports free slots and a wait, as a node that did not know better might: a leaving node will not poll again,
+        // so work handed to it would sit out a lease, and a parked answer would only hold up its exit.
+        var leaving = await dispatcher
+            .PollAsync(Make.Poll("n1", freeRuns: 2, waitSeconds: 10, leaving: true), CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Empty(leaving.Runs);
+        Assert.Equal("queued", ledger.Runs[run.RunId].Status);
+
+        Assert.Equal(run.RunId, Assert.Single((await dispatcher.PollAsync(Make.Poll("n2", freeRuns: 1), CancellationToken.None)).Runs).RunId);
+        var idle = await dispatcher
+            .PollAsync(Make.Poll("n1", freeRuns: 2, waitSeconds: 10, leaving: true), CancellationToken.None)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(idle.HasContent);
+    }
+
+    [Fact]
+    public async Task Tick_ANodeThatLeavesHoldingNothing_ComesOffTheFleetView_UntilItPollsAgain()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var options = Make.Options(leaseSeconds: 60, longPollSeconds: 10);
+        options.NodeFlushSeconds = 5;
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, options);
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        await dispatcher.TickAsync(CancellationToken.None);
+        Assert.True(ledger.Nodes.ContainsKey("n1"));
+
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 0, leaving: true), CancellationToken.None);
+
+        // Offline from the moment it says so, in the dispatcher's own view just as on the fleet page.
+        var now = clock.GetUtcNow().UtcDateTime;
+        Assert.False(Assert.Single(dispatcher.Nodes.Snapshot(now)).Online);
+        Assert.Equal((0, 0), dispatcher.Nodes.Capacity(string.Empty, now));
+
+        clock.Advance(TimeSpan.FromSeconds(5));
+        await dispatcher.TickAsync(CancellationToken.None);
+        Assert.False(ledger.Nodes.ContainsKey("n1"));
+        Assert.Contains("leave:n1", ledger.Calls);
+
+        // Nothing writes it back while it stays away.
+        clock.Advance(TimeSpan.FromSeconds(5));
+        await dispatcher.TickAsync(CancellationToken.None);
+        Assert.False(ledger.Nodes.ContainsKey("n1"));
+        Assert.Equal(1, ledger.Calls.Count(c => c == "leave:n1"));
+
+        // A node that polls after all is listed again.
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        await dispatcher.TickAsync(CancellationToken.None);
+        Assert.True(ledger.Nodes.ContainsKey("n1"));
+        Assert.True(Assert.Single(dispatcher.Nodes.Snapshot(clock.GetUtcNow().UtcDateTime)).Online);
+    }
+
+    [Fact]
+    public async Task Tick_ANodeThatSaysItIsLeavingWhileStillHoldingWork_StaysOnTheFleetView()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var run = Make.Run(T0);
+        ledger.AddQueued(run);
+        var options = Make.Options(leaseSeconds: 60, longPollSeconds: 10);
+        options.NodeFlushSeconds = 5;
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, options);
+        var handout = Assert.Single((await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None)).Runs);
+
+        // Its lease is real until it lapses, so the node is not gone yet whatever it says.
+        await dispatcher.PollAsync(
+            Make.Poll("n1", freeRuns: 0, holding: [new HeldRun(run.RunId, handout.Attempt)], leaving: true), CancellationToken.None);
+        clock.Advance(TimeSpan.FromSeconds(5));
+        await dispatcher.TickAsync(CancellationToken.None);
+
+        Assert.True(ledger.Nodes.ContainsKey("n1"));
+        Assert.DoesNotContain("leave:n1", ledger.Calls);
+        Assert.True(Assert.Single(dispatcher.Nodes.Snapshot(clock.GetUtcNow().UtcDateTime)).Online);
+    }
+
+    [Fact]
+    public async Task FlushNodes_ARemovalThatFails_IsRetriedOnTheNextFlush()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None);
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+        Assert.True(ledger.Nodes.ContainsKey("n1"));
+
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 0, leaving: true), CancellationToken.None);
+        ledger.FailNextWrite = new InvalidOperationException("the catalog is unavailable");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.FlushNodesAsync(CancellationToken.None));
+        Assert.True(ledger.Nodes.ContainsKey("n1"));
+
+        // The node will not poll again to mark itself, so the failed flush left it marked for the next one.
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+        Assert.False(ledger.Nodes.ContainsKey("n1"));
+    }
+
+    [Fact]
+    public async Task FlushNodes_DoesNothingWhilePassive()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+        await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None);
+        dispatcher.Deactivate();
+
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+
+        Assert.DoesNotContain(ledger.Calls, c => c.StartsWith("heartbeat:", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Tasks_AreHandedOut_Completed_AndExpiredByTheTick()
     {
         var ledger = new FakeLedger();
@@ -794,6 +914,56 @@ public sealed class DispatcherTests
         var successor = Assert.Single((await dispatcher.PollAsync(Make.Poll("n2", freeRuns: 1), CancellationToken.None)).Runs);
         Assert.True(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n2", successor.Attempt), CancellationToken.None));
         Assert.Equal(("n2", 2), (row.Trace[^1].Node, row.Trace[^1].Attempt));
+    }
+
+    [Fact]
+    public async Task FlushNodes_ForgetsANodeThatLeft_OnceItsRowIsOffAndItsRetentionHasPassed()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+        await dispatcher.PollAsync(Make.Poll("stays", freeRuns: 1), CancellationToken.None);
+        await dispatcher.PollAsync(Make.Poll("leaves", freeRuns: 0, leaving: true), CancellationToken.None);
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+
+        // Kept, marked as left, while a platform may still be reporting the worker.
+        clock.Advance(NodeRegistry.LeftRetention - TimeSpan.FromSeconds(1));
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+        var left = Assert.Single(dispatcher.Nodes.Snapshot(clock.GetUtcNow().UtcDateTime), n => n.Name == "leaves");
+        Assert.True(left.Left);
+        Assert.False(left.Online);
+
+        // Then forgotten; a node that only went silent is not.
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+        Assert.Equal(["stays"], dispatcher.Nodes.Snapshot(clock.GetUtcNow().UtcDateTime).Select(n => n.Name));
+    }
+
+    [Fact]
+    public async Task TheFirstTickAfterATakeover_PrunesTheNodesLongGone()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var now = clock.GetUtcNow().UtcDateTime;
+        ledger.Nodes["gone"] = (new NodeHeartbeat("gone", "test", string.Empty, 0, 4, now.AddHours(-30)), null);
+        ledger.Nodes["recent"] = (new NodeHeartbeat("recent", "test", string.Empty, 0, 4, now.AddHours(-2)), null);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+
+        // A control plane restarted more often than once an hour never reached the hourly prune.
+        await dispatcher.TickAsync(CancellationToken.None);
+
+        Assert.Equal(["recent"], ledger.Nodes.Keys);
+    }
+
+    [Fact]
+    public void Options_RejectAPollAndFlushThatOutlastTheOnlineWindow()
+    {
+        // A node's last poll reaches the fleet view one parked poll and one flush later; past the online window every
+        // healthy node would read offline between polls, and an autoscaler would stop counting the busy ones.
+        Assert.Throws<InvalidOperationException>(() => new DispatchOptions { LongPollSeconds = 46, LeaseSeconds = 120 }.Validate());
+        Assert.Throws<InvalidOperationException>(() => new DispatchOptions { NodeFlushSeconds = 21 }.Validate());
+        new DispatchOptions { LongPollSeconds = 45, LeaseSeconds = 120 }.Validate();
+        new DispatchOptions { NodeFlushSeconds = 20 }.Validate();
     }
 
     [Fact]

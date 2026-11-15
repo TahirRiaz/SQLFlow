@@ -411,7 +411,44 @@ public sealed class NodeProtocolApiTests
         return target;
     }
 
+    [SkippableFact]
+    public async Task ALeavingPoll_IsOfflineAtOnce_AndTheNextFlushTakesTheNodesRowOff()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        const string leaver = "proto-leaver";
+
+        try
+        {
+            using var factory = NewFactory(cs);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["node", "read"]);
+            using var transport = NewTransport(factory, token);
+            await WaitForActiveDispatcherAsync(client, token);
+
+            await transport.PollAsync(Poll(freeRuns: 1, node: leaver), CancellationToken.None);
+            await WaitUntilAsync(() => HasNodeRowAsync(cs, leaver), TimeSpan.FromSeconds(30));
+
+            // The flag travels over the wire: the dispatcher lists the node offline at once and the flush deletes its row.
+            var goodbye = await transport.PollAsync(Poll(freeRuns: 1, node: leaver) with { Leaving = true }, CancellationToken.None);
+            Assert.False(goodbye.HasContent);
+            Assert.Contains((await ReadSnapshotAsync(client, token)).Nodes, n => n.Name == leaver && !n.Online);
+            await WaitUntilAsync(async () => !await HasNodeRowAsync(cs, leaver), TimeSpan.FromSeconds(30));
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.Nodes.Where(n => n.Name == leaver).ExecuteDeleteAsync();
+        }
+    }
+
     // ---- plumbing ------------------------------------------------------------------------------------------------
+
+    private static async Task<bool> HasNodeRowAsync(string cs, string node)
+    {
+        await using var db = CatalogDatabase.Create(cs);
+        return await db.Nodes.AsNoTracking().AnyAsync(n => n.Name == node);
+    }
 
     private static ControlPlaneAppFactory NewFactory(string cs)
         => new ControlPlaneAppFactory()

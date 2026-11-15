@@ -32,8 +32,10 @@ public sealed class ManagedWorkersOptions
     /// <summary>How often the control plane compares each pool with what it needs (1 to 60).</summary>
     public int TickSeconds { get; set; } = 3;
 
-    /// <summary>How long a surplus worker stays idle before it is asked to leave.</summary>
-    public int IdleMinutes { get; set; } = 5;
+    /// <summary>The idle time the workers a pool can spare share before they are asked to leave: one waits all of it,
+    /// several leave sooner (the next after this divided by their number), none before a quarter of it. Two minutes,
+    /// since an idle worker is compute paid for nothing.</summary>
+    public int IdleMinutes { get; set; } = 2;
 
     /// <summary>How long a started worker may take to poll (and a worker may stay silent) before it is stopped.</summary>
     public int StartTimeoutMinutes { get; set; } = 10;

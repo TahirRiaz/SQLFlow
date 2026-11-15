@@ -9,6 +9,7 @@ using SqlFlow.Core.Secrets;
 using SqlFlow.Core.State;
 using SqlFlow.Azure;
 using SqlFlow.Azure.Storage;
+using SqlFlow.Dataverse;
 using SqlFlow.DuckDb;
 using SqlFlow.Providers;
 using SqlFlow.SourceControl.GitHub;
@@ -51,6 +52,13 @@ public static class SqlFlowEngineServices
         services.AddSingleton<ISourceReader, XmlSourceReader>();
         services.AddSingleton<ISourceReader, ParquetSourceReader>();
         services.AddSingleton<ISourceReader, DuckDbSourceReader>();
+        // A Power Apps (Dataverse) table read through the Web API, signed in with the source's own service principal or
+        // the host's Azure identity (registered below), and fed to the same load and schema evolution as a file.
+        services.AddSingleton<ISourceReader>(sp => new DataverseSourceReader(
+            sp.GetRequiredService<ISecretResolver>(),
+            sp.GetRequiredService<IAzureCredentialFactory>(),
+            sp.GetService<ILogger<DataverseSourceReader>>(),
+            sp.GetService<TimeProvider>()));
         // Unified file discovery: one entry point that detects a source's format and generates its ingestion YAML
         // (flatten for JSON/XML, columnar for CSV/Excel/Parquet), over the readers and stores registered above.
         services.AddSingleton<SourceDiscoveryService>();

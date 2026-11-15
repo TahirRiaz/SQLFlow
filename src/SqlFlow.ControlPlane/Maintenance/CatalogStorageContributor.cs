@@ -114,8 +114,8 @@ public sealed class CatalogStorageContributor : IStorageContributor
         var nodeHours = options.Dispatch.NodeRetentionHours;
         var nodeBrief = nodeHours > 0 ? $"Offline for {nodeHours.ToString(CultureInfo.InvariantCulture)} hours" : "From the Nodes page";
         var nodeLifecycle = nodeHours > 0
-            ? $"A node offline for {nodeHours.ToString(CultureInfo.InvariantCulture)} hours is removed automatically (ControlPlane:Dispatch:NodeRetentionHours); the Nodes page removes one at once."
-            : "Kept: ControlPlane:Dispatch:NodeRetentionHours is 0, so offline nodes are removed only from the Nodes page.";
+            ? $"A node that stops cleanly removes its own row. One that went silent without leaving is removed automatically after {nodeHours.ToString(CultureInfo.InvariantCulture)} hours offline (ControlPlane:Dispatch:NodeRetentionHours); the Nodes page removes one at once."
+            : "A node that stops cleanly removes its own row. ControlPlane:Dispatch:NodeRetentionHours is 0, so one that went silent without leaving is kept until it is removed from the Nodes page.";
 
         return
         [

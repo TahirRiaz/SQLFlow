@@ -74,6 +74,7 @@ public sealed class FlowRunner
         ArgumentNullException.ThrowIfNull(flow);
         var context = new RunContext(Guid.CreateVersion7(), flow.FlowId, flow.Name, _events);
         using var scope = _logger.BeginScope("Flow {FlowName} ({RunId})", flow.Name, context.RunId);
+        flow = AnnounceWatermarkOrder(flow);
         flow = await SourceLocations.ResolveAsync(flow, _secrets, ct).ConfigureAwait(false);
         return await PlanCoreAsync(flow, context, ct).ConfigureAwait(false);
     }
@@ -124,6 +125,7 @@ public sealed class FlowRunner
     {
         ArgumentNullException.ThrowIfNull(flow);
         flow = SettleFileDateReads(flow);
+        flow = AnnounceWatermarkOrder(flow);
 
         var runEvents = events is null ? _events : new CompositeFlowEventSink(_events, events);
         var context = new RunContext(runId ?? Guid.CreateVersion7(), flow.FlowId, flow.Name, runEvents, runHistoryDirectory);
@@ -467,6 +469,27 @@ public sealed class FlowRunner
         var options = new Dictionary<string, string?>(flow.Source.Options, StringComparer.OrdinalIgnoreCase)
         {
             [SourceOptions.SettledFilesOnly] = "true",
+        };
+        return flow with { Source = flow.Source with { Options = options } };
+    }
+
+    /// <summary>
+    /// Names the flow's declared row-level watermark column to its reader (<see cref="WatermarkPredicate.OrderColumnOption"/>)
+    /// on every run that declares one, bounded or not. The bound itself is injected only when a prior watermark exists,
+    /// but the order matters most on the run that has none: a first run into an empty target that fails part way must
+    /// have committed the lowest watermarks, or the next run's <c>MAX</c> skips the rows below it that never loaded. A
+    /// flow without a row-level watermark keeps its source as it is.
+    /// </summary>
+    private static FlowDefinition AnnounceWatermarkOrder(FlowDefinition flow)
+    {
+        if (flow.Incremental is not { } incremental || string.IsNullOrWhiteSpace(incremental.WatermarkColumn))
+        {
+            return flow;
+        }
+
+        var options = new Dictionary<string, string?>(flow.Source.Options, StringComparer.OrdinalIgnoreCase)
+        {
+            [WatermarkPredicate.OrderColumnOption] = incremental.WatermarkColumn,
         };
         return flow with { Source = flow.Source with { Options = options } };
     }

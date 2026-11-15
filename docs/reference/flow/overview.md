@@ -42,7 +42,7 @@ Every SQLFlow pipeline is a single YAML document. There is no control database a
 
 | flowType | Kind | Loader | What it does |
 | --- | --- | --- | --- |
-| (absent or empty) | file flow | `YamlFlowLoader` | Loads CSV/JSON/XML/XLS/Parquet files into a SQL Server table, with dynamic schema evolution |
+| (absent or empty) | file flow | `YamlFlowLoader` | Loads CSV/JSON/XML/XLS/Parquet files, or a Dataverse (Power Apps) table, into a SQL Server table, with dynamic schema evolution |
 | `ing` | ingestion | `YamlIngestionFlowLoader` | Table-to-table copy through the flow's canonical staging table in the `raw` schema: schema evolution, keyed upsert, incremental loading |
 | `exp` | export | `YamlExportFlowLoader` | Exports a SQL Server table or view to CSV or Parquet files, optionally chunked by day/month/key windows |
 | `sp` | stored procedure | `YamlStoredProcedureFlowLoader` | Executes one existing stored procedure (`EXEC`) on a resolved server |
@@ -192,7 +192,7 @@ load:
 
 Missing required keys fail with `<file>: 'name' is required.`, `<file>: 'source' is required.`, `<file>: 'target' is required.`, and within the maps `'source.type'`, `'target.connection'`, `'target.schema'`, `'target.table'` follow the same `'<key>' is required.` pattern.
 
-`source.type` selects the reader; the registered readers accept (case-insensitive) `csv`, `xls`, `xlsx`, `json`, `jsonl`, `ndjson`, `xml`, `parquet`, `prq`, `duckdb` (a DuckDB query over Parquet/CSV/JSON locations), and `delta` (a Delta table read through DuckDB's `delta_scan`).
+`source.type` selects the reader; the registered readers accept (case-insensitive) `csv`, `xls`, `xlsx`, `json`, `jsonl`, `ndjson`, `xml`, `parquet`, `prq`, `duckdb` (a DuckDB query over Parquet/CSV/JSON locations), `delta` (a Delta table read through DuckDB's `delta_scan`), and `dataverse` (a Microsoft Dataverse table, the data behind Power Apps, read through its Web API; see [Dataverse source](./source-types/dataverse.md)).
 
 Two identity behaviors worth knowing:
 

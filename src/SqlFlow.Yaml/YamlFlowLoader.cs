@@ -1,4 +1,5 @@
 using SqlFlow.Core;
+using SqlFlow.Core.Dataverse;
 using SqlFlow.Core.Engine;
 using SqlFlow.Core.Identity;
 using SqlFlow.Core.Model;
@@ -63,7 +64,7 @@ public sealed class YamlFlowLoader
         // FlowId is system-generated (not authored in YAML); expose it to the metadata record too.
         options["flowId"] = FlowIdentity.FromName(name).ToString();
 
-        return new FlowDefinition
+        var flow = new FlowDefinition
         {
             Name = name,
             Batch = YamlDocumentParts.NullIfBlank(y.Batch),
@@ -88,6 +89,22 @@ public sealed class YamlFlowLoader
             DesiredIndexes = string.IsNullOrWhiteSpace(y.DesiredIndexes) ? null : y.DesiredIndexes,
             Incremental = MapIncremental(y.Incremental),
         };
+
+        // A Dataverse table is checked as written, offline, so validate and the catalog sync refuse a source that a
+        // run would refuse at its first step: an unknown option, a literal secret, a file-date incremental block.
+        if (DataverseSourceOptions.IsDataverse(flow.Source.Type))
+        {
+            try
+            {
+                DataverseSourceOptions.ValidateAuthored(flow.Source, flow.Incremental);
+            }
+            catch (SqlFlowException ex)
+            {
+                throw new FlowValidationException($"{source}: {ex.Message}", ex);
+            }
+        }
+
+        return flow;
     }
 
     private static IncrementalSpec? MapIncremental(IncrementalYaml? y)

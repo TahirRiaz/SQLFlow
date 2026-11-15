@@ -1088,6 +1088,56 @@ public sealed class DispatchState
         }
     }
 
+    /// <summary>The work a job in flight hands out next for a pool: for each run group with members queued for the pool
+    /// behind a lower wave, the members of the wave that opens next, and no more of them than the group's cap lets run at
+    /// once. Nothing says when that wave opens, only that it will, onto nodes that are free then. So a fleet that lets
+    /// its idle nodes go keeps as many as this needs (a job never loses the workers its next step is waiting for), while
+    /// nothing here asks for a node that is not there: a gated run still starts no worker.</summary>
+    public EligibleQueuedRuns CountNextWave(string poolKey)
+    {
+        ArgumentNullException.ThrowIfNull(poolKey);
+        lock (_gate)
+        {
+            if (!_queuedRunsByPool.TryGetValue(poolKey, out var queued) || queued.Count == 0)
+            {
+                return default;
+            }
+
+            // Per group: the lowest wave among its members here that a lower wave still holds back, and its members.
+            var next = new Dictionary<Guid, (int Wave, int Runs, int WholeNode, int? Cap)>();
+            foreach (var entry in queued)
+            {
+                if (entry.GroupId is not { } groupId || !_groups.TryGetValue(groupId, out var group)
+                    || group.LowestPendingWave is not { } open || entry.GroupWave <= open)
+                {
+                    continue;
+                }
+
+                if (!next.TryGetValue(groupId, out var wave) || entry.GroupWave < wave.Wave)
+                {
+                    wave = (entry.GroupWave, 0, 0, group.MaxConcurrency);
+                }
+                else if (entry.GroupWave > wave.Wave)
+                {
+                    continue;
+                }
+
+                next[groupId] = (wave.Wave, wave.Runs + 1, wave.WholeNode + (entry.WholeNode ? 1 : 0), wave.Cap);
+            }
+
+            var runs = 0;
+            var wholeNode = 0;
+            foreach (var wave in next.Values)
+            {
+                var admitted = wave.Cap is { } cap ? Math.Min(wave.Runs, cap) : wave.Runs;
+                runs += admitted;
+                wholeNode += Math.Min(wave.WholeNode, admitted);
+            }
+
+            return new EligibleQueuedRuns(runs, wholeNode);
+        }
+    }
+
     // ------------------------------------------------------------------------------------------- internals -------
 
     /// <summary>Whether another execution family holds the run's pipeline: a run waits for any run of its flow outside

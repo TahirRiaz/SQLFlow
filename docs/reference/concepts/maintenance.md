@@ -182,7 +182,7 @@ limit.
 | Schedules | `Schedule`, `ScheduleMember`, `ScheduleParent` | Keep | Rewritten by each sync |
 | Subscribers | `Subscriber` and its eight report and model tables | Keep | Rewritten by each sync |
 | Sync and discovery traces | `ActivityEvent` | Safe to remove | The last five attempts per subject; a discovery's lines after 2 days; a trigger request's one trace stays with the request |
-| Nodes | `Node` | Safe to remove | After `Dispatch:NodeRetentionHours` offline (24) |
+| Nodes | `Node` | Safe to remove | At once when a node stops cleanly; after `Dispatch:NodeRetentionHours` offline (24) for one that went silent |
 | Dispatch and worker pools | `DispatchLease`, `WorkerPool` | Keep | Updated in place |
 | Compute tasks | `ComputeTask` | Optional | The limit an admin sets (above) |
 | Prepared queries | `QueryPlan` | Safe to remove | 24 hours after it was prepared |
