@@ -18,7 +18,9 @@ public sealed record FleetWorker(
 /// false when the launcher could not be asked this tick and <see cref="Workers"/> holds what it said last.
 /// <see cref="WorkerTimeLimit"/> is the longest the platform lets a worker run, when it limits it.
 /// <see cref="NextWaveRuns"/> is, per pool, what a job in flight hands out next
-/// (<see cref="DispatchState.CountNextWave"/>): a pool keeps the workers that needs when it lets idle ones go.</summary>
+/// (<see cref="DispatchState.CountNextWave"/>): a pool keeps the workers that needs when it lets idle ones go.
+/// <see cref="RunsInFlight"/> is, per pool, how many of its runs are queued or executing: while there are any, a job is
+/// in flight, and its idle workers each wait the whole idle time rather than sharing it.</summary>
 public sealed record FleetSnapshot(
     DateTime NowUtc,
     DateTime TakeoverUtc,
@@ -31,7 +33,8 @@ public sealed record FleetSnapshot(
     TimeSpan? WorkerTimeLimit = null,
     DateTime? ResumedUtc = null,
     IReadOnlyDictionary<string, int>? EligibleWholeNodeRuns = null,
-    IReadOnlyDictionary<string, EligibleQueuedRuns>? NextWaveRuns = null)
+    IReadOnlyDictionary<string, EligibleQueuedRuns>? NextWaveRuns = null,
+    IReadOnlyDictionary<string, int>? RunsInFlight = null)
 {
     /// <summary>Since when this control plane has watched the fleet without a gap: the later of the takeover and the
     /// last resume. Silence, start and idle times count from here at the earliest.</summary>
@@ -477,13 +480,23 @@ public static class FleetPlanner
         // where one wait for each costs Idle x j. No wait is shorter than MinIdle, about what starting a worker costs:
         // under that, letting a worker go and starting it again costs more than keeping it would have.
         //
-        // What a job in flight is about to hand out is not spare: the wave of a run group that opens next lands on the
-        // workers free at that moment, so the pool keeps as many workers as that wave needs, busy ones included (they
-        // are the ones finishing the wave before it).
-        if (eligible == 0)
+        // A job in flight keeps its workers, in two steps.
+        //
+        // While it still has steps waiting to start (runs of the pool queued behind a wave of their group), no idle
+        // worker leaves at all. The wave that opens next lands on the workers free at that moment, and how many it needs
+        // is not on the queue: a run that splits its work over workers asks for them only once it has planned. A worker
+        // let go now would be started again when the wave opens.
+        //
+        // While runs of the pool are executing and nothing waits behind a wave, every idle worker waits the whole idle
+        // time, not a share of it: a run may still split, and the run after it is queued only once it ends. The wait is
+        // bounded on purpose. One run that takes hours would otherwise hold every worker that stood beside it idle for
+        // as long, which costs far more than starting a worker again.
+        //
+        // Only once the pool is quiet, with no run of its own queued or executing, is the idle time shared.
+        var nextWave = snapshot.NextWaveRuns?.GetValueOrDefault(key) ?? default;
+        if (eligible == 0 && nextWave.Runs == 0)
         {
-            var nextWave = snapshot.NextWaveRuns?.GetValueOrDefault(key) ?? default;
-            var keep = Math.Max(minimum, (int)Math.Min(pool.MaxWorkers, (long)nextWave.Nodes(slots)));
+            var keep = minimum;
             var idle = ready
                 .Select(w => (Worker: w, Node: nodes[w.Name]))
                 .Where(x => !IsBusy(x.Node) && x.Node.IdleSinceUtc is not null)
@@ -500,10 +513,11 @@ public static class FleetPlanner
                 .OrderByDescending(x => x.IdleFor)
                 .ThenBy(x => x.Worker.Name, StringComparer.Ordinal)
                 .ToList();
+            var inFlight = (snapshot.RunsInFlight?.GetValueOrDefault(key) ?? 0) > 0;
             for (var i = 0; i < leaving.Count; i++)
             {
                 var remaining = leaving.Count - i;
-                var wait = IdleWait(settings, remaining);
+                var wait = inFlight ? settings.Idle : IdleWait(settings, remaining);
                 if (leaving[i].IdleFor < wait)
                 {
                     break;
@@ -511,7 +525,7 @@ public static class FleetPlanner
 
                 drains.Add(new PlannedDrain(
                     leaving[i].Worker.Name, key,
-                    remaining == 1
+                    remaining == 1 || inFlight
                         ? $"idle for {Minutes(wait)} or more with nothing queued"
                         : $"idle for {Minutes(wait)} or more with nothing queued, one of {remaining} idle workers the pool can spare"));
             }

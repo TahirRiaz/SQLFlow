@@ -29,11 +29,11 @@ public sealed class FleetPlannerTests
         IReadOnlyDictionary<string, int>? eligible = null, IReadOnlyDictionary<string, int>? gui = null,
         bool listCurrent = true, DateTime? takeover = null, IReadOnlyDictionary<string, DateTime>? blocked = null,
         TimeSpan? timeLimit = null, DateTime? resumed = null, IReadOnlyDictionary<string, int>? wholeNode = null,
-        IReadOnlyDictionary<string, EligibleQueuedRuns>? nextWave = null)
+        IReadOnlyDictionary<string, EligibleQueuedRuns>? nextWave = null, IReadOnlyDictionary<string, int>? inFlight = null)
         => new(
             Now, takeover ?? LongAgo, gui ?? new Dictionary<string, int>(),
             eligible ?? new Dictionary<string, int>(), nodes ?? [], workers ?? [], listCurrent,
-            blocked ?? new Dictionary<string, DateTime>(), timeLimit, resumed, wholeNode, nextWave);
+            blocked ?? new Dictionary<string, DateTime>(), timeLimit, resumed, wholeNode, nextWave, inFlight);
 
     /// <summary><paramref name="count"/> workers the launcher lists, each idle for <paramref name="idleSeconds"/>.</summary>
     private static (FleetWorker[] Workers, NodeView[] Nodes) Idle(int count, int idleSeconds)
@@ -301,27 +301,38 @@ public sealed class FleetPlannerTests
         Assert.DoesNotContain(plan.Drains, d => d.Name == workers[0].Name || d.Name == workers[1].Name);
     }
 
-    [Fact]
-    public void AJobInFlight_KeepsTheWorkersItsNextWaveNeeds_HoweverLongTheyIdle()
+    [Theory]
+    [InlineData(60, 0)]   // a quiet pool would have let five of the six go by now
+    [InlineData(119, 0)]
+    [InlineData(120, 6)]  // each has waited the whole idle time
+    public void WhileARunOfThePoolIsQueuedOrExecuting_EveryIdleWorkerWaitsTheWholeIdleTime(int idleSeconds, int leave)
     {
-        // Eight workers: one still finishing the job's current wave, seven idle for ten minutes. The wave that opens
-        // next has eight runs that each take a worker to themselves, so nobody is spare.
+        // A delivery that splits its rows asks for its workers only once it has planned, and the flow after it only once
+        // it has ended: neither is on the queue yet while the workers of the split before stand idle. Sharing the idle
+        // time there would stop workers the job starts again a moment later.
+        var (workers, nodes) = Idle(7, idleSeconds);
+        var running = new Dictionary<string, int> { [string.Empty] = 1 };
+
+        Assert.Equal(leave, FleetPlanner.Plan(Snapshot(workers, nodes, inFlight: running), Settings()).Drains.Count);
+    }
+
+    [Fact]
+    public void WhileAJobStillHasStepsWaitingToStart_NoIdleWorkerLeaves_HoweverLongItIdles()
+    {
+        // Eight workers: one still finishing the job's current wave, seven idle for ten minutes. A single run waits
+        // behind that wave. It may split its work over all eight once it has planned, and nothing on the queue says so
+        // yet, so nobody leaves.
         var (workers, nodes) = Idle(8, 600);
         nodes[0] = Node(workers[0].Name, busy: 1);
-        var eightParts = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(8, 8) };
+        var oneWaiting = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(1, 0) };
+        var running = new Dictionary<string, int> { [string.Empty] = 2 };
 
-        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: eightParts), Settings()).Drains);
+        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: oneWaiting, inFlight: running), Settings()).Drains);
 
-        // A next wave of six runs that share workers needs two of them (four to a worker): the busy one and one idle
-        // one stay, and the other six leave.
-        var sixShared = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(6, 0) };
-        var plan = FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: sixShared), Settings());
-        Assert.Equal(6, plan.Drains.Count);
+        // The last wave is running and nothing waits behind it: now the idle workers go, each after the whole idle time.
+        var plan = FleetPlanner.Plan(Snapshot(workers, nodes, inFlight: new Dictionary<string, int> { [string.Empty] = 1 }), Settings());
+        Assert.Equal(7, plan.Drains.Count);
         Assert.DoesNotContain(plan.Drains, d => d.Name == workers[0].Name);
-
-        // And it never holds more workers than the pool may run.
-        var absurd = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(int.MaxValue, int.MaxValue) };
-        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: absurd), Settings(max: 8)).Drains);
     }
 
     [Fact]

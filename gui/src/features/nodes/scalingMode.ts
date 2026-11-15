@@ -34,7 +34,7 @@ export function scalingModeLabel(mode: ScalingMode): string {
 export function scalingModeExplanation(mode: ScalingMode): string {
   switch (mode.kind) {
     case "managed":
-      return `The control plane starts and stops these workers itself, through the ${mode.launcher} launcher. Each managed pool always keeps its minimum running and starts more for queued runs no free slot covers; an idle extra worker leaves after two minutes, sooner the more of them are idle (never before 30 seconds), and only once it holds nothing; the workers a running schedule's next wave needs stay. Always on raises the minimum, and Spawn raises a pool for a window.`;
+      return `The control plane starts and stops these workers itself, through the ${mode.launcher} launcher. Each managed pool always keeps its minimum running and starts more for queued runs no free slot covers; an idle extra worker leaves after two minutes, sooner the more of them are idle (never before 30 seconds), and only once it holds nothing; while a job still has steps waiting to start, none leaves, and while runs are executing each waits the full two minutes. Always on raises the minimum, and Spawn raises a pool for a window.`;
     case "built-in":
       return `Managed workers are off, so this control plane starts no worker. It runs runs on its own node, ${mode.node.name}, ${mode.node.runSlots} at a time, and answers each pool's target to an autoscaler, if one reads it. Without one, Always on and Spawn are recorded and nothing starts; turn on ControlPlane:ManagedWorkers to have the control plane start and stop workers itself.`;
     default:
