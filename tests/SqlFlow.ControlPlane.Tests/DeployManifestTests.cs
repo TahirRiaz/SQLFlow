@@ -52,6 +52,28 @@ public sealed class DeployManifestTests
     }
 
     [Fact]
+    public void AnIdlePool_GoesToZeroAfterAMinute_NotThePlatformsFive_AndTheScalerReadsTheTargetFourTimesInThat()
+    {
+        // An idle node is compute paid for nothing, so the cool-down is about what starting one costs. The scaler must
+        // still read the target several times inside it, so a single reading never takes a pool to zero.
+        var bicep = Manifest("deploy/bicep/worker.bicep");
+        Assert.Contains("cooldownPeriod: 60", bicep, StringComparison.Ordinal);
+        Assert.Contains("pollingInterval: 15", bicep, StringComparison.Ordinal);
+        foreach (var compiled in new[] { "deploy/bicep/worker.json", "deploy/bicep/main.json" })
+        {
+            Assert.Contains("\"cooldownPeriod\": 60", Manifest(compiled), StringComparison.Ordinal);
+            Assert.Contains("\"pollingInterval\": 15", Manifest(compiled), StringComparison.Ordinal);
+        }
+
+        var yaml = Manifest("deploy/k8s/worker-pool.yaml");
+        Assert.Contains("cooldownPeriod: 60", yaml, StringComparison.Ordinal);
+        Assert.Contains("pollingInterval: 15", yaml, StringComparison.Ordinal);
+
+        // Managed workers share two minutes of idle time between the workers a pool can spare.
+        Assert.Equal(2, new SqlFlow.ControlPlane.Configuration.ManagedWorkersOptions().IdleMinutes);
+    }
+
+    [Fact]
     public void ControlPlane_RunsOneReplica_BecauseDispatchHasOneOwner()
     {
         // The run queue is owned by exactly one replica; a second one refuses every node call that lands on it.

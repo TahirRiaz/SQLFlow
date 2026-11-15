@@ -86,6 +86,53 @@ public sealed class ScaleTargetStoreTests
     }
 
     [SkippableFact]
+    public async Task Resolve_CountsANodeTheJournalSaysHoldsARun_AsBusy_WhateverItsHeartbeatSays()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoId = FlowIdentity.FromName("sj_" + suffix);
+        var pool = "sj-" + suffix;
+        var other = "sj-other-" + suffix;
+        string[] nodes = [$"sj-lagging-{suffix}", $"sj-stale-{suffix}", $"sj-new-{suffix}", $"sj-elsewhere-{suffix}", $"sj-dead-{suffix}"];
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var now = DateTime.UtcNow;
+
+            // Four runs handed out, one to each of four nodes; nothing is left queued.
+            for (var i = 0; i < 4; i++)
+            {
+                var id = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, $"sj_flow_{i}_{suffix}", "ing", pool), now)).RunId;
+                Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, id, 0, nodes[i], now));
+            }
+
+            // The first node's heartbeat was flushed before the hand-out and still says idle. The second's row is two
+            // minutes old, as every row is when the control plane has been away. The third has no row yet: it was handed
+            // its run on its first poll. The fourth's row names another pool, which is where it counts. A fifth went
+            // silent saying it was busy, and holds nothing in the journal.
+            await NodeStore.HeartbeatAsync(db, nodes[0], "t", now, pool, busyRuns: 0, runSlots: 4);
+            await NodeStore.HeartbeatAsync(db, nodes[1], "t", now.AddMinutes(-2), pool, busyRuns: 1, runSlots: 4);
+            await NodeStore.HeartbeatAsync(db, nodes[3], "t", now, other, busyRuns: 0, runSlots: 4);
+            await NodeStore.HeartbeatAsync(db, nodes[4], "t", now.AddMinutes(-2), pool, busyRuns: 2, runSlots: 4);
+
+            var target = await ScaleTargetStore.ResolveAsync(db, pool, 4, now);
+
+            // Built on the heartbeat alone this read zero, and the scaler took the pool to zero under its running runs.
+            Assert.Equal((0, 3, 1), (target.EligibleQueuedRuns, target.BusyNodes, target.OnlineNodes));
+            Assert.Equal(3, target.Replicas);
+            Assert.Equal(1, (await ScaleTargetStore.ResolveAsync(db, other, 4, now)).BusyNodes);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Nodes.Where(n => nodes.Contains(n.Name)).ExecuteDeleteAsync();
+        }
+    }
+
+    [SkippableFact]
     public async Task Resolve_CountsAFanOutMemberThatTakesANodeToItself_AsANodeOfItsOwn()
     {
         var cs = CatalogTestDb.Require();

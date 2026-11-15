@@ -28,11 +28,20 @@ public sealed class FleetPlannerTests
         IReadOnlyList<FleetWorker>? workers = null, IReadOnlyList<NodeView>? nodes = null,
         IReadOnlyDictionary<string, int>? eligible = null, IReadOnlyDictionary<string, int>? gui = null,
         bool listCurrent = true, DateTime? takeover = null, IReadOnlyDictionary<string, DateTime>? blocked = null,
-        TimeSpan? timeLimit = null, DateTime? resumed = null, IReadOnlyDictionary<string, int>? wholeNode = null)
+        TimeSpan? timeLimit = null, DateTime? resumed = null, IReadOnlyDictionary<string, int>? wholeNode = null,
+        IReadOnlyDictionary<string, EligibleQueuedRuns>? nextWave = null)
         => new(
             Now, takeover ?? LongAgo, gui ?? new Dictionary<string, int>(),
             eligible ?? new Dictionary<string, int>(), nodes ?? [], workers ?? [], listCurrent,
-            blocked ?? new Dictionary<string, DateTime>(), timeLimit, resumed, wholeNode);
+            blocked ?? new Dictionary<string, DateTime>(), timeLimit, resumed, wholeNode, nextWave);
+
+    /// <summary><paramref name="count"/> workers the launcher lists, each idle for <paramref name="idleSeconds"/>.</summary>
+    private static (FleetWorker[] Workers, NodeView[] Nodes) Idle(int count, int idleSeconds)
+    {
+        var workers = Enumerable.Range(1, count).Select(i => Listed($"worker-default-{i:0000000000}")).ToArray();
+        var nodes = workers.Select(w => Node(w.Name) with { IdleSinceUtc = Now.AddSeconds(-idleSeconds) }).ToArray();
+        return (workers, nodes);
+    }
 
     /// <summary>A worker this control plane started <paramref name="ageMinutes"/> ago, which the launcher lists as
     /// running (or in <paramref name="state"/>).</summary>
@@ -225,9 +234,107 @@ public sealed class FleetPlannerTests
     public void AWorkerIdleForLessThanTheIdleTime_Stays()
     {
         var workers = new[] { Listed("worker-default-0000000001"), Listed("worker-default-0000000002") };
-        var nodes = workers.Select(w => Node(w.Name, idleMinutes: 4)).ToArray();
+        var nodes = workers.Select(w => Node(w.Name, idleMinutes: 1)).ToArray();
 
         Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes), Settings()).Drains);
+    }
+
+    [Theory]
+    [InlineData(1, 120)]
+    [InlineData(2, 60)]
+    [InlineData(3, 40)]
+    [InlineData(4, 30)]
+    [InlineData(6, 30)]
+    [InlineData(50, 30)]
+    public void TheMoreIdleWorkersAPoolCanSpare_TheSoonerTheNextOneLeaves_DownToTheMinimum(int spare, int seconds)
+    {
+        // The idle time is shared between the idle workers a pool can spare: one waits all of it, six a sixth each,
+        // and none less than the minimum, about what starting a worker costs.
+        Assert.Equal(TimeSpan.FromSeconds(30), Settings().MinIdle);
+        Assert.Equal(TimeSpan.FromSeconds(seconds), FleetPlanner.IdleWait(Settings(), spare));
+    }
+
+    [Theory]
+    [InlineData(29, 0)]
+    [InlineData(30, 3)] // six to spare, five to spare and four to spare all wait the 30 second minimum
+    [InlineData(39, 3)]
+    [InlineData(40, 4)] // three to spare: 40 seconds
+    [InlineData(60, 5)] // two: a minute
+    [InlineData(119, 5)]
+    [InlineData(120, 6)] // the last one waits the whole two minutes
+    public void SixIdleWorkersToSpare_LeaveOneAfterAnother_AsTheirSharedIdleTimeRunsOut(int idleSeconds, int leave)
+    {
+        // Seven workers went idle together, in a pool that always keeps one: six are spare. Kept for two minutes each
+        // they would cost twelve worker-minutes of idling; shared, the same safety costs a little over five.
+        var (workers, nodes) = Idle(7, idleSeconds);
+
+        var plan = FleetPlanner.Plan(Snapshot(workers, nodes), Settings());
+
+        Assert.Equal(leave, plan.Drains.Count);
+        Assert.Empty(plan.Stops);
+        Assert.DoesNotContain(plan.Drains, d => d.Name == workers[^1].Name); // the newest stays as the pool's minimum
+    }
+
+    [Fact]
+    public void AsIdleWorkersLeave_TheOnesThatStayWaitLonger_SoTheLastWaitsTheWholeIdleTime()
+    {
+        // Three of the six went at 30 seconds and are draining; three remain to spare. At 35 seconds none of them goes
+        // (three to spare wait 40), where six to spare would have.
+        var (workers, nodes) = Idle(7, 35);
+        var drained = nodes.Select((n, i) => i < 3 ? n with { DrainRequestedUtc = Now.AddSeconds(-5) } : n).ToArray();
+
+        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, drained), Settings()).Drains);
+    }
+
+    [Fact]
+    public void AnIdleWorkerABusyOneStandsBeside_IsStillSpare_AndABusyOneNeverLeaves()
+    {
+        // Two busy workers and four idle for a minute: the pool's minimum is met by the busy ones, so all four idle
+        // ones are spare, and with four to spare the wait is 30 seconds, then 40, then 60: three leave.
+        var (workers, nodes) = Idle(6, 60);
+        nodes[0] = Node(workers[0].Name, busy: 2);
+        nodes[1] = Node(workers[1].Name, busy: 1);
+
+        var plan = FleetPlanner.Plan(Snapshot(workers, nodes), Settings());
+
+        Assert.Equal(3, plan.Drains.Count);
+        Assert.DoesNotContain(plan.Drains, d => d.Name == workers[0].Name || d.Name == workers[1].Name);
+    }
+
+    [Fact]
+    public void AJobInFlight_KeepsTheWorkersItsNextWaveNeeds_HoweverLongTheyIdle()
+    {
+        // Eight workers: one still finishing the job's current wave, seven idle for ten minutes. The wave that opens
+        // next has eight runs that each take a worker to themselves, so nobody is spare.
+        var (workers, nodes) = Idle(8, 600);
+        nodes[0] = Node(workers[0].Name, busy: 1);
+        var eightParts = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(8, 8) };
+
+        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: eightParts), Settings()).Drains);
+
+        // A next wave of six runs that share workers needs two of them (four to a worker): the busy one and one idle
+        // one stay, and the other six leave.
+        var sixShared = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(6, 0) };
+        var plan = FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: sixShared), Settings());
+        Assert.Equal(6, plan.Drains.Count);
+        Assert.DoesNotContain(plan.Drains, d => d.Name == workers[0].Name);
+
+        // And it never holds more workers than the pool may run.
+        var absurd = new Dictionary<string, EligibleQueuedRuns> { [string.Empty] = new(int.MaxValue, int.MaxValue) };
+        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, nextWave: absurd), Settings(max: 8)).Drains);
+    }
+
+    [Fact]
+    public void AnIdleSurplusWorker_IsAskedToLeave_AfterTwoMinutes_UnlessSetOtherwise()
+    {
+        // An idle worker is compute paid for nothing: a pool's one spare worker waits two minutes, no longer.
+        Assert.Equal(TimeSpan.FromSeconds(120), Settings().Idle);
+
+        var workers = new[] { Listed("worker-default-0000000001"), Listed("worker-default-0000000002") };
+        var nodes = workers.Select(w => Node(w.Name, idleMinutes: 2)).ToArray();
+
+        var drain = Assert.Single(FleetPlanner.Plan(Snapshot(workers, nodes), Settings()).Drains);
+        Assert.Contains("idle for 2 min", drain.Reason, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -236,7 +343,7 @@ public sealed class FleetPlannerTests
         var workers = new[] { Listed("worker-default-0000000001"), Listed("worker-default-0000000002") };
         var nodes = workers.Select(w => Node(w.Name, idleMinutes: 60)).ToArray();
 
-        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, takeover: Now.AddMinutes(-2)), Settings()).Drains);
+        Assert.Empty(FleetPlanner.Plan(Snapshot(workers, nodes, takeover: Now.AddMinutes(-1)), Settings()).Drains);
     }
 
     [Fact]

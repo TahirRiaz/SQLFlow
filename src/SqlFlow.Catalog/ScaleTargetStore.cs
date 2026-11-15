@@ -36,8 +36,16 @@ public sealed record ScaleTarget(
 /// replicas carrying live runs. The queued term is divided by what one node executes at once, because a replica is
 /// not worth one run: asking for one replica per queued run spawned four times the fleet a schedule wave needed,
 /// and the surplus found nothing left to take. Busy nodes are not divided; each holds one replica's worth of
-/// occupied capacity. The liveness window means a dead node's last busy count never pins a replica: its runs are
-/// requeued by the dispatcher's lease expiry and re-enter the queued term.</para>
+/// occupied capacity.</para>
+/// <para>A node is busy when it is online and reported runs on its last heartbeat, or when the journal says it holds
+/// a running run, whatever its heartbeat says. The heartbeat alone is behind the journal twice: for the few seconds
+/// between a hand-out and the node's next flushed poll, and for as long as the control plane was away (nobody
+/// writes heartbeats then, so every node reads silent when it returns). In both, the queued term has already dropped
+/// to zero, and a target built on the heartbeat alone read zero under running work: the scaler took the pool to
+/// zero and stopped the nodes mid-run. The journal is never behind, so the target reads zero only when nothing is
+/// queued that could start and nothing runs, and a short cool-down on the scaler is safe. A node that died holding
+/// runs holds its replica only until the dispatcher's lease expiry requeues them, when they ask for one as queued
+/// runs do; a silent node's last busy count, with no running run behind it, still pins nothing.</para>
 /// </summary>
 public static class ScaleTargetStore
 {
@@ -71,14 +79,32 @@ public static class ScaleTargetStore
 
         var eligible = state.CountEligible(key);
 
-        var isDefault = key.Length == 0;
-        var nodes = await catalog.Nodes.AsNoTracking()
-            .Where(n => isDefault ? (n.Pool == null || n.Pool == "") : n.Pool == key)
-            .Select(n => new { n.LastSeenUtc, n.BusyRuns, n.RunSlots })
+        // Every node's row, not only this pool's: a node the journal says holds a run belongs to the pool its row names,
+        // and only one with no row yet (handed a run on its very first poll) is taken to serve the run's own pool. The
+        // fleet registry is small: a node that left has no row, and a silent one is pruned.
+        var fleet = await catalog.Nodes.AsNoTracking()
+            .Select(n => new { n.Name, n.Pool, n.LastSeenUtc, n.BusyRuns, n.RunSlots })
             .ToListAsync(ct).ConfigureAwait(false);
+        var poolOf = fleet.ToDictionary(n => n.Name, n => WorkerPoolStore.PoolKey(n.Pool), StringComparer.Ordinal);
+        var nodes = fleet.Where(n => string.Equals(poolOf[n.Name], key, StringComparison.Ordinal)).ToList();
         var onlineSince = nowUtc - NodeRegistry.OnlineWindow;
         var online = nodes.Where(n => n.LastSeenUtc >= onlineSince).ToList();
-        var busy = online.Count(n => n.BusyRuns > 0);
+        var busyNodes = online.Where(n => n.BusyRuns > 0).Select(n => n.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var record in running)
+        {
+            if (string.IsNullOrEmpty(record.Node))
+            {
+                continue;
+            }
+
+            var holderPool = poolOf.TryGetValue(record.Node, out var named) ? named : WorkerPoolStore.PoolKey(record.Run.TargetPool);
+            if (string.Equals(holderPool, key, StringComparison.Ordinal))
+            {
+                busyNodes.Add(record.Node);
+            }
+        }
+
+        var busy = busyNodes.Count;
 
         // What one node of the pool executes at once: what the online nodes report, else what the pool's last
         // known nodes reported (a pool scaled to zero remembers its shape), else the runtime default. Every

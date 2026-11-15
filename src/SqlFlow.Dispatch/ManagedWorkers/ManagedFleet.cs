@@ -243,6 +243,7 @@ public sealed partial class ManagedFleet : IDisposable
         var counted = _settings.Pools.ToDictionary(p => p.Pool, p => _dispatcher.Queue.CountEligible(p.Pool), StringComparer.Ordinal);
         var eligible = counted.ToDictionary(c => c.Key, c => c.Value.Runs, StringComparer.Ordinal);
         var wholeNode = counted.ToDictionary(c => c.Key, c => c.Value.WholeNodeRuns, StringComparer.Ordinal);
+        var nextWave = _settings.Pools.ToDictionary(p => p.Pool, p => _dispatcher.Queue.CountNextWave(p.Pool), StringComparer.Ordinal);
         if (!Owns(epoch))
         {
             LogOwnershipChanged();
@@ -252,7 +253,8 @@ public sealed partial class ManagedFleet : IDisposable
         var workers = BuildWorkers(nodes, now);
         var snapshot = new FleetSnapshot(
             now, activated, _lastGuiMinimum, eligible, nodes, workers, _listCurrent,
-            new Dictionary<string, DateTime>(_blockedUntil, StringComparer.Ordinal), _launcher.WorkerTimeLimit, _resumedUtc, wholeNode);
+            new Dictionary<string, DateTime>(_blockedUntil, StringComparer.Ordinal), _launcher.WorkerTimeLimit, _resumedUtc, wholeNode,
+            nextWave);
         var plan = FleetPlanner.Plan(snapshot, _settings);
 
         if (await ActAsync(plan, epoch, ct).ConfigureAwait(false))

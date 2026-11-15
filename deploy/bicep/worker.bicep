@@ -245,7 +245,7 @@ var scaleRules = empty(nodeTokenSecretName) ? [] : [
   }
 ]
 
-resource app 'Microsoft.App/containerApps@2024-03-01' = {
+resource app 'Microsoft.App/containerApps@2025-01-01' = {
   name: name
   location: location
   identity: {
@@ -284,6 +284,15 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
       scale: {
         minReplicas: 0
         maxReplicas: maxReplicas
+        // An idle pool is compute paid for nothing, so it goes to zero 60 seconds after the target last asked for a
+        // replica, where the platform waits 300 by default. That is about what starting a replica costs: a shorter wait
+        // would stop nodes only to start them again. The target reads zero only when nothing is queued that could start
+        // and nothing runs (the control plane counts a node as busy from the run journal, not only from its last
+        // heartbeat), and the scaler reads it four times inside the cool-down, so a job in flight never loses its nodes
+        // to it. A pool that is only partly idle shrinks on the platform's own five minute window, which Container Apps
+        // does not let a template set.
+        cooldownPeriod: 60
+        pollingInterval: 15
         rules: scaleRules
       }
     }

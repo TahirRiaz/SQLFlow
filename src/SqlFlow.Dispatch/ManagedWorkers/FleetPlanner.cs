@@ -16,7 +16,9 @@ public sealed record FleetWorker(
 /// <see cref="ResumedUtc"/> is when it last resumed after a pause in its own ticks (the process stood still, or its clock
 /// jumped), which restarts the same timers, since nobody could be heard during the pause. <see cref="ListCurrent"/> is
 /// false when the launcher could not be asked this tick and <see cref="Workers"/> holds what it said last.
-/// <see cref="WorkerTimeLimit"/> is the longest the platform lets a worker run, when it limits it.</summary>
+/// <see cref="WorkerTimeLimit"/> is the longest the platform lets a worker run, when it limits it.
+/// <see cref="NextWaveRuns"/> is, per pool, what a job in flight hands out next
+/// (<see cref="DispatchState.CountNextWave"/>): a pool keeps the workers that needs when it lets idle ones go.</summary>
 public sealed record FleetSnapshot(
     DateTime NowUtc,
     DateTime TakeoverUtc,
@@ -28,7 +30,8 @@ public sealed record FleetSnapshot(
     IReadOnlyDictionary<string, DateTime> BlockedUntilUtc,
     TimeSpan? WorkerTimeLimit = null,
     DateTime? ResumedUtc = null,
-    IReadOnlyDictionary<string, int>? EligibleWholeNodeRuns = null)
+    IReadOnlyDictionary<string, int>? EligibleWholeNodeRuns = null,
+    IReadOnlyDictionary<string, EligibleQueuedRuns>? NextWaveRuns = null)
 {
     /// <summary>Since when this control plane has watched the fleet without a gap: the later of the takeover and the
     /// last resume. Silence, start and idle times count from here at the earliest.</summary>
@@ -466,19 +469,51 @@ public static class FleetPlanner
         // Shrinking: only with nothing eligible queued for the pool, only workers idle long enough (counted from the
         // takeover or a resume at the earliest), the quiet ones and then the oldest first, and never below the minimum of
         // fresh Ready workers.
-        if (eligible == 0 && fresh > minimum)
+        //
+        // How long an idle worker waits depends on how many the pool can spare. Keeping one idle is a bet that work
+        // follows; each further one is a longer bet, since work that needs j workers at once is rarer than work that
+        // needs one. So with j idle workers to spare, the next to leave has waited Idle / j: the last of them the whole
+        // idle time, the one before half of it, and so on, which costs the pool about Idle x ln(j) of idle time in all
+        // where one wait for each costs Idle x j. No wait is shorter than MinIdle, about what starting a worker costs:
+        // under that, letting a worker go and starting it again costs more than keeping it would have.
+        //
+        // What a job in flight is about to hand out is not spare: the wave of a run group that opens next lands on the
+        // workers free at that moment, so the pool keeps as many workers as that wave needs, busy ones included (they
+        // are the ones finishing the wave before it).
+        if (eligible == 0)
         {
+            var nextWave = snapshot.NextWaveRuns?.GetValueOrDefault(key) ?? default;
+            var keep = Math.Max(minimum, (int)Math.Min(pool.MaxWorkers, (long)nextWave.Nodes(slots)));
             var idle = ready
                 .Select(w => (Worker: w, Node: nodes[w.Name]))
-                .Where(x => !IsBusy(x.Node) && x.Node.IdleSinceUtc is { } since
-                    && now - Later(since, snapshot.WatchedSinceUtc) >= settings.Idle)
+                .Where(x => !IsBusy(x.Node) && x.Node.IdleSinceUtc is not null)
                 .OrderBy(x => now - x.Node.LastSeenUtc <= settings.PollFreshness)
                 .ThenBy(x => x.Worker.LaunchedUtc ?? x.Node.StartedUtc)
                 .ThenBy(x => x.Worker.Name, StringComparer.Ordinal)
-                .Take(fresh - minimum);
-            foreach (var (worker, _) in idle)
+                .ToList();
+            // The workers that may leave are the first in that order; of those, the longest idle goes first, and each one
+            // that goes leaves a longer wait for the next.
+            var spare = Math.Max(0, Math.Min(fresh - keep, idle.Count));
+            var leaving = idle
+                .Take(spare)
+                .Select(x => (x.Worker, IdleFor: now - Later(x.Node.IdleSinceUtc!.Value, snapshot.WatchedSinceUtc)))
+                .OrderByDescending(x => x.IdleFor)
+                .ThenBy(x => x.Worker.Name, StringComparer.Ordinal)
+                .ToList();
+            for (var i = 0; i < leaving.Count; i++)
             {
-                drains.Add(new PlannedDrain(worker.Name, key, $"idle for {Minutes(settings.Idle)} or more with nothing queued"));
+                var remaining = leaving.Count - i;
+                var wait = IdleWait(settings, remaining);
+                if (leaving[i].IdleFor < wait)
+                {
+                    break;
+                }
+
+                drains.Add(new PlannedDrain(
+                    leaving[i].Worker.Name, key,
+                    remaining == 1
+                        ? $"idle for {Minutes(wait)} or more with nothing queued"
+                        : $"idle for {Minutes(wait)} or more with nothing queued, one of {remaining} idle workers the pool can spare"));
             }
         }
 
@@ -487,6 +522,13 @@ public static class FleetPlanner
             key, minimum, pool.MaxWorkers, target, starting, ready.Count, due.Count, draining, busy, eligible, unserved, slots,
             blockedUntil, silent);
     }
+
+    /// <summary>How long the next idle worker to leave must have been idle when <paramref name="spare"/> idle workers can
+    /// be spared: <see cref="ManagedFleetSettings.Idle"/> shared between them, never less than
+    /// <see cref="ManagedFleetSettings.MinIdle"/>. One to spare waits the whole idle time; six wait a sixth of it each,
+    /// or the minimum where that is longer.</summary>
+    internal static TimeSpan IdleWait(ManagedFleetSettings settings, int spare)
+        => TimeSpan.FromTicks(Math.Max(settings.MinIdle.Ticks, settings.Idle.Ticks / Math.Max(1, spare)));
 
     /// <summary>Whether a node holds or was just handed work.</summary>
     private static bool IsBusy(NodeView node) => node.BusyRuns > 0 || node.BusyTasks > 0 || node.IdleSinceUtc is null;
