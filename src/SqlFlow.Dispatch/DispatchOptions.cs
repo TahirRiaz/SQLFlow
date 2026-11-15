@@ -59,6 +59,10 @@ public sealed class DispatchOptions
 
     public TimeSpan OwnershipRenew => TimeSpan.FromSeconds(OwnershipRenewSeconds);
 
+    /// <summary>The margin, in seconds, a node's last poll must reach the fleet view inside the online window by: the
+    /// round trip of the poll and the flush's own write.</summary>
+    private const int OnlineMarginSeconds = 10;
+
     /// <summary>Rejects a combination that cannot work, naming the offending setting.</summary>
     public void Validate()
     {
@@ -77,6 +81,16 @@ public sealed class DispatchOptions
         if (ReconcileSeconds < 1 || NodeFlushSeconds < 1)
         {
             throw new InvalidOperationException("Dispatch:ReconcileSeconds and Dispatch:NodeFlushSeconds must be positive.");
+        }
+
+        // A healthy node's row is as old as one parked poll plus one flush interval. Past the online window every node
+        // would read offline between polls: the fleet view would flicker, and an autoscaler's replica target would stop
+        // counting the busy nodes and scale in under running work.
+        var freshestRowSeconds = (int)NodeRegistry.OnlineWindow.TotalSeconds - OnlineMarginSeconds;
+        if (LongPollSeconds + NodeFlushSeconds > freshestRowSeconds)
+        {
+            throw new InvalidOperationException(
+                $"Dispatch:LongPollSeconds ({LongPollSeconds}) plus Dispatch:NodeFlushSeconds ({NodeFlushSeconds}) must be at most {freshestRowSeconds}: a node counts as online for {(int)NodeRegistry.OnlineWindow.TotalSeconds} s after its last poll, and its last poll reaches the fleet view one parked poll and one flush later.");
         }
 
         if (NodeRetentionHours < 0)

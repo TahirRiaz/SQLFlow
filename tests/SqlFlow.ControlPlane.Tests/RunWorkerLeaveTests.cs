@@ -46,6 +46,25 @@ public sealed class RunWorkerLeaveTests
         Assert.Equal((0, 0, 0), (leave.FreeRunSlots, leave.FreeTaskSlots, leave.WaitSeconds));
         Assert.Empty(leave.HoldingRuns);
         Assert.Empty(leave.HoldingTasks);
+
+        // A stopping node has no slot free, but it is no smaller than it was: every poll it makes on the way out (the
+        // drain's are built the same way) reports what it executes at once, so the fleet view never shows it with none.
+        Assert.Equal((polls[0].RunSlots, polls[0].TaskSlots), (leave.RunSlots, leave.TaskSlots));
+        Assert.Equal((RunWorker.DefaultMaxConcurrentRuns, RunWorker.DefaultMaxConcurrentComputeTasks), (leave.RunSlots, leave.TaskSlots));
+    }
+
+    [Fact]
+    public void TheGoodbyesRetries_OutlastADispatchHandOver_AndStayInsideTheGracePeriod()
+    {
+        // A deployment swaps the control plane and its workers together, and the replica taking dispatch over retries
+        // the ownership lease every OwnershipRenewSeconds: retries that end sooner leave the workers of every
+        // deployment listed offline. The drain and the goodbye together stay under the ten minutes a worker's
+        // deployment gives it to stop.
+        var waits = RunWorker.LeaveWaits.Aggregate(TimeSpan.Zero, (sum, wait) => sum + wait);
+
+        Assert.True(waits > new DispatchOptions().OwnershipRenew);
+        Assert.True(RunWorker.LeaveBudget > waits);
+        Assert.True(RunWorker.DefaultDrainTimeout + RunWorker.LeaveBudget < TimeSpan.FromMinutes(10));
     }
 
     [Fact]

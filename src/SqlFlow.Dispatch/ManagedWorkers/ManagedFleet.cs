@@ -485,7 +485,9 @@ public sealed partial class ManagedFleet : IDisposable
 
         foreach (var node in nodes)
         {
-            if (WorkerNames.PoolPartOf(node.Name, _settings.NamePrefix) is { } part && !workers.ContainsKey(node.Name))
+            // A node that left and that the platform no longer lists is no worker: it stopped cleanly and is gone, so it
+            // is not shown as silent and then lost until the registry forgets it.
+            if (!node.Left && WorkerNames.PoolPartOf(node.Name, _settings.NamePrefix) is { } part && !workers.ContainsKey(node.Name))
             {
                 var here = _launchedHere.TryGetValue(node.Name, out var launchedHere);
                 workers[node.Name] = Worker(

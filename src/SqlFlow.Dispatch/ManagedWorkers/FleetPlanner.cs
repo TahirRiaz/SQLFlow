@@ -111,7 +111,9 @@ public sealed record FleetPlan(
 /// stale launcher list nothing is stopped and only a pool's minimum is restored. While the control plane hears no node
 /// at all (every node it knows went quiet together), the silence is most likely its own or the network's: no worker
 /// that has polled is stopped for silence and nothing is started for demand, so the fleet never replaces itself
-/// wholesale over a blip; the minimum is still restored once a silent worker's grace has passed. Two rules override the
+/// wholesale over a blip; the minimum is still restored once a silent worker's grace has passed. A worker that said it
+/// was leaving (<see cref="NodeView.Left"/>) is neither silent nor unheard: it is leaving, so it stops counting toward
+/// its pool at once and a fleet whose workers all left cleanly is simply empty. Two rules override the
 /// minimum, because the alternative is worse: a worker near the platform's time limit drains before the platform ends it
 /// mid-run, and a worker whose pool is no longer managed drains.
 /// </remarks>
@@ -175,15 +177,18 @@ public static class FleetPlanner
         return hard > maxLifetime ? maxLifetime + ((hard - maxLifetime) / 2) : hard * 3 / 4;
     }
 
-    /// <summary>Whether this control plane hears no node at all: it knows at least one, and none has polled within
-    /// <see cref="ManagedFleetSettings.PollFreshness"/> (counted from <see cref="FleetSnapshot.WatchedSinceUtc"/> at the
-    /// earliest). Every node going quiet together points at the control plane or the network between them, not at the
-    /// workers, and a new worker would not get through either.</summary>
+    /// <summary>Whether this control plane hears no node at all: it knows at least one that has not left, and none of
+    /// them has polled within <see cref="ManagedFleetSettings.PollFreshness"/> (counted from
+    /// <see cref="FleetSnapshot.WatchedSinceUtc"/> at the earliest). Every node going quiet together points at the
+    /// control plane or the network between them, not at the workers, and a new worker would not get through either.
+    /// A node that said it was leaving is not one of them: its silence is what it announced, so a fleet whose workers
+    /// all stopped cleanly is empty, not unheard.</summary>
     internal static bool HearsNoNode(FleetSnapshot snapshot, ManagedFleetSettings settings)
     {
         var watched = snapshot.WatchedSinceUtc;
-        return snapshot.Nodes.Count > 0
-            && snapshot.Nodes.All(n => snapshot.NowUtc - Later(n.LastSeenUtc, watched) > settings.PollFreshness);
+        var expected = snapshot.Nodes.Where(n => !n.Left).ToList();
+        return expected.Count > 0
+            && expected.All(n => snapshot.NowUtc - Later(n.LastSeenUtc, watched) > settings.PollFreshness);
     }
 
     private static FleetWorkerPhase Classify(
@@ -255,9 +260,11 @@ public static class FleetPlanner
         }
 
         var restarting = node.RestartRequestedUtc is { } restart && restart > node.StartedUtc;
-        if (node.DrainRequestedUtc is not null || restarting)
+        if (node.DrainRequestedUtc is not null || restarting || node.Left)
         {
-            // Leaving (drained, or restarted by an operator): it takes no new work and does not count toward the minimum.
+            // Leaving (drained, restarted by an operator, or stopped by something else and said so on its last poll): it
+            // takes no new work and does not count toward the minimum, so a worker that left unasked is replaced on this
+            // tick rather than once its silence has outlasted a blip.
             if (node.Online && node.ExitSignalledUtc is { } told && now - told >= settings.ExitTimeout)
             {
                 if (canStop)
@@ -274,7 +281,11 @@ public static class FleetPlanner
                 if (canStop)
                 {
                     stops.Add(new PlannedStop(
-                        worker.Name, worker.Pool, $"it went silent while leaving {Minutes(now - node.LastSeenUtc)} ago", FailedStart: false));
+                        worker.Name, worker.Pool,
+                        node.Left
+                            ? $"it said it was leaving {Minutes(now - node.LastSeenUtc)} ago, and the platform still runs it"
+                            : $"it went silent while leaving {Minutes(now - node.LastSeenUtc)} ago",
+                        FailedStart: false));
                 }
 
                 return FleetWorkerPhase.Lost;

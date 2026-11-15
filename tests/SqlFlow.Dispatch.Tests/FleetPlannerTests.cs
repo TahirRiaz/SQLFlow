@@ -441,6 +441,50 @@ public sealed class FleetPlannerTests
     }
 
     [Fact]
+    public void AWorkerThatSaidItWasLeaving_DoesNotCountTowardTheMinimum_SoItsReplacementStartsAtOnce()
+    {
+        // Stopped by something other than the fleet (the platform, an operator at the console), it said goodbye ten
+        // seconds ago and the platform still lists it running. Silence would hold the minimum for its grace; a goodbye
+        // does not.
+        var worker = Listed("worker-default-0000000001");
+        var left = Node(worker.Name, online: false, lastSeen: Now.AddSeconds(-10)) with { Left = true };
+        var plan = FleetPlanner.Plan(Snapshot([worker], [left]), Settings());
+
+        Assert.Equal(FleetWorkerPhase.Draining, Assert.Single(plan.Workers).Phase);
+        Assert.Single(plan.Launches);
+        Assert.Empty(plan.Stops);
+        Assert.Empty(plan.Drains);
+        Assert.Equal(0, Assert.Single(plan.Pools).Silent);
+    }
+
+    [Fact]
+    public void AWorkerThatLeft_ButThatThePlatformStillRunsPastTheTimeout_IsStopped()
+    {
+        var worker = Listed("worker-default-0000000001");
+        var left = Node(worker.Name, online: false, lastSeen: Now.AddMinutes(-11)) with { Left = true };
+        var plan = FleetPlanner.Plan(Snapshot([worker], [left]), Settings());
+
+        var stop = Assert.Single(plan.Stops);
+        Assert.Equal(worker.Name, stop.Name);
+        Assert.False(stop.FailedStart);
+        Assert.Contains("said it was leaving", stop.Reason, StringComparison.Ordinal);
+        Assert.Equal(FleetWorkerPhase.Lost, Assert.Single(plan.Workers).Phase);
+    }
+
+    [Fact]
+    public void AFleetWhoseWorkersAllSaidGoodbye_IsEmpty_NotUnheard_SoDemandStillStartsWorkers()
+    {
+        // Every node the control plane knows left cleanly. That is no silence to wait out: with eight runs queued, the
+        // minimum and a worker for the rest both start on this tick.
+        var worker = Listed("worker-default-0000000001");
+        var left = Node(worker.Name, online: false, lastSeen: Now.AddMinutes(-3)) with { Left = true };
+        var snapshot = Snapshot([worker], [left], eligible: Pools(("", 8)));
+
+        Assert.False(FleetPlanner.HearsNoNode(snapshot, Settings()));
+        Assert.Equal(2, FleetPlanner.Plan(snapshot, Settings()).Launches.Count);
+    }
+
+    [Fact]
     public void WhileTheControlPlaneHearsNoNode_NoWorkerIsStoppedForSilence_AndOnlyTheMinimumIsRestored()
     {
         // Every node the control plane knows went quiet together, long ago: the silence is its own or the network's.

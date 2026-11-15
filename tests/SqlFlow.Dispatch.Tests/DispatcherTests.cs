@@ -917,6 +917,56 @@ public sealed class DispatcherTests
     }
 
     [Fact]
+    public async Task FlushNodes_ForgetsANodeThatLeft_OnceItsRowIsOffAndItsRetentionHasPassed()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+        await dispatcher.PollAsync(Make.Poll("stays", freeRuns: 1), CancellationToken.None);
+        await dispatcher.PollAsync(Make.Poll("leaves", freeRuns: 0, leaving: true), CancellationToken.None);
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+
+        // Kept, marked as left, while a platform may still be reporting the worker.
+        clock.Advance(NodeRegistry.LeftRetention - TimeSpan.FromSeconds(1));
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+        var left = Assert.Single(dispatcher.Nodes.Snapshot(clock.GetUtcNow().UtcDateTime), n => n.Name == "leaves");
+        Assert.True(left.Left);
+        Assert.False(left.Online);
+
+        // Then forgotten; a node that only went silent is not.
+        clock.Advance(TimeSpan.FromSeconds(1));
+        await dispatcher.FlushNodesAsync(CancellationToken.None);
+        Assert.Equal(["stays"], dispatcher.Nodes.Snapshot(clock.GetUtcNow().UtcDateTime).Select(n => n.Name));
+    }
+
+    [Fact]
+    public async Task TheFirstTickAfterATakeover_PrunesTheNodesLongGone()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var now = clock.GetUtcNow().UtcDateTime;
+        ledger.Nodes["gone"] = (new NodeHeartbeat("gone", "test", string.Empty, 0, 4, now.AddHours(-30)), null);
+        ledger.Nodes["recent"] = (new NodeHeartbeat("recent", "test", string.Empty, 0, 4, now.AddHours(-2)), null);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+
+        // A control plane restarted more often than once an hour never reached the hourly prune.
+        await dispatcher.TickAsync(CancellationToken.None);
+
+        Assert.Equal(["recent"], ledger.Nodes.Keys);
+    }
+
+    [Fact]
+    public void Options_RejectAPollAndFlushThatOutlastTheOnlineWindow()
+    {
+        // A node's last poll reaches the fleet view one parked poll and one flush later; past the online window every
+        // healthy node would read offline between polls, and an autoscaler would stop counting the busy ones.
+        Assert.Throws<InvalidOperationException>(() => new DispatchOptions { LongPollSeconds = 46, LeaseSeconds = 120 }.Validate());
+        Assert.Throws<InvalidOperationException>(() => new DispatchOptions { NodeFlushSeconds = 21 }.Validate());
+        new DispatchOptions { LongPollSeconds = 45, LeaseSeconds = 120 }.Validate();
+        new DispatchOptions { NodeFlushSeconds = 20 }.Validate();
+    }
+
+    [Fact]
     public void Options_RejectALeaseShorterThanTwoLongPolls_AndOtherImpossibleSettings()
     {
         Assert.Throws<InvalidOperationException>(() => new DispatchOptions { LeaseSeconds = 30, LongPollSeconds = 30 }.Validate());

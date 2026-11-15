@@ -95,12 +95,19 @@ public sealed partial class RunWorker : IDisposable
     private static readonly TimeSpan TerminalReportBudget = TimeSpan.FromMinutes(2);
 
     /// <summary>How long the leaving poll may take, retries included. It is sent after the drain, inside the platform's
-    /// termination grace period, so it rides out a refusal from a replica that does not own dispatch but never holds
-    /// the exit for long.</summary>
-    private static readonly TimeSpan LeaveBudget = TimeSpan.FromSeconds(15);
+    /// termination grace period (the default drain and this together stay under the ten minutes the worker's
+    /// deployment declares), so it never holds the exit for long.</summary>
+    internal static readonly TimeSpan LeaveBudget = TimeSpan.FromSeconds(30);
 
-    /// <summary>The waits between leaving-poll attempts refused as retryable.</summary>
-    private static readonly TimeSpan[] LeaveWaits = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)];
+    /// <summary>The waits between leaving-poll attempts refused as retryable: a quarter of a minute in all, so the
+    /// goodbye rides out a dispatch hand-over. A deployment swaps the control plane and its workers together, and the
+    /// replica taking over dispatch retries the ownership lease only every
+    /// <see cref="DispatchOptions.OwnershipRenewSeconds"/> (10 by default); waits that end sooner would leave the
+    /// workers of every deployment listed offline.</summary>
+    internal static readonly TimeSpan[] LeaveWaits =
+    [
+        TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8),
+    ];
 
     private readonly IServiceProvider _services;
     private readonly INodeTransport _transport;
@@ -128,6 +135,11 @@ public sealed partial class RunWorker : IDisposable
     // Set once a dispatcher has answered a poll from this node: only then does a fleet view list it, and only then is
     // there anything for the leaving poll to take off.
     private int _answered;
+
+    // What this node executes at once, set once in RunAsync and reported on every poll, the drain's included: a node
+    // finishing what it holds has no slot free, but it is no smaller than it was.
+    private int _runSlots;
+    private int _taskSlots;
 
     // The runs this node is executing, keyed by run id: each with its own cancellation source (linked to the abort
     // token) and the attempt its hand-out carried (the fence every outcome report presents, and what the poll
@@ -184,6 +196,8 @@ public sealed partial class RunWorker : IDisposable
 
         _startedUtc = _clock.GetUtcNow().UtcDateTime;
         _onRestartRequested = options.OnRestartRequested;
+        _runSlots = options.MaxConcurrentRuns;
+        _taskSlots = options.MaxConcurrentComputeTasks;
         _pools = options.Pools.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.Ordinal).ToList();
         var pollWait = TimeSpan.FromSeconds(Math.Clamp((int)options.PollWait.TotalSeconds, 1, NodeProtocol.MaxWaitSeconds));
 
@@ -205,7 +219,7 @@ public sealed partial class RunWorker : IDisposable
             try
             {
                 var response = await PollAsync(
-                    options, freeRuns, freeTasks, pollWait, allowSlotWake: freeRuns == 0 && freeTasks == 0, stoppingToken)
+                    freeRuns, freeTasks, pollWait, allowSlotWake: freeRuns == 0 && freeTasks == 0, stoppingToken)
                     .ConfigureAwait(false);
                 Volatile.Write(ref _answered, 1);
                 backoff = MinBackoff;
@@ -256,7 +270,7 @@ public sealed partial class RunWorker : IDisposable
             await DrainInFlightAsync(pending, options.DrainTimeout, abortCts).ConfigureAwait(false);
         }
 
-        await LeaveAsync(options).ConfigureAwait(false);
+        await LeaveAsync().ConfigureAwait(false);
     }
 
     /// <summary>The stopping node's last poll, once the drain is over: it says the node is leaving, so the dispatcher
@@ -265,7 +279,7 @@ public sealed partial class RunWorker : IDisposable
     /// finished or severed), and a dispatcher keeps a node that reports work on the view. Best-effort on its own short
     /// budget, since the stopping token is tripped and the platform's grace period is running: a node that cannot say
     /// goodbye is pruned like one that crashed, and that is logged, never thrown.</summary>
-    private async Task LeaveAsync(RunWorkerOptions options)
+    private async Task LeaveAsync()
     {
         if (Volatile.Read(ref _answered) == 0)
         {
@@ -274,7 +288,7 @@ public sealed partial class RunWorker : IDisposable
             return;
         }
 
-        var request = BuildRequest(options, 0, 0, 0) with { Leaving = true };
+        var request = BuildRequest(0, 0, 0) with { Leaving = true };
         try
         {
             using var cts = new CancellationTokenSource(LeaveBudget);
@@ -298,9 +312,9 @@ public sealed partial class RunWorker : IDisposable
     /// cancels the parked poll and surfaces as <see cref="SlotFreedException"/>, so the loop re-polls with the new
     /// capacity at once; a poll that reported free slots is never cancelled, because a hand-out may be in flight.</summary>
     private async Task<NodePollResponse> PollAsync(
-        RunWorkerOptions options, int freeRuns, int freeTasks, TimeSpan pollWait, bool allowSlotWake, CancellationToken ct)
+        int freeRuns, int freeTasks, TimeSpan pollWait, bool allowSlotWake, CancellationToken ct)
     {
-        var request = BuildRequest(options, freeRuns, freeTasks, (int)pollWait.TotalSeconds);
+        var request = BuildRequest(freeRuns, freeTasks, (int)pollWait.TotalSeconds);
         if (!allowSlotWake)
         {
             return await _transport.PollAsync(request, ct).ConfigureAwait(false);
@@ -329,9 +343,9 @@ public sealed partial class RunWorker : IDisposable
         }
     }
 
-    private NodePollRequest BuildRequest(RunWorkerOptions options, int freeRuns, int freeTasks, int waitSeconds)
+    private NodePollRequest BuildRequest(int freeRuns, int freeTasks, int waitSeconds)
         => new(
-            _node, _version, _pools, options.MaxConcurrentRuns, freeRuns, options.MaxConcurrentComputeTasks, freeTasks,
+            _node, _version, _pools, _runSlots, freeRuns, _taskSlots, freeTasks,
             _running.Select(r => new HeldRun(r.Key, r.Value.Attempt)).ToList(),
             _runningTasks.Keys.ToList(), _startedUtc, waitSeconds);
 
@@ -463,8 +477,9 @@ public sealed partial class RunWorker : IDisposable
     }
 
     /// <summary>A poll that takes no work: renews the leases of what this node holds and observes cancels and
-    /// revocations. Best-effort, never throws (a failed poll is logged; the next one retries), and skipped while the
-    /// node holds nothing.</summary>
+    /// revocations. It reports the node's real capacity with no slot free, so the fleet view keeps showing what the
+    /// node executes at once while it finishes (a zero there read as a node with no slots at all). Best-effort, never
+    /// throws (a failed poll is logged; the next one retries), and skipped while the node holds nothing.</summary>
     private async Task HeartbeatAsync(CancellationToken ct)
     {
         if (_running.IsEmpty && _runningTasks.IsEmpty)
@@ -474,10 +489,7 @@ public sealed partial class RunWorker : IDisposable
 
         try
         {
-            var request = new NodePollRequest(
-                _node, _version, _pools, 0, 0, 0, 0,
-                _running.Select(r => new HeldRun(r.Key, r.Value.Attempt)).ToList(),
-                _runningTasks.Keys.ToList(), _startedUtc, 0);
+            var request = BuildRequest(freeRuns: 0, freeTasks: 0, waitSeconds: 0);
             var response = await _transport.PollAsync(request, ct).ConfigureAwait(false);
             foreach (var runId in response.CancelRuns.Concat(response.RevokedRuns))
             {

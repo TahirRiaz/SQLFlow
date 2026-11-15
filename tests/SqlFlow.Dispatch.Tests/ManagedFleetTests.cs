@@ -579,6 +579,48 @@ public sealed class ManagedFleetTests
     }
 
     [Fact]
+    public async Task AWorkerThatLeavesUnasked_IsReplacedOnTheNextTick_ThoughThePlatformStillListsItRunning()
+    {
+        await using var sim = await Sim.StartAsync();
+        await sim.RunAsync(TimeSpan.FromSeconds(30));
+        var worker = Assert.Single(sim.Launcher.Workers.Values);
+
+        // Something other than the fleet stops it (the platform, an operator): it says goodbye and polls no more, and
+        // the platform's list has not caught up.
+        worker.Paused = true;
+        await sim.Dispatcher.PollAsync(
+            Make.Poll(worker.Name, freeRuns: 0, startedUtc: worker.StartedUtc, leaving: true), CancellationToken.None);
+        await sim.TickAsync();
+
+        Assert.Equal(2, sim.Launcher.Workers.Count);
+        var pool = Assert.Single(sim.Fleet.Status().Pools);
+        Assert.Equal((0, 1), (pool.Silent, pool.Draining));
+        Assert.Empty(sim.Launcher.Stops);
+    }
+
+    [Fact]
+    public async Task AWorkerThatLeft_AndThatThePlatformNoLongerLists_IsGone_NotShownSilentAndThenLost()
+    {
+        await using var sim = await Sim.StartAsync();
+        await sim.RunAsync(TimeSpan.FromSeconds(30));
+        var worker = Assert.Single(sim.Launcher.Workers.Values);
+
+        await sim.Dispatcher.PollAsync(
+            Make.Poll(worker.Name, freeRuns: 0, startedUtc: worker.StartedUtc, leaving: true), CancellationToken.None);
+        sim.Launcher.Workers.Remove(worker.Name);
+
+        // Past the start timeout, at which a silent worker nothing lists is shown as lost.
+        await sim.RunAsync(TimeSpan.FromMinutes(12));
+        var shown = Assert.Single(sim.Fleet.Status().Workers);
+        Assert.NotEqual(worker.Name, shown.Name);
+        Assert.Equal(FleetWorkerPhase.Ready, shown.Phase);
+
+        // And the dispatcher forgets it once its retention has passed.
+        await sim.RunAsync(TimeSpan.FromMinutes(5));
+        Assert.DoesNotContain(sim.Dispatcher.Nodes.Snapshot(sim.Clock.GetUtcNow().UtcDateTime), n => n.Name == worker.Name);
+    }
+
+    [Fact]
     public async Task ANamedPool_IsStartedWithItsPool_AndServesItsRuns()
     {
         await using var sim = await Sim.StartAsync(named: [new ManagedPoolSettings("heavy", 1, 3)]);

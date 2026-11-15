@@ -47,12 +47,14 @@ public sealed record LeasedTaskView(
 /// <summary>One node as the registry last heard from it. <see cref="BusyRuns"/> and <see cref="BusyTasks"/> are what it
 /// held at its last poll, and <see cref="IdleSinceUtc"/> when it last stopped holding anything (null while it holds
 /// work). <see cref="DrainRequestedUtc"/> is set while the node is draining (it gets no new work and is told to exit
-/// once it holds nothing), and <see cref="ExitSignalledUtc"/> when a poll answer first told it to exit.</summary>
+/// once it holds nothing), and <see cref="ExitSignalledUtc"/> when a poll answer first told it to exit.
+/// <see cref="Left"/> says its last poll was its goodbye (it stopped cleanly, holding nothing): it is offline for good
+/// rather than silent, and the registry forgets it shortly after.</summary>
 public sealed record NodeView(
     string Name, string? Version, IReadOnlyList<string> Pools, int RunSlots, int FreeRunSlots, int TaskSlots,
     int FreeTaskSlots, DateTime FirstSeenUtc, DateTime LastSeenUtc, DateTime StartedUtc, DateTime? RestartRequestedUtc,
     bool Online, int BusyRuns = 0, int BusyTasks = 0, DateTime? IdleSinceUtc = null, DateTime? DrainRequestedUtc = null,
-    DateTime? ExitSignalledUtc = null);
+    DateTime? ExitSignalledUtc = null, bool Left = false);
 
 /// <summary>The dispatcher as it sees itself: ownership, the last housekeeping passes, and the whole queue with
 /// every gate and lease explained. This is the diagnostic surface behind <c>GET /api/v1/dispatch</c>.</summary>

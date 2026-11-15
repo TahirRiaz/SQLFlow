@@ -15,13 +15,19 @@ namespace SqlFlow.Dispatch;
 /// <para>A node that stops cleanly says so on its last poll (<see cref="NodePollRequest.Leaving"/>). Holding nothing,
 /// it counts as offline from that moment, and the next flush removes its ledger row rather than writing it, so the
 /// fleet view lists only the nodes that are there and the ones that went silent without leaving. Its entry here stays
-/// until it expires like any silent node's, since the managed fleet still reasons about a worker it watched leave.</para>
+/// for <see cref="LeftRetention"/> after that poll, marked as left, so the managed fleet tells a worker it watched leave
+/// from one that went silent while the platform still lists it; then it is forgotten.</para>
 /// </summary>
 public sealed class NodeRegistry
 {
     /// <summary>How recently a node must have polled to count as online, the same window the fleet page applies to
     /// the ledger's last-seen. A node polls at least every long-poll interval, so several polls fit inside it.</summary>
     public static readonly TimeSpan OnlineWindow = TimeSpan.FromSeconds(60);
+
+    /// <summary>How long a node that left stays in the registry after its last poll: long enough for a platform to
+    /// report the worker ended (the managed fleet reads the mark until then), short enough that a fleet whose workers
+    /// come and go all day never carries the ones that went.</summary>
+    public static readonly TimeSpan LeftRetention = TimeSpan.FromMinutes(15);
 
     private readonly Lock _gate = new();
     private readonly Dictionary<string, NodeState> _nodes = new(StringComparer.Ordinal);
@@ -241,6 +247,31 @@ public sealed class NodeRegistry
         }
     }
 
+    /// <summary>Forgets nodes that left at or before <paramref name="leftBeforeUtc"/>, once their removal has been
+    /// flushed (one still marked for a flush keeps its entry, so the flush that takes its row off still finds it).
+    /// A node that polled again after saying it was leaving is not one of them. Returns the names removed.</summary>
+    public IReadOnlyList<string> ExpireLeft(DateTime leftBeforeUtc)
+    {
+        lock (_gate)
+        {
+            var removed = new List<string>();
+            foreach (var (name, state) in _nodes)
+            {
+                if (state.Left && !state.Dirty && state.LastSeenUtc <= leftBeforeUtc)
+                {
+                    removed.Add(name);
+                }
+            }
+
+            foreach (var name in removed)
+            {
+                _nodes.Remove(name);
+            }
+
+            return removed;
+        }
+    }
+
     /// <summary>How many online nodes serve a pool, and how many free run slots they reported between them. An
     /// untargeted run (the empty pool key) can go to any online node, so every node serves that key. A draining node
     /// takes no new work, so it serves no pool, and a node that has left is not online.</summary>
@@ -279,7 +310,7 @@ public sealed class NodeRegistry
                 .Select(n => new NodeView(
                     n.Name, n.Version, n.PoolKeys, n.RunSlots, n.FreeRunSlots, n.TaskSlots, n.FreeTaskSlots,
                     n.FirstSeenUtc, n.LastSeenUtc, n.StartedUtc, n.RestartRequestedUtc, n.IsOnline(onlineSince),
-                    n.BusyRuns, n.BusyTasks, n.IdleSinceUtc, n.DrainRequestedUtc, n.ExitSignalledUtc))
+                    n.BusyRuns, n.BusyTasks, n.IdleSinceUtc, n.DrainRequestedUtc, n.ExitSignalledUtc, n.Left))
                 .ToList();
         }
     }

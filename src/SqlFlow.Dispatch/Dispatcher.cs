@@ -117,7 +117,9 @@ public sealed partial class Dispatcher : IDisposable
         _lastReconcileUtc = now;
         _lastNodeFlushUtc = now;
         _lastTaskExpiryUtc = now;
-        _lastNodePruneUtc = now;
+        // The first tick prunes: a control plane restarted more often than the prune's own hourly cadence would otherwise
+        // never reach one, and the rows of nodes long gone would stay for good.
+        _lastNodePruneUtc = null;
         _active = true;
         Interlocked.Increment(ref _ownershipEpoch);
         LogActivated(owner, snapshot.QueuedRuns.Count, snapshot.RunningRuns.Count, snapshot.QueuedTasks.Count, snapshot.RunningTasks.Count);
@@ -774,7 +776,9 @@ public sealed partial class Dispatcher : IDisposable
     /// (the control plane's own, which drains just before the dispatcher stops) is taken off too. Rows are written
     /// here and nowhere else, one after another, so no heartbeat of a node can land after its removal. A write that
     /// fails leaves that node and every one after it marked for the next flush (a node that left will not poll to mark
-    /// itself again), then throws. Does nothing while passive.</summary>
+    /// itself again), then throws. Last, the registry forgets the nodes that left more than
+    /// <see cref="NodeRegistry.LeftRetention"/> ago and whose rows are off, so memory holds the fleet that is there
+    /// rather than every worker that came and went. Does nothing while passive.</summary>
     public async Task FlushNodesAsync(CancellationToken ct)
     {
         if (!_active)
@@ -782,6 +786,7 @@ public sealed partial class Dispatcher : IDisposable
             return;
         }
 
+        var now = _clock.GetUtcNow().UtcDateTime;
         var beats = Nodes.TakeDirty();
         for (var i = 0; i < beats.Count; i++)
         {
@@ -807,6 +812,8 @@ public sealed partial class Dispatcher : IDisposable
                 throw;
             }
         }
+
+        Nodes.ExpireLeft(now - NodeRegistry.LeftRetention);
     }
 
     private async Task PruneNodesAsync(DateTime now, CancellationToken ct)
