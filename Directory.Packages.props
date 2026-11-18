@@ -61,7 +61,7 @@
          OpenID Connect protocol stack for validating Microsoft Entra ID tokens on the /auth/exchange endpoint.
          JwtBearer only declares an OpenIdConnect floor (8.0.1); transitive pinning lifts it to the version below,
          so the whole Microsoft.IdentityModel.* stack resolves to that single version. -->
-    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="11.0.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
     <!-- Cronos: standard-cron parsing with correct time-zone / DST handling, for the control-plane scheduler. -->
     <PackageVersion Include="Cronos" Version="0.13.0" />
@@ -69,7 +69,7 @@
          .NET team recommends over the legacy System.Net.Mail.SmtpClient (which lacks implicit TLS and modern
          auth). Only the SMTP provider uses it; the Graph provider is plain HTTP against Microsoft Graph. -->
     <PackageVersion Include="MailKit" Version="4.18.1" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.21" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.23" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.21" />
     <!-- The Slack bot (SqlFlow.SlackBot): SlackNet is the Socket Mode + Web API client (no public inbound
          endpoint needed); the Azure AI Foundry agent is driven directly over the OpenAI Responses API
@@ -79,15 +79,15 @@
     <!-- The official Anthropic SDK, for the Slack bot's Anthropic provider mode (Claude Messages API
          with the MCP connector calling the same SQLFlow MCP server). -->
     <PackageVersion Include="Anthropic" Version="12.58.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
     <!-- IHostedService, which a worker node starts and stops with it (src/SqlFlow.Cli/Hosting/NodeHostedServices.cs). -->
-    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.13" />
   </ItemGroup>
 
